@@ -7,7 +7,7 @@ On start the engine SHALL run `data/scripts/main.lua`. The script returns a tabl
 `init()`, `input()`, `tick()` and `draw(alpha, dt)`. The engine SHALL call `init` once; then in each frame
 it SHALL call `input` once, run the simulation ticks due in that frame (see the simulation spec),
 calling `tick` for each, and call `draw` once with the interpolation factor and the frame's duration in
-seconds. Missing functions are skipped.
+seconds, at most 0.25 s. Missing functions are skipped.
 
 #### Scenario: Game table with all functions
 - **GIVEN** `main.lua` returns a table with `init`, `input`, `tick` and `draw`
@@ -22,3 +22,7 @@ seconds. Missing functions are skipped.
 #### Scenario: Frame time in scenarios
 - **WHEN** a scenario runs
 - **THEN** `draw` receives 1/60 s as the frame time in every frame, so presentation is reproducible
+
+#### Scenario: A long hitch
+- **WHEN** a frame comes 3 s after the previous one (loading, a hidden browser tab)
+- **THEN** `draw` receives 0.25 s

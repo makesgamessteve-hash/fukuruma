@@ -351,11 +351,12 @@ fk_status fk_app_iterate(void) {
     if (!call_game("input", -1, -1)) return fail();
     for (int i = 0; i < ticks; i++)
         if (!sim_step()) return fail();
-    if (!call_game("draw", alpha, dt)) return fail();
+    double frame_dt = dt < 0.25 ? dt : 0.25; /* presentation time: a long hitch (loading, a hidden tab) is not replayed */
+    if (!call_game("draw", alpha, frame_dt)) return fail();
     if (app.window) {
         int w, h;
         fk_platform_size(&w, &h);
-        fk_gfx_render(dt, w, h);
+        fk_gfx_render(frame_dt, w, h);
     }
     if (app.co) {
         int code = scenario_step();
