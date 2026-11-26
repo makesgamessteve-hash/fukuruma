@@ -9,8 +9,8 @@ file(COPY ${EXE} DESTINATION ${dir})
 string(REPLACE "|" ";" DATA "${DATA}")
 string(REPLACE "|" ";" ARGS "${ARGS}")
 string(REPLACE "|" ";" WRAP "${WRAP}") # optional command in front of the executable, e.g. a timeout
-foreach(d ${DATA}) # later folders overlay earlier ones
-  file(COPY ${d}/ DESTINATION ${dir}/data)
+foreach(d ${DATA}) # later folders overlay earlier ones; copy_directory always overwrites (file(COPY) skips equal timestamps)
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${d} ${dir}/data COMMAND_ERROR_IS_FATAL ANY)
 endforeach()
 if(NOT CWD)
   set(CWD ${dir})
