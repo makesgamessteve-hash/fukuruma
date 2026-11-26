@@ -1,0 +1,127 @@
+# Builds and tests every target on each push to main. The web build is published to GitHub Pages
+# only when every job passes, so the last good build stays online.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OPENSPEC_TELEMETRY: "0"
+  EMSDK_VERSION: "7.0.1"
+  # SDL3 build dependencies plus Mesa's EGL/llvmpipe for headless rendering.
+  LINUX_PACKAGES: >-
+    ninja-build libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxfixes-dev
+    libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl-dev libegl1 libegl-mesa0 libgl1-mesa-dri
+
+jobs:
+  specs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npx --yes @fission-ai/openspec@2.2.0 validate --all --strict
+
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES && pipx install gcovr==8.8
+      - run: cmake --preset linux-coverage
+      - run: cmake --build --preset linux-coverage
+      - name: Tests and coverage gates (C and Lua >= 95%)
+        run: cmake --build --preset linux-coverage --target coverage
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: linux-test-output
+          if-no-files-found: ignore
+          path: |
+            build/linux-coverage/test-output
+            build/linux-coverage/test-run
+            build/linux-coverage/coverage-c.*
+            build/linux-coverage/luacov.report.out
+
+  sanitize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
+      - run: cmake --preset linux-asan
+      - run: cmake --build --preset linux-asan
+      - run: ctest --preset linux-asan
+
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+      - run: cmake --preset windows-msvc
+      - run: cmake --build --preset windows-msvc
+      - run: ctest --preset windows-msvc
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+      - run: cmake --preset macos
+      - run: cmake --build --preset macos -j 4
+      - run: ctest --preset macos
+
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Install Emscripten
+        run: |
+          git clone --depth 1 --branch "$EMSDK_VERSION" https://github.com/emscripten-core/emsdk.git "$HOME/emsdk"
+          "$HOME/emsdk/emsdk" install "$EMSDK_VERSION"
+          "$HOME/emsdk/emsdk" activate "$EMSDK_VERSION"
+      - name: Build
+        run: |
+          source "$HOME/emsdk/emsdk_env.sh"
+          cmake --preset web
+          cmake --build --preset web
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Browser tests
+        working-directory: tests/web
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          node smoke.mjs ../../build/web
+      - name: Collect the site
+        run: |
+          mkdir -p site
+          cp build/web/index.html build/web/fukuruma.js build/web/fukuruma.wasm build/web/fukuruma.data site/
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  pages:
+    needs: [specs, linux, sanitize, windows, macos, web]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5

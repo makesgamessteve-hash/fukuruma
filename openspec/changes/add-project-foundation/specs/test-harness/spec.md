@@ -75,6 +75,10 @@ is then written to the test output folder. With `--update-golden` the reference 
 - **WHEN** a scenario that takes screenshots runs with `--no-render`
 - **THEN** the screenshot steps are skipped and logged, and do not fail the scenario
 
+#### Scenario: Screenshots in the browser
+- **WHEN** a scenario that takes screenshots runs in the browser
+- **THEN** the screenshot steps are skipped and logged, because browser GPUs do not match the reference renderer
+
 ### Requirement: Reproducible runs
 Two runs of the same scenario with the same seed on the same platform SHALL produce identical
 rendered frames.

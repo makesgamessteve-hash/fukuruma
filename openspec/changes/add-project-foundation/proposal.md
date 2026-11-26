@@ -14,7 +14,7 @@ following change is tested and deployed from its first commit.
 - Build and contribution notes in `README.md` (the Pages link, `LICENSE`, `LICENSE-ASSETS.md`,
   `AGENTS.md` and `CLAUDE.md` already exist from the planning commit); third-party entries in
   `THIRD_PARTY_NOTICES.md`.
-- CMake build with presets for Linux, Windows, macOS, Web and a Linux coverage build; SDL 3.2 and
+- CMake build with presets for Linux, Windows, macOS, Web and a Linux coverage build; SDL 3.4 and
   Lua 5.4 built from pinned sources.
 - A minimal engine: opens a window with an OpenGL context (WebGL 2 on the web), finds `data/` beside
   the binary, runs `data/scripts/main.lua`, which draws a spinning low-poly placeholder through a first

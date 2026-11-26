@@ -1,0 +1,1 @@
+-- A module that returns nothing: require gives true.

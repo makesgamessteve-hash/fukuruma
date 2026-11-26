@@ -1,0 +1,6 @@
+build/
+test-output/
+node_modules
+luacov.*.out
+*.gcda
+*.gcno

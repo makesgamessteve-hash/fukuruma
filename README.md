@@ -19,8 +19,9 @@ explored. Every planet is worth going down to, and any planet can kill you.
 
 ## Status
 
-Planning is done; implementation starts with milestone M0 (build, test and deployment pipeline).
-The link above works once M0 has been deployed and GitHub Pages is enabled for this repository.
+Milestone M0 (build, test and deployment pipeline) is in progress: the engine opens a window, runs the
+Lua game from `data/` and shows a spinning placeholder Jump Ship. The link above works once GitHub
+Pages is enabled for this repository (see below) and CI has passed.
 
 - [Game concept](docs/CONCEPT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
@@ -35,6 +36,45 @@ The link above works once M0 has been deployed and GitHub Pages is enabled for t
   [ponytail](https://github.com/DietrichGebert/ponytail) in [AGENTS.md](AGENTS.md)
 - Unit tests with at least 95% line coverage, plus automated game tests
 
+## Building
+
+Requirements: CMake 3.24+, Ninja, a C11 compiler, Python 3 (tests). SDL3 is downloaded by CMake.
+On Linux, SDL3 also needs the X11/Wayland development packages (Ubuntu:
+`libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxfixes-dev libxtst-dev
+libxkbcommon-dev libwayland-dev wayland-protocols libegl-dev`).
+
+```bash
+cmake --preset linux-debug && cmake --build --preset linux-debug
+```
+
+```bash
+build/linux-debug/fukuruma
+```
+
+Other presets: `windows-msvc`, `macos`, `web` (needs the Emscripten SDK in `$EMSDK`), `linux-coverage`,
+`linux-asan`. The executable reads everything from the `data/` folder next to it; edit a script and
+rebuild (which copies `data/`) or edit the copy in the build folder and restart.
+
+## Testing
+
+```bash
+ctest --preset linux-debug
+```
+
+```bash
+cmake --preset linux-coverage && cmake --build --preset linux-coverage --target coverage
+```
+
+```bash
+cd tests/web && npm install && npx playwright install chromium && node smoke.mjs ../../build/web
+```
+
+- `fukuruma --test tests/lua` runs the Lua unit tests; `--coverage` records Lua coverage with luacov.
+- `fukuruma --headless --scenario tests/game/boot.lua` runs a game-test scenario offscreen and compares its
+  screenshots with `tests/golden/`; `--update-golden` rewrites the reference images; `--no-render` runs
+  without a GPU (screenshots are skipped).
+- The coverage target fails below 95% line coverage for the C engine or the Lua scripts.
+
 ## One-time repository setup
 
 GitHub Pages must be enabled once: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
@@ -42,5 +82,5 @@ GitHub Pages must be enabled once: **Settings → Pages → Build and deployment
 ## Licences
 
 - Code (C, Lua, GLSL, JavaScript, tools): [MIT](LICENSE)
-- Art (textures, models, voxels, sprites, palettes, sounds, music): [CC BY 4.0](LICENSE-ASSETS.md)
+- Art (textures, materials, models, animations, sprites, sounds, music): [CC BY 4.0](LICENSE-ASSETS.md)
 - Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)

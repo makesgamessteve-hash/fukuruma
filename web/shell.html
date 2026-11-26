@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fukuruma</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #05060f; color: #c9d1e0; font: 16px/1.5 system-ui, sans-serif; overflow: hidden; }
+    main { display: flex; height: 100%; align-items: center; justify-content: center; }
+    /* 16:9, as large as the window allows */
+    canvas { display: block; width: min(100vw, 177.78vh) !important; height: min(56.25vw, 100vh) !important; image-rendering: pixelated; }
+    #message { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 36em; padding: 1em; text-align: center; }
+    #message[hidden] { display: none; }
+    a { color: #f0a040; }
+  </style>
+</head>
+<body>
+  <main><canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1" aria-label="Fukuruma game view"></canvas></main>
+  <p id="message" role="status">Loading Fukuruma…</p>
+  <script>
+    const message = document.getElementById('message');
+    const show = (text) => { message.textContent = text; message.hidden = !text; };
+    const params = new URLSearchParams(location.search);
+    const scenario = params.get('scenario');
+    const webgl2 = !!document.createElement('canvas').getContext('webgl2');
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      arguments: [],
+      noInitialRun: !webgl2,
+      print: (text) => console.log(text),
+      printErr: (text) => console.warn(text),
+      setStatus: (text) => { if (webgl2) show(text); },
+      onRuntimeInitialized: () => { if (webgl2) show(''); },
+    };
+    if (scenario && /^[a-z0-9_-]+$/.test(scenario)) Module.arguments = ['--scenario', '/tests/game/' + scenario + '.lua'];
+    if (!webgl2) {
+      message.innerHTML = 'Fukuruma needs <strong>WebGL 2</strong>, which this browser does not provide. ' +
+        'Please try a current version of Chrome, Edge, Firefox or Safari. ' +
+        '<a href="https://github.com/makesgamessteve-hash/fukuruma">Source code</a>';
+    }
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

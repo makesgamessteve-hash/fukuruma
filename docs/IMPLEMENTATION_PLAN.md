@@ -42,7 +42,7 @@
 |------|--------|---------|-----|
 | Language | C11 (GCC, Clang, MSVC) | — | Requested. Portable to Emscripten. |
 | Build | CMake ≥ 3.24 with `CMakePresets.json`, Ninja | — | One build description for all five targets. |
-| Platform | SDL 3.2.x, pinned tag, built from source (static) | zlib | Window, GL context, input (keyboard, mouse, gamepad, touch), audio, threads, paths. |
+| Platform | SDL 3.4.x, pinned release tarball (SHA-256), built from source (static) | zlib | Window, GL context, input (keyboard, mouse, gamepad, touch), audio, threads, paths. |
 | Graphics | OpenGL 3.3 core / OpenGL ES 3.0 / WebGL 2 common subset; deferred, physically based HDR renderer at a low internal resolution | — | Runs on Windows, Linux, macOS (4.1 core) and browsers. The low resolution pays for modern lighting and effects. |
 | GL loading | `SDL_GL_GetProcAddress` + one X-macro list of the functions used | — | No generator, no extra dependency. |
 | Scripting | Lua 5.4.x, vendored source | MIT | Small, portable, works on WebAssembly (LuaJIT does not). |
@@ -87,8 +87,7 @@ AGENTS.md                  ponytail rules (MIT, attributed)
 CLAUDE.md                  imports AGENTS.md; project commands and workflow
 CMakeLists.txt  CMakePresets.json
 engine/
-  include/fk/              public headers: fk_core.h, fk_math.h, fk_gfx.h, fk_world.h, ...
-  src/
+  src/                     one folder per module; headers sit next to their sources
     app/                   main(), CLI (--headless, --test, --scenario, --seed, --no-render)
     core/                  log, arenas, hash + PRNG, jobs, time, commands, entities
     platform/              SDL3 glue: window, GL context, input events, audio device, paths
