@@ -121,7 +121,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # A windowed (interactive) run keeps its window open after a script error; SIGTERM ends it cleanly.
   add_test(NAME game_interactive_error COMMAND ${FK_RUN} -DNAME=interactive_error
     "-DDATA=${FK_SRC}/data|${FK_SRC}/tests/fixtures/update_error/data" -DEXPECT=124 -DMATCH=boom
-    "-DWRAP=timeout|-s|TERM|2" -P ${FK_SRC}/tests/run_exe.cmake)
+    "-DWRAP=timeout|-s|TERM|-k|5|2" -P ${FK_SRC}/tests/run_exe.cmake)
   set_tests_properties(game_interactive_error PROPERTIES ENVIRONMENT SDL_VIDEO_DRIVER=offscreen LABELS game)
 endif()
 add_test(NAME game_boot COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/boot.lua)
@@ -130,6 +130,8 @@ add_test(NAME game_boot_reproducible COMMAND ${CMAKE_COMMAND} -DEXE=${FK_EXE} -D
 set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_cwd scenario_timeout_exit_code video_unavailable
   PROPERTIES LABELS unit)
 set_tests_properties(game_update_error_headless game_bad_shader game_boot game_boot_reproducible PROPERTIES LABELS game)
+get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
+set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
 
 if(FK_COVERAGE)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
