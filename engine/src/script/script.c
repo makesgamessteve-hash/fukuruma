@@ -159,7 +159,9 @@ static int l_device(lua_State *L) {
 
 /* --- sandbox ----------------------------------------------------------------- */
 
+/* fk.seed() returns the world seed; fk.seed(n) sets it (loading a save), so new streams follow it. */
 static int l_seed(lua_State *L) {
+    if (!lua_isnoneornil(L, 1)) fk_script_set_seed(L, (uint64_t)luaL_checkinteger(L, 1));
     lua_getfield(L, LUA_REGISTRYINDEX, "fk.seed");
     return 1;
 }

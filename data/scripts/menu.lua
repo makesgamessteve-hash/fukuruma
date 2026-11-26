@@ -81,6 +81,14 @@ function menu.draw(state, dt)
       audio.save()
     end, audio.CHOICES[row[2]])
   end
+  for _, row in ipairs({ { "Save game", "save" }, { "Load game", "load" } }) do -- set by the game
+    if menu.actions and menu.actions[row[2]] then
+      rows[#rows + 1] = { label = row[1], press = function()
+        menu.open = false
+        menu.actions[row[2]]()
+      end }
+    end
+  end
   rows[#rows + 1] = { label = "Close", press = function() menu.open = false end }
   if ui.menu("SETTINGS", rows, menu.slide:update(dt or 0)) == "back" then menu.open = false end
 end

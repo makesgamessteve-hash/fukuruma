@@ -2,7 +2,8 @@
 -- (fixed 60 Hz) and draw(alpha, dt).
 -- M1 sandbox: the Exosuit (3.6 m) walks and runs over a lit test range, with wind, music and sound effects. Move with WASD, the arrow keys, the
 -- left stick or the touch stick; sprint with Shift, the A button or the touch button; scan with E, the X
--- button or the scan button. Escape, Start or the touch button at the top right opens the settings.
+-- button or the scan button. Escape, Start or the touch button at the top right opens the settings; F5 saves,
+-- F9 loads (also in the settings menu).
 -- Simulation (sim.*) uses only arithmetic and sqrt, so it is the same on every platform; animation, camera
 -- and effects are presentation.
 local mat4 = require("mat4")
@@ -22,6 +23,8 @@ local music = require("fk.music")
 local reverb = require("fk.reverb")
 local menu = require("menu")
 local feedback = require("feedback")
+local save = require("fk.save")
+local tween = require("fk.tween")
 
 local game = {}
 
@@ -82,6 +85,9 @@ function game.init()
   actions.define("sprint", { kind = "button", keys = { "Left Shift", "Right Shift" }, gamepad = { "a" }, touch = "sprint" })
   actions.define("scan", { kind = "button", keys = { "E" }, gamepad = { "x" }, touch = "scan" })
   actions.define("menu", { kind = "button", keys = { "Escape" }, gamepad = { "start" }, touch = "menu" })
+  actions.define("save", { kind = "button", keys = { "F5" } })
+  actions.define("load", { kind = "button", keys = { "F9" } })
+  menu.actions = { save = function() game.save() end, load = function() game.load() end }
   actions.touch_button("sprint", 0.86, 0.72, 0.09)
   actions.touch_button("scan", 0.72, 0.84, 0.07)
   actions.touch_button("menu", 0.94, 0.1, 0.06)
@@ -95,11 +101,33 @@ function game.suit_position()
   return { body.x, 0, body.z }
 end
 
+-- A short notice at the top of the screen ("Game saved"), fading out.
+function game.notice(text)
+  game.toast = { text = text, fade = tween.new(1, 0, 2.5, "cubic_in_out") }
+  fk.audio.play("ui_confirm", { bus = "ui", volume = 0.7 })
+end
+
+-- Saves between ticks, so the snapshot is a whole tick.
+function game.save()
+  save.write("quick")
+  game.notice("Game saved")
+end
+
+function game.load()
+  if not save.read("quick") then return game.notice("No saved game yet") end
+  local s = sim.get(game.suit, "suit")
+  game.control = { x = s.wx, z = s.wz } -- the input compares against the loaded wish
+  game.rig.started = false              -- the camera jumps to the loaded place instead of flying there
+  game.notice("Game loaded")
+end
+
 -- Input becomes commands, only when something changes. The camera looks along +z, so up on the stick is +z
 -- and right is -x. The menu pauses the controls.
 function game.input()
   actions.update()
   if actions.pressed("menu") then menu.toggle() end
+  if actions.pressed("save") then game.save() end
+  if actions.pressed("load") then game.load() end
   local x, y = actions.value("move_x"), actions.value("move_y")
   local len = math.sqrt(x * x + y * y)
   if len > 1 then x, y = x / len, y / len end
@@ -189,6 +217,11 @@ function game.draw(alpha, dt)
   if music.current == "discovery" and feel.time > game.discovery_until then music.play("surface", 6) end
   feel.draw()
   touch_view.draw(actions.touch_controls())
+  if game.toast then
+    local a = game.toast.fade:update(dt)
+    fk.gfx.text(math.floor(w / 2 - #game.toast.text * 4), 12, game.toast.text, { 1, 0.85, 0.5, a })
+    if game.toast.fade:done() then game.toast = nil end
+  end
   menu.draw(game.graphics, dt)
 end
 

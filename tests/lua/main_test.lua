@@ -57,6 +57,18 @@ return {
     assert(sim.get(game.suit, "suit").wz == 0)
     require("menu").open = false
   end,
+  ["quick save and load with a notice that fades out"] = function()
+    local s = start()
+    game.save()
+    sim.send("move", { x = 2.6, z = 0 })
+    for _ = 1, 30 do sim.step(game) end
+    s = sim.get(game.suit, "suit")
+    assert(s.x > 0)
+    game.load()
+    assert(sim.get(game.suit, "suit").x == 0 and game.toast.text == "Game loaded")
+    for _ = 1, 200 do game.draw(1, 1 / 60) end
+    assert(game.toast == nil, "the notice is gone after 2.5 s")
+  end,
   ["draw animates, raises dust at footsteps and follows with the camera"] = function()
     start()
     feel.reset()

@@ -40,7 +40,7 @@ async function test(name, fn, options = {}) {
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 // simulation: the recorded state hash must match in WebAssembly too (determinism across platforms).
-for (const scenario of ['boot', 'simulation', 'showcase_materials', 'showcase_skinning', 'feel', 'audio']) {
+for (const scenario of ['boot', 'simulation', 'showcase_materials', 'showcase_skinning', 'feel', 'audio', 'save']) {
   await test(`${scenario} scenario passes in the browser`, async (page) => {
     await page.goto(`${base}?scenario=${scenario}`);
     await page.waitForFunction(() => window.fukurumaResult, null, { timeout: 60000 });
@@ -96,8 +96,8 @@ await test('touch input reaches the game on a phone', async (page) => {
   assert(result && result.status === 'passed', `touch scenario: ${JSON.stringify(result)}`);
 }, { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
 
-// The stored graphics settings as IndexedDB holds them (Emscripten's IDBFS keeps files in FILE_DATA).
-const storedGraphics = (page) => page.evaluate(() => new Promise((resolve) => {
+// A stored value as IndexedDB holds it (Emscripten's IDBFS keeps files in FILE_DATA).
+const storedFile = (page, file) => page.evaluate((file) => new Promise((resolve) => {
   const open = indexedDB.open('/libsdl');
   open.onerror = () => resolve(null);
   open.onsuccess = () => {
@@ -108,11 +108,12 @@ const storedGraphics = (page) => page.evaluate(() => new Promise((resolve) => {
     all.onsuccess = () => {
       const cursor = all.result;
       if (!cursor) return resolve(text);
-      if (String(cursor.key).endsWith('/graphics.txt')) text = new TextDecoder().decode(cursor.value.contents);
+      if (String(cursor.key).endsWith('/' + file)) text = new TextDecoder().decode(cursor.value.contents);
       cursor.continue();
     };
   };
-}));
+}), file);
+const storedGraphics = (page) => storedFile(page, 'graphics.txt');
 const waitForStored = async (page, pattern) => {
   for (let i = 0; i < 100; i++) {
     const text = await storedGraphics(page);
@@ -143,6 +144,33 @@ await test('the menu opens with a tap and stored settings survive a reload', asy
   const text = await storedGraphics(page);
   assert(/level=medium/.test(text), `after the reload: ${text}`);
 }, { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+
+const tap = async (page, key, ms = 150) => {
+  await page.keyboard.down(key);
+  await page.waitForTimeout(ms);
+  await page.keyboard.up(key);
+};
+
+await test('a saved game survives a reload', async (page) => {
+  const dialogs = [];
+  page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); }); // script errors would show a message box
+  await page.goto(base);
+  await page.waitForFunction(() => document.getElementById('message').hidden, null, { timeout: 60000 });
+  await tap(page, 'KeyW', 600);
+  await tap(page, 'F5'); // quick save (the game keeps the key from the browser: no page reload)
+  let saved = null;
+  for (let i = 0; i < 50 && !(saved && saved.startsWith('-- fukuruma save')); i++) {
+    await page.waitForTimeout(100);
+    saved = await storedFile(page, 'save_quick.txt');
+  }
+  assert(saved && saved.includes('suit'), `no save was stored: ${saved}`);
+  await page.reload();
+  await page.waitForFunction(() => document.getElementById('message').hidden, null, { timeout: 60000 });
+  await tap(page, 'F9'); // quick load
+  await page.waitForTimeout(500);
+  assert((await storedFile(page, 'save_quick.txt')) === saved, 'the save is unchanged after the reload');
+  assert(dialogs.length === 0, `errors: ${dialogs.join(' | ')}`);
+});
 
 await test('browsers without WebGL 2 get a message', async (page) => {
   await page.addInitScript(() => {

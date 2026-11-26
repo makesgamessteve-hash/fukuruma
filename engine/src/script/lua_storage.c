@@ -7,7 +7,7 @@
 #include "platform/platform.h"
 #include "script/script.h"
 
-#define FK_STORAGE_MAX (64 * 1024)
+#define FK_STORAGE_MAX (4 * 1024 * 1024) /* settings and saves */
 
 static bool memory = true; /* safe default: nothing touches the disk unless the app asks for it */
 
@@ -33,7 +33,7 @@ static int l_save(lua_State *L) {
     const char *name = checked_name(L);
     size_t len;
     const char *text = luaL_checklstring(L, 2, &len);
-    if (len > FK_STORAGE_MAX) return luaL_error(L, "storage: the value for '%s' is larger than 64 KiB", name);
+    if (len > FK_STORAGE_MAX) return luaL_error(L, "storage: the value for '%s' is larger than 4 MiB", name);
     if (memory) {
         push_memory(L);
         lua_pushvalue(L, 2);

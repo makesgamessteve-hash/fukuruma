@@ -143,6 +143,34 @@ function sim.each(name)
   end
 end
 
+-- Snapshots (saves) ----------------------------------------------------------------
+
+-- Everything needed to continue exactly where the simulation is: the tick, the next entity ID, the living
+-- entities, every component with its iteration order, and the commands not yet applied. Plain data.
+function sim.snapshot()
+  local living = {}
+  for id in pairs(alive) do living[#living + 1] = id end
+  table.sort(living)
+  local sets = {}
+  for name, set in pairs(components) do
+    sets[name] = { ids = table.move(set.ids, 1, #set.ids, 1, {}), values = copy(set.values, name, -1) }
+  end
+  -- depths start below 0: the wrapping tables (values by ID, the queue's command records) do not count
+  return { tick = sim.tick, next_id = next_id, alive = living, components = sets, queue = copy(queue, "queue", -2) }
+end
+
+-- Continues from a snapshot. Handlers and listeners stay (they are code, not state).
+function sim.restore(snap)
+  sim.tick, next_id = snap.tick, snap.next_id
+  alive, components, queue, events = {}, {}, copy(snap.queue, "queue", -2), {}
+  for _, id in ipairs(snap.alive) do alive[id] = true end
+  for name, s in pairs(snap.components) do
+    local set = { ids = table.move(s.ids, 1, #s.ids, 1, {}), index = {}, values = copy(s.values, name, -1) }
+    for i, id in ipairs(set.ids) do set.index[id] = i end
+    components[name] = set
+  end
+end
+
 -- State hash ---------------------------------------------------------------------
 
 local function key_order(a, b)

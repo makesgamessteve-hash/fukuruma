@@ -18,7 +18,8 @@ return {
     fails(function() fk.storage.load("") end, "not a valid name")
     fails(function() fk.storage.save(string.rep("a", 65), "x") end, "not a valid name")
   end,
-  ["values are limited to 64 KiB"] = function()
-    fails(function() fk.storage.save("big", string.rep("x", 64 * 1024 + 1)) end, "larger than 64 KiB")
+  ["values are limited to 4 MiB"] = function()
+    fk.storage.save("big", string.rep("x", 64 * 1024 + 1))
+    fails(function() fk.storage.save("big", string.rep("x", 4 * 1024 * 1024 + 1)) end, "larger than 4 MiB")
   end,
 }
