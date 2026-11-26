@@ -47,6 +47,6 @@
 ## 7. Verification
 
 - [x] 7.1 All C and Lua unit tests pass; both coverage gates are at or above 95%
-- [ ] 7.2 `boot.lua` passes headless on Linux, with `--no-render` on Windows and macOS, and in Chromium on the web
+- [x] 7.2 `boot.lua` passes headless on Linux, with `--no-render` on Windows and macOS, and in Chromium on the web
 - [ ] 7.3 CI is green on every target and the placeholder is live at https://makesgamessteve-hash.github.io/fukuruma/
 - [ ] 7.4 `openspec validate add-project-foundation --strict` passes; archive the change after deployment
