@@ -94,3 +94,11 @@ browser after touch input, strong rumbles SHALL vibrate the phone instead.
 #### Scenario: Gamepad rumble
 - **WHEN** a script asks for a rumble of 0.5, 0.5 for 0.1 s with a gamepad connected
 - **THEN** the gamepad's motors run for 0.1 s
+
+### Requirement: Touch walking
+On a touch screen, holding the touch stick SHALL walk the player's doll in the stick's direction, and the sprint
+button SHALL make it run.
+
+#### Scenario: Stick to the right
+- **WHEN** a finger holds the touch stick to the right for half a second
+- **THEN** the Exosuit walks to the right of the screen

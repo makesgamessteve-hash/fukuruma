@@ -5,4 +5,4 @@
 - [x] 3 Touch walking check in `tests/game/input.lua`; goldens with TAA regenerated on purpose
 - [x] 4 README status, plan M1 done and the owner's open points
 - [x] 5 Coverage gates, sanitizers, all CTest tests, web build and browser tests
-- [ ] 6 CI green on every target; Pages updated; archive
+- [x] 6 CI green on every target; Pages updated; archive
