@@ -4,15 +4,15 @@
 
 #include "core/mat4.h"
 
-float fk_shadow_split(int i, int count, float near, float far) {
-    float f = fminf(far, FK_SHADOW_DISTANCE), t = (float)(i + 1) / (float)count;
-    return 0.75f * near * powf(f / near, t) + 0.25f * (near + (f - near) * t);
+float fk_shadow_split(int i, int count, float z_near, float z_far) {
+    float f = fminf(z_far, FK_SHADOW_DISTANCE), t = (float)(i + 1) / (float)count;
+    return 0.75f * z_near * powf(f / z_near, t) + 0.25f * (z_near + (f - z_near) * t);
 }
 
-void fk_shadow_cascade(fk_cascade *out, const float inv_view_proj[16], float near, float far, float d0, float d1,
+void fk_shadow_cascade(fk_cascade *out, const float inv_view_proj[16], float z_near, float z_far, float d0, float d1,
                        const float to_light[3], int map_size) {
-    /* The slice's corners lie on the lines from the near-plane to the far-plane corners. */
-    float t0 = (d0 - near) / (far - near), t1 = (d1 - near) / (far - near), corners[8][3], center[3] = {0, 0, 0};
+    /* The slice's corners lie on the lines from the z_near-plane to the z_far-plane corners. */
+    float t0 = (d0 - z_near) / (z_far - z_near), t1 = (d1 - z_near) / (z_far - z_near), corners[8][3], center[3] = {0, 0, 0};
     for (int i = 0; i < 4; i++) {
         float ndc_near[3] = {(i & 1) ? 1.0f : -1.0f, (i & 2) ? 1.0f : -1.0f, -1.0f}, a[3], b[3];
         float ndc_far[3] = {ndc_near[0], ndc_near[1], 1.0f};

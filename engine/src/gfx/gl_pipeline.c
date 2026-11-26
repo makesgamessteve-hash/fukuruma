@@ -242,7 +242,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     if (!fk_mat4_inverse(inv_view, f->view)) fk_mat4_identity(inv_view);
     const float *p = f->projection;
     bool perspective = p[11] == -1.0f;
-    float near = perspective ? p[14] / (p[10] - 1.0f) : 0.1f, far = perspective ? p[14] / (p[10] + 1.0f) : 100.0f;
+    float z_near = perspective ? p[14] / (p[10] - 1.0f) : 0.1f, z_far = perspective ? p[14] / (p[10] + 1.0f) : 100.0f;
     GLuint program;
 
     /* 1. Star shadows, one cascade per texture layer. */
@@ -256,8 +256,8 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         gl.PolygonOffset(2.0f, 4.0f);
         program = use(P_SHADOW);
         for (int c = 0; c < nc; c++) {
-            float d0 = c ? cascades[c - 1].split : near;
-            fk_shadow_cascade(&cascades[c], inv_vp, near, far, d0, fk_shadow_split(c, nc, near, far), f->sun_dir, R.s.shadow_size);
+            float d0 = c ? cascades[c - 1].split : z_near;
+            fk_shadow_cascade(&cascades[c], inv_vp, z_near, z_far, d0, fk_shadow_split(c, nc, z_near, z_far), f->sun_dir, R.s.shadow_size);
             memcpy(&cascade_vp[c * 16], cascades[c].view_proj, sizeof cascades[c].view_proj);
             splits[c] = cascades[c].split;
             texels[c] = cascades[c].texel;
