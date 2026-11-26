@@ -9,7 +9,7 @@ machines and springs. Animation is presentation and never changes the simulation
 
 ### Requirement: Poses and clips
 Scripts SHALL create poses of a model, sample its clips into them at a time (clamped to the clip) with a
-weight, blend and copy poses, add clips as additive layers, turn single nodes, and read the model-space
+weight, blend and copy poses, add clips as additive layers, turn and scale single nodes, and read the model-space
 matrix of a node. Clip keys SHALL be interpolated as the file says: linear (rotations along the shortest
 arc), step or cubic spline.
 
@@ -24,6 +24,10 @@ arc), step or cubic spline.
 #### Scenario: Unknown clip
 - **WHEN** a script samples a clip the model does not have
 - **THEN** a script error names the clip
+
+#### Scenario: Hidden head
+- **WHEN** the Exosuit's head node is scaled to 0
+- **THEN** the antenna on the head has a zero matrix too
 
 ### Requirement: Skinned drawing
 Drawing a model with a pose SHALL move its skinned meshes with their joints on the GPU, in the G-buffer

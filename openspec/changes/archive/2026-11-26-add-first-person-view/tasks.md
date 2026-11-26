@@ -10,4 +10,4 @@
 - [x] 7 Comfort rows: head bob, field of view, turning vignette; menu rows 11 px
 - [x] 8 Lua tests, `tests/game/first_person.lua` with goldens; other goldens and the simulation hash on purpose
 - [x] 9 Coverage gates, sanitizers, all CTest tests, web build and browser tests; README controls
-- [ ] 10 CI green on every target; Pages updated; archive
+- [x] 10 CI green on every target; Pages updated; archive
