@@ -120,3 +120,24 @@ pixel after ordered dithering. Without a palette, colours are not restricted.
 #### Scenario: Eight colours
 - **WHEN** a palette of 8 colours is set
 - **THEN** every pixel of the finished image (outside the overlay) is one of those 8 colours
+
+### Requirement: Material textures
+A material's base colour, roughness, metalness and emission SHALL be its factors times its textures
+(base colour and emission in sRGB; roughness in green and metalness in blue, as in glTF), and a normal
+map SHALL perturb the surface normal by the material's normal scale.
+
+#### Scenario: Normal map
+- **WHEN** a smooth sphere has a normal map of recessed panel seams
+- **THEN** the seams catch the light as grooves although the geometry is smooth
+
+#### Scenario: Untextured meshes
+- **WHEN** a mesh is drawn without textures
+- **THEN** it looks as before: its vertex colour and the draw's factors
+
+### Requirement: Skinned meshes
+The G-buffer and shadow passes SHALL transform skinned vertices by up to four bone matrices weighted per
+vertex; unskinned meshes SHALL be unaffected.
+
+#### Scenario: Shadow of a pose
+- **WHEN** a walking Exosuit stands in the star light
+- **THEN** its shadow shows the walking pose, not the bind pose

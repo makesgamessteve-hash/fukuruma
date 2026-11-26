@@ -69,6 +69,8 @@ float fk_input_axis(int code); /* sticks -1..1, triggers 0..1 */
 bool fk_input_button(int code);
 int fk_input_touches(fk_touch out[FK_MAX_TOUCHES]);
 const char *fk_input_device(void); /* "keyboard", "mouse", "gamepad" or "touch": the latest input */
+/* Rumbles the open gamepads (motors 0..1) for ms milliseconds; on a phone browser after touch input, vibrates. */
+void fk_input_rumble(float low, float high, int ms);
 
 /* Scenario emulation: builds SDL events and passes them to fk_input_event. */
 void fk_input_emulate_key(int code, bool down);

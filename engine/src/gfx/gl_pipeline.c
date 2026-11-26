@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "core/mat4.h"
+#include "fx/particles.h"
 #include "gfx/frame.h"
 #include "gfx/gfx.h"
 #include "gfx/gl.h"
@@ -19,9 +20,11 @@
 #define LUM_H 32
 #define LUM_LOD 6.0f /* the 1x1 mip level of the 64x32 luminance target */
 
-enum { P_GBUFFER, P_SHADOW, P_SSAO, P_BLUR, P_LIGHT, P_BRIGHT, P_DOWN, P_UP, P_LUM, P_EXPOSURE, P_POST, P_OVERLAY, P_TAA, P_SPRITE, P_COUNT };
+enum { P_GBUFFER, P_SHADOW, P_SSAO, P_BLUR, P_LIGHT, P_BRIGHT, P_DOWN, P_UP, P_LUM, P_EXPOSURE, P_POST, P_OVERLAY, P_TAA, P_SPRITE,
+       P_PARTICLE, P_COUNT };
 static const char *const program_files[P_COUNT] = {"gbuffer", "shadow", "ssao",     "blur",     "lighting", "bloom", "bloom",
-                                                   "bloom",   "luminance", "exposure", "post", "flat", "taa", "sprite"};
+                                                   "bloom",   "luminance", "exposure", "post", "flat", "taa", "sprite",
+                                                   "particle"};
 static const char *const program_defines[P_COUNT] = {
     "#define SCENE_MESH\n",
     "#define SCENE_MESH\n",
@@ -36,11 +39,14 @@ static const char *const program_defines[P_COUNT] = {
     "#define FULLSCREEN\n",
     "",
     "#define FULLSCREEN\n",
-    ""};
+    "",
+    "",
+};
 
 static struct {
     bool hdr_supported;
-    GLuint vao, white, font, sprite_vao, sprite_vbo, bones, programs[P_COUNT]; /* the first seven survive reconfiguration */
+    GLuint vao, white, font, sprite_vao, sprite_vbo, bones, particle_vao, particle_vbo; /* survive reconfiguration */
+    GLuint programs[P_COUNT];
     char renderer[128];
     GLuint history[2], fb_history[2]; /* temporal anti-aliasing */
     int history_index, frame_index;
@@ -104,11 +110,13 @@ static void release(void) {
     gl.DeleteFramebuffers((GLsizei)(sizeof fbs / sizeof *fbs), fbs);
     bool hdr_supported = R.hdr_supported;
     GLuint vao = R.vao, white = R.white, font = R.font, sprite_vao = R.sprite_vao, sprite_vbo = R.sprite_vbo, bones = R.bones;
+    GLuint particle_vao = R.particle_vao, particle_vbo = R.particle_vbo;
     char renderer[sizeof R.renderer];
     memcpy(renderer, R.renderer, sizeof renderer);
     memset(&R, 0, sizeof R);
     R.hdr_supported = hdr_supported, R.vao = vao, R.white = white, R.font = font;
     R.sprite_vao = sprite_vao, R.sprite_vbo = sprite_vbo, R.bones = bones;
+    R.particle_vao = particle_vao, R.particle_vbo = particle_vbo;
     memcpy(R.renderer, renderer, sizeof renderer);
 }
 
@@ -245,6 +253,19 @@ bool fk_gfx_init(void) {
         gl.VertexAttribPointer(a, 4, GL_FLOAT, GL_FALSE, 8 * (GLsizei)sizeof(float), (const void *)(a * 4 * sizeof(float)));
         gl.EnableVertexAttribArray(a);
     }
+    gl.GenVertexArrays(1, &R.particle_vao);
+    gl.GenBuffers(1, &R.particle_vbo);
+    gl.BindVertexArray(R.particle_vao);
+    gl.BindBuffer(GL_ARRAY_BUFFER, R.particle_vbo);
+    static const struct {
+        GLuint location;
+        int size, offset;
+    } particle_attributes[] = {{0, 3, 0}, {3, 2, 3}, {1, 4, 5}}; /* position, uv, colour (rgba) */
+    for (int a = 0; a < 3; a++) {
+        gl.VertexAttribPointer(particle_attributes[a].location, particle_attributes[a].size, GL_FLOAT, GL_FALSE,
+                               9 * (GLsizei)sizeof(float), (const void *)(particle_attributes[a].offset * sizeof(float)));
+        gl.EnableVertexAttribArray(particle_attributes[a].location);
+    }
     gl.BindVertexArray(0);
     return fk_gfx_configure();
 }
@@ -253,10 +274,11 @@ const char *fk_gfx_renderer(void) { return R.renderer; }
 
 void fk_gfx_shutdown(void) {
     release();
-    GLuint textures[3] = {R.white, R.font, R.bones}, vaos[2] = {R.vao, R.sprite_vao};
+    GLuint textures[3] = {R.white, R.font, R.bones}, vaos[3] = {R.vao, R.sprite_vao, R.particle_vao};
+    GLuint buffers[2] = {R.sprite_vbo, R.particle_vbo};
     gl.DeleteTextures(3, textures);
-    gl.DeleteVertexArrays(2, vaos);
-    gl.DeleteBuffers(1, &R.sprite_vbo);
+    gl.DeleteVertexArrays(3, vaos);
+    gl.DeleteBuffers(2, buffers);
     memset(&R, 0, sizeof R);
 }
 
@@ -302,6 +324,75 @@ static void draw_meshes(GLuint program, bool materials) {
         gl.BindVertexArray(d->mesh->vao);
         gl.DrawElements(GL_TRIANGLES, d->mesh->count, GL_UNSIGNED_INT, (const void *)0);
     }
+}
+
+static float particle_depth[65536];
+static int by_depth(const void *a, const void *b) { /* far ones first */
+    float da = particle_depth[*(const int *)a], db = particle_depth[*(const int *)b];
+    return (da < db) - (da > db);
+}
+
+/* Camera-facing quads: lit, alpha-blended dust sorted back to front, then glowing particles added on top.
+   Both test against the G-buffer depth in the shader and fade softly where they meet surfaces. */
+static void draw_particles(const float view_proj[16], const fk_frame *f, float z_near, float z_far) {
+    int n = fk_particles_count();
+    if (!n) return;
+    const fk_particle *list = fk_particles_list();
+    static float *vertices;
+    static int *order, capacity;
+    if (n > capacity) {
+        capacity = n;
+        float *v = realloc(vertices, (size_t)capacity * 6 * 9 * sizeof(float));
+        int *o = realloc(order, (size_t)capacity * sizeof(int));
+        if (!v || !o) abort(); /* out of memory while drawing: nothing sensible to continue with */
+        vertices = v, order = o;
+    }
+    const float *view = f->view;
+    float right[3] = {view[0], view[4], view[8]}, up[3] = {view[1], view[5], view[9]};
+    int dust = 0, glow = n;
+    for (int i = 0; i < n; i++) { /* dust from the front, glow from the back of the order */
+        particle_depth[i] = -(view[2] * list[i].position[0] + view[6] * list[i].position[1] + view[10] * list[i].position[2] + view[14]);
+        if (list[i].glow) order[--glow] = i;
+        else order[dust++] = i;
+    }
+    qsort(order, (size_t)dust, sizeof *order, by_depth);
+    static const float corners[6][2] = {{-1, -1}, {1, -1}, {1, 1}, {-1, -1}, {1, 1}, {-1, 1}};
+    for (int q = 0; q < n; q++) {
+        const fk_particle *p = &list[order[q]];
+        float t = p->age / p->life, half = 0.5f * (p->size + (p->size_end - p->size) * t), color[4];
+        for (int k = 0; k < 4; k++) color[k] = p->color[k] + (p->color_end[k] - p->color[k]) * t;
+        for (int c = 0; c < 6; c++) {
+            float *v = &vertices[(q * 6 + c) * 9];
+            for (int k = 0; k < 3; k++) v[k] = p->position[k] + (right[k] * corners[c][0] + up[k] * corners[c][1]) * half;
+            v[3] = corners[c][0] * 0.5f + 0.5f, v[4] = corners[c][1] * 0.5f + 0.5f;
+            memcpy(&v[5], color, sizeof color);
+        }
+    }
+    gl.BindBuffer(GL_ARRAY_BUFFER, R.particle_vbo);
+    gl.BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)n * 6 * 9 * (GLsizeiptr)sizeof(float), vertices, GL_STREAM_DRAW);
+    target(R.fb_light, R.sw, R.sh);
+    GLuint program = use(P_PARTICLE);
+    gl.UniformMatrix4fv(LOC("u_view_proj"), 1, GL_FALSE, view_proj);
+    sampler(program, "u_depth", 0, GL_TEXTURE_2D, R.g_depth);
+    gl.Uniform1f(LOC("u_near"), z_near);
+    gl.Uniform1f(LOC("u_far"), z_far);
+    float sun_up = f->sun_dir[1] > 0 ? f->sun_dir[1] : 0, light[3];
+    for (int k = 0; k < 3; k++) light[k] = 0.5f * (f->sky[k] + f->ground[k]) + 0.3f * sun_up * f->sun_color[k];
+    gl.Uniform3fv(LOC("u_light"), 1, light);
+    gl.BindVertexArray(R.particle_vao);
+    gl.Enable(GL_BLEND);
+    if (dust) {
+        gl.BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        gl.Uniform1f(LOC("u_glow"), 0.0f);
+        gl.DrawArrays(GL_TRIANGLES, 0, dust * 6);
+    }
+    if (glow < n) {
+        gl.BlendFunc(GL_ONE, GL_ONE);
+        gl.Uniform1f(LOC("u_glow"), 1.0f);
+        gl.DrawArrays(GL_TRIANGLES, glow * 6, (n - glow) * 6);
+    }
+    gl.Disable(GL_BLEND);
+    gl.BindVertexArray(R.vao);
 }
 
 void fk_gfx_render(double dt, int window_w, int window_h) {
@@ -426,6 +517,9 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         gl.Uniform4fv(LOC("u_light_color"), nlights, colors);
     }
     fullscreen();
+
+    /* 4a. Particles: a forward pass into the lit image. */
+    draw_particles(view_proj, f, z_near, z_far);
 
     /* 4b. TAA: blend with the reprojected, neighbourhood-clamped history. */
     GLuint scene = R.light;

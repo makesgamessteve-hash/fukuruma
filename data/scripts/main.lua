@@ -1,90 +1,178 @@
 -- Fukuruma game entry point. The engine calls init() once; then every frame input(), the due tick()s
--- (fixed 60 Hz) and draw(alpha).
--- M1: a lit stage at dusk. The placeholder Jump Ship hovers over the ground and is a simulation entity,
--- turned with A/D, the arrow keys, the left stick or the touch stick, and sped up with Space, the A button
--- or the touch button. Escape, the gamepad's Start button or the touch button at the top right opens
--- Settings > Graphics.
+-- (fixed 60 Hz) and draw(alpha, dt).
+-- M1 sandbox: the Exosuit (3.6 m) walks and runs over a lit test range. Move with WASD, the arrow keys, the
+-- left stick or the touch stick; sprint with Shift, the A button or the touch button; scan with E, the X
+-- button or the scan button. Escape, Start or the touch button at the top right opens the settings.
+-- Simulation (sim.*) uses only arithmetic and sqrt, so it is the same on every platform; animation, camera
+-- and effects are presentation.
 local mat4 = require("mat4")
 local jump_ship = require("jump_ship")
 local sim = require("fk.sim")
 local actions = require("fk.actions")
+local anim = require("fk.anim")
+local spring = require("fk.spring")
+local camera = require("fk.camera")
+local feel = require("fk.feel")
 local touch_view = require("touch_view")
 local shapes = require("shapes")
 local graphics = require("settings.graphics")
+local comfort = require("settings.comfort")
 local menu = require("menu")
+local feedback = require("feedback")
 
 local game = {}
+
+game.WALK, game.RUN = 2.6, 6.3 -- m/s, matched to the clips' strides
+local ACCEL = 9                -- m/s^2 towards the wanted velocity
+local GROUND_SIZE = 160
 
 function game.init()
   game.graphics = graphics.load(fk.gfx.device())
   graphics.apply(game.graphics)
-  game.mesh = fk.gfx.mesh(jump_ship.build())
-  game.ground = fk.gfx.mesh(shapes.plane(240, { 0.34, 0.3, 0.26 }))
-  game.crate = fk.gfx.mesh(shapes.box(1, 1, 1, { 0.55, 0.5, 0.42 }))
-  game.pillar = fk.gfx.mesh(shapes.box(0.5, 2.4, 0.5, { 0.6, 0.6, 0.62 }))
-  game.beacon = fk.gfx.mesh(shapes.sphere(0.22, 16, { 1, 0.7, 0.35 }))
-  game.orb = fk.gfx.mesh(shapes.sphere(0.6, 24, { 0.85, 0.75, 0.55 }))
+  comfort.load()
+  feel.reset()
+
+  game.suit_model = fk.gfx.model("models/exosuit.glb")
+  game.pose = fk.anim.pose(game.suit_model)
+  local locomotion = anim.blend1d(game.suit_model, {
+    { clip = "idle", at = 0 },
+    { clip = "walk", at = game.WALK, events = { { at = 0.25, name = "foot_l" }, { at = 0.75, name = "foot_r" } } },
+    { clip = "run", at = game.RUN, events = { { at = 0.25, name = "foot_l" }, { at = 0.75, name = "foot_r" } } },
+  }, "speed")
+  game.machine = anim.machine({ model = game.suit_model, start = "move", states = { move = { tree = locomotion } } })
+  game.antenna = spring.new(2.2, 0.25)
+  game.rig = camera.chase({ distance = 9, height = 4.2, look_height = 2.2, mass = 1, fov = 50 })
+
+  game.ground = fk.gfx.mesh(shapes.plane(GROUND_SIZE, { 1, 1, 1 }, 4))
+  game.deck = fk.gfx.texture("textures/test_ground.jpg")
+  game.ship = fk.gfx.mesh(jump_ship.build())
+  game.crate = fk.gfx.mesh(shapes.box(1.6, 1.6, 1.6, { 0.55, 0.5, 0.42 }))
+  game.pillar = fk.gfx.mesh(shapes.box(0.8, 6, 0.8, { 0.6, 0.6, 0.62 }))
+  game.beacon = fk.gfx.mesh(shapes.sphere(0.35, 16, { 1, 0.7, 0.35 }))
+  game.spheres = fk.gfx.model("models/showcase_materials.glb")
   touch_view.init()
-  game.ship = sim.create()
-  sim.set(game.ship, "spin", { angle = 0, previous = 0, speed = 0.5 })
-  sim.on("ship.control", function(args)
-    sim.get(args.ship, "spin").speed = (0.5 + args.turn * 1.5) * (args.boost and 2 or 1)
+
+  game.suit = sim.create()
+  sim.set(game.suit, "suit", { x = 0, z = 0, vx = 0, vz = 0, fx = 0, fz = 1, wx = 0, wz = 0 })
+  sim.on("move", function(args)
+    local body = sim.get(game.suit, "suit")
+    body.wx, body.wz = args.x, args.z
   end)
-  actions.define("turn", { kind = "axis", negative = { "A", "Left" }, positive = { "D", "Right" },
-    gamepad = "leftx", touch = "stick_x" })
-  actions.define("boost", { kind = "button", keys = { "Space" }, gamepad = { "a" }, touch = "boost" })
-  actions.touch_button("boost", 0.85, 0.7, 0.1)
+  sim.on("scan", function()
+    local body = sim.get(game.suit, "suit")
+    sim.emit("scan", { position = { body.x, 0, body.z } })
+  end)
+  feel.listen(sim, { scan = feedback.scan }, function() return game.listener() end)
+
+  actions.define("move_x", { kind = "axis", negative = { "A", "Left" }, positive = { "D", "Right" }, gamepad = "leftx", touch = "stick_x" })
+  actions.define("move_y", { kind = "axis", negative = { "W", "Up" }, positive = { "S", "Down" }, gamepad = "lefty", touch = "stick_y" })
+  actions.define("sprint", { kind = "button", keys = { "Left Shift", "Right Shift" }, gamepad = { "a" }, touch = "sprint" })
+  actions.define("scan", { kind = "button", keys = { "E" }, gamepad = { "x" }, touch = "scan" })
   actions.define("menu", { kind = "button", keys = { "Escape" }, gamepad = { "start" }, touch = "menu" })
+  actions.touch_button("sprint", 0.86, 0.72, 0.09)
+  actions.touch_button("scan", 0.72, 0.84, 0.07)
   actions.touch_button("menu", 0.94, 0.1, 0.06)
-  game.control = { turn = 0, boost = false }
+  game.control = { x = 0, z = 0 }
 end
 
--- Input becomes commands; a command is sent only when an action changes. The menu pauses the controls.
+function game.listener() return { position = game.suit_position(), mass = 1 } end
+
+function game.suit_position()
+  local body = sim.get(game.suit, "suit")
+  return { body.x, 0, body.z }
+end
+
+-- Input becomes commands, only when something changes. The camera looks along +z, so up on the stick is +z
+-- and right is -x. The menu pauses the controls.
 function game.input()
   actions.update()
   if actions.pressed("menu") then menu.toggle() end
-  local turn, boost = actions.value("turn"), actions.held("boost")
-  if menu.open then turn, boost = 0, false end
-  if turn ~= game.control.turn or boost ~= game.control.boost then
-    game.control = { turn = turn, boost = boost }
-    sim.send("ship.control", { ship = game.ship, turn = turn, boost = boost })
+  local x, y = actions.value("move_x"), actions.value("move_y")
+  local len = math.sqrt(x * x + y * y)
+  if len > 1 then x, y = x / len, y / len end
+  local speed = actions.held("sprint") and game.RUN or game.WALK
+  if menu.open then x, y = 0, 0 end
+  local wx, wz = -x * speed, -y * speed
+  if wx ~= game.control.x or wz ~= game.control.z then
+    game.control = { x = wx, z = wz }
+    sim.send("move", { x = wx, z = wz })
   end
+  if actions.pressed("scan") and not menu.open then sim.send("scan", {}) end
 end
 
+-- The suit accelerates towards the wanted velocity and turns to face where it goes.
 function game.tick()
-  for _, spin in sim.each("spin") do
-    spin.previous = spin.angle
-    spin.angle = spin.angle + spin.speed * sim.dt
+  for _, b in sim.each("suit") do
+    local dx, dz = b.wx - b.vx, b.wz - b.vz
+    local d = math.sqrt(dx * dx + dz * dz)
+    local step = ACCEL * sim.dt
+    if d <= step then b.vx, b.vz = b.wx, b.wz
+    else b.vx, b.vz = b.vx + dx / d * step, b.vz + dz / d * step end
+    local half = GROUND_SIZE / 2 - 2
+    b.x = math.max(-half, math.min(half, b.x + b.vx * sim.dt))
+    b.z = math.max(-half, math.min(half, b.z + b.vz * sim.dt))
+    local v = math.sqrt(b.vx * b.vx + b.vz * b.vz)
+    if v > 0.1 then
+      local fx, fz = b.fx + (b.vx / v - b.fx) * 0.15, b.fz + (b.vz / v - b.fz) * 0.15
+      local f = math.sqrt(fx * fx + fz * fz)
+      if f > 1e-6 then b.fx, b.fz = fx / f, fz / f end
+    end
   end
 end
 
-local GROUND_Y = -1.6
-
-function game.camera(width, height)
-  local projection = mat4.perspective(math.rad(45), width / height, 0.1, 100)
-  local view = mat4.multiply(mat4.translation(0, -0.2, -11), mat4.rotation_x(0.38))
-  return view, projection
+-- Where the suit is drawn: between the last two ticks (alpha), facing its direction.
+local function suit_matrix(body, alpha)
+  return mat4.multiply(mat4.translation(body.x + body.vx * sim.dt * (alpha - 1), 0, body.z + body.vz * sim.dt * (alpha - 1)),
+    mat4.rotation_y(math.atan(body.fx, body.fz)))
 end
 
-function game.draw(alpha)
-  local spin = sim.get(game.ship, "spin")
-  local angle = spin.previous + (spin.angle - spin.previous) * alpha
-  fk.gfx.camera(game.camera(fk.gfx.size()))
+-- The suit: animation from its speed, footstep effects at the feet, the antenna on a spring.
+local function draw_suit(body, alpha, dt)
+  local speed = math.sqrt(body.vx * body.vx + body.vz * body.vz)
+  local model = suit_matrix(body, alpha)
+  for _, event in ipairs(game.machine:update(dt, { speed = speed })) do
+    local foot = game.pose:global(event == "foot_l" and "foot_l" or "foot_r")
+    local x, _, z = mat4.apply(model, foot[13], foot[14], foot[15])
+    feel.play(feedback.footstep, { x, 0.05, z }, math.min(1, 0.35 + speed / game.RUN), game.listener())
+  end
+  game.machine:apply(game.pose)
+  local sway = game.antenna:update(-speed * 0.06, dt)
+  game.pose:rotate("antenna", { 1, 0, 0 }, sway)
+  fk.gfx.draw(game.suit_model, model, { pose = game.pose })
+end
+
+local function draw_stage(dt)
   fk.gfx.clear(0.13, 0.17, 0.3) -- dusk sky
-  fk.gfx.sun({ direction = { -0.7, 0.42, 0.35 }, color = { 1, 0.78, 0.55 }, intensity = 5 })
+  fk.gfx.sun({ direction = { 0.55, 0.45, -0.7 }, color = { 1, 0.78, 0.55 }, intensity = 5 }) -- low, behind the camera
   fk.gfx.ambient({ sky = { 0.35, 0.45, 0.7 }, ground = { 0.28, 0.22, 0.16 }, intensity = 0.5 })
   fk.gfx.grade({ exposure = -0.6, contrast = 1.1, saturation = 1.1 })
-  fk.gfx.light({ position = { 3.2, GROUND_Y + 2.8, 1.2 }, color = { 1, 0.62, 0.3 }, intensity = 14, radius = 9 })
+  fk.gfx.light({ position = { 6, 5.8, 4 }, color = { 1, 0.62, 0.3 }, intensity = 22, radius = 14 })
+  fk.gfx.draw(game.ground, mat4.identity(), { texture = game.deck, roughness = 0.9 })
+  for i, p in ipairs({ { -6, 5 }, { -4.6, 7.2 }, { 9, -4 } }) do
+    fk.gfx.draw(game.crate, mat4.multiply(mat4.translation(p[1], 0.8, p[2]), mat4.rotation_y(i * 0.7)), { roughness = 0.8 })
+  end
+  fk.gfx.draw(game.pillar, mat4.translation(6, 3, 4), { roughness = 0.5, metalness = 0.3 })
+  fk.gfx.draw(game.beacon, mat4.translation(6, 6.35, 4), { emission = { 8, 4, 1.2 } })
+  fk.gfx.draw(game.spheres, mat4.translation(-7, 0, 12))
+  game.ship_angle = (game.ship_angle or 0) + dt * 0.3
+  fk.gfx.draw(game.ship, mat4.multiply(mat4.translation(-30, 20, 95), mat4.multiply(mat4.rotation_y(game.ship_angle),
+    mat4.multiply(mat4.rotation_x(0.15), { 4, 0, 0, 0, 0, 4, 0, 0, 0, 0, 4, 0, 0, 0, 0, 1 }))), { roughness = 0.35, metalness = 0.6 })
+end
 
-  fk.gfx.draw(game.ground, mat4.translation(0, GROUND_Y, 0), { roughness = 0.95 })
-  fk.gfx.draw(game.crate, mat4.translation(-2.6, GROUND_Y + 0.5, 1.4), { roughness = 0.8 })
-  fk.gfx.draw(game.crate, mat4.multiply(mat4.translation(-1.7, GROUND_Y + 0.5, 2.2), mat4.rotation_y(0.6)), { roughness = 0.8 })
-  fk.gfx.draw(game.pillar, mat4.translation(3.2, GROUND_Y + 1.2, 1.2), { roughness = 0.5, metalness = 0.3 })
-  fk.gfx.draw(game.beacon, mat4.translation(3.2, GROUND_Y + 2.62, 1.2), { emission = { 8, 4, 1.2 } })
-  fk.gfx.draw(game.orb, mat4.translation(2.2, GROUND_Y + 0.6, 3.0), { roughness = 0.15, metalness = 1 })
-  fk.gfx.draw(game.mesh, mat4.multiply(mat4.translation(0, 0.9, 0), mat4.rotation_y(angle)), { roughness = 0.35, metalness = 0.6 })
+function game.draw(alpha, dt)
+  dt = dt or 0
+  local pdt = feel.update(dt) -- presentation time: 0 during hit-pause
+  fk.gfx.particles(pdt)
+  local body = sim.get(game.suit, "suit")
+  draw_stage(pdt)
+  draw_suit(body, alpha, pdt)
+  local w, h = fk.gfx.size()
+  game.rig:update(dt, game.suit_position(), 0, { body.vx, 0, body.vz })
+  local view, projection = game.rig:matrices(w / h, { feel.shake() })
+  fk.gfx.camera(view, projection)
+  feel.draw()
   touch_view.draw(actions.touch_controls())
-  menu.draw(game.graphics)
+  menu.draw(game.graphics, dt)
 end
 
 return game

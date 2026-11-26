@@ -1,0 +1,24 @@
+-- Comfort settings (effects spec): how strongly camera shake, light flashes and rumble play. Saved with
+-- fk.storage; `comfort.current` is what the effects read.
+local store = require("settings.store")
+
+local comfort = {}
+
+comfort.CHOICES = {
+  shake = { 1, 0.5, 0 },
+  flashes = { 1, 0.5, 0 },
+  rumble = { true, false },
+}
+
+function comfort.defaults() return { shake = 1, flashes = 1, rumble = true } end
+
+comfort.current = comfort.defaults()
+
+function comfort.load()
+  comfort.current = store.load("comfort", comfort.defaults(), comfort.CHOICES)
+  return comfort.current
+end
+
+function comfort.save() fk.storage.save("comfort", store.encode(comfort.current, comfort.CHOICES)) end
+
+return comfort

@@ -28,17 +28,19 @@ levels. The scene is still a placeholder stage with a spinning Jump Ship.
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [OpenSpec changes](openspec/changes/) and [specs](openspec/specs/)
 
-## Controls (placeholder scene)
+## Controls (M1 sandbox)
 
 | | Keyboard | Gamepad | Touch |
 |---|---|---|---|
-| Turn the Jump Ship | A / D or ← / → | left stick | stick on the left half of the screen |
-| Boost | Space | A | button on the right |
-| Settings > Graphics | Escape | Start | button at the top right |
+| Walk the Exosuit | W A S D or the arrow keys | left stick | stick on the left half of the screen |
+| Sprint | Shift | A | RUN button |
+| Sensor scan | E | X | SCAN button |
+| Settings (graphics, comfort) | Escape | Start | MENU button |
 | In the menu: choose, change, close | ↑ / ↓, ← / →, Escape (or the mouse) | d-pad or stick, A, B | tap a row, tap left or right of a value |
 
-The graphics settings are saved (in the browser in its local storage) and start on a level that suits the
-device: Low on phones and software renderers, Medium in desktop browsers, High elsewhere.
+The settings are saved (in the browser in its local storage). The graphics start on a level that suits the
+device: Low on phones and software renderers, Medium in desktop browsers, High elsewhere. Camera shake,
+light flashes and rumble can be turned down in the menu.
 
 ## Technology
 

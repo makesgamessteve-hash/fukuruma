@@ -8,6 +8,7 @@
 #include "app/golden.h"
 #include "assets/vfs.h"
 #include "assets/watch.h"
+#include "fx/particles.h"
 #include "gfx/frame.h"
 #include "gfx/gfx.h"
 #include "lauxlib.h"
@@ -70,8 +71,8 @@ static bool sim_step(void) {
     return fk_script_call(app.L, 1, 0);
 }
 
-/* Calls game[name](arg), or game[name]() when arg is negative; a missing function is skipped. */
-static bool call_game(const char *name, double dt) {
+/* Calls game[name](a, b) with the non-negative arguments; a missing function is skipped. */
+static bool call_game(const char *name, double a, double b) {
     lua_rawgeti(app.L, LUA_REGISTRYINDEX, app.game_ref);
     lua_getfield(app.L, -1, name);
     lua_remove(app.L, -2);
@@ -79,8 +80,10 @@ static bool call_game(const char *name, double dt) {
         lua_pop(app.L, 1);
         return true;
     }
-    if (dt >= 0) lua_pushnumber(app.L, dt);
-    return fk_script_call(app.L, dt >= 0, 0);
+    int n = 0;
+    if (a >= 0) lua_pushnumber(app.L, a), n++;
+    if (b >= 0) lua_pushnumber(app.L, b), n++;
+    return fk_script_call(app.L, n, 0);
 }
 
 /* --- scenario helpers (t.frames, t.expect, t.screenshot) ------------------- */
@@ -256,6 +259,7 @@ static fk_status hot_reload(void) {
     fk_log("hot reload: restarting the game from data/scripts/main.lua");
     fk_script_close(app.L);
     fk_frame_reset();
+    fk_particles_reset();
     app.L = fk_script_open(true, app.opt.seed, false);
     app.game_ref = app.step_ref = LUA_NOREF;
     app.acc = 0;
@@ -268,6 +272,7 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
     fk_input_reset();
     fk_gfx_settings_default(fk_gfx_settings_current());
     fk_frame_reset();
+    fk_particles_reset();
     app.game_ref = app.step_ref = app.co_ref = LUA_NOREF;
     if (!fk_cli_parse(argc, argv, &app.opt)) return finish(1);
     fk_vfs_init(base);
@@ -324,7 +329,7 @@ static fk_status start_game(void) {
     lua_remove(app.L, -2);
     app.step_ref = luaL_ref(app.L, LUA_REGISTRYINDEX);
     app.last_ns = fk_platform_ticks_ns();
-    return call_game("init", -1) ? FK_RUNNING : fail();
+    return call_game("init", -1, -1) ? FK_RUNNING : fail();
 }
 
 fk_status fk_app_iterate(void) {
@@ -343,10 +348,10 @@ fk_status fk_app_iterate(void) {
         return FK_RUNNING;
     }
     fk_script_frame_begin(app.L);
-    if (!call_game("input", -1)) return fail();
+    if (!call_game("input", -1, -1)) return fail();
     for (int i = 0; i < ticks; i++)
         if (!sim_step()) return fail();
-    if (!call_game("draw", alpha)) return fail();
+    if (!call_game("draw", alpha, dt)) return fail();
     if (app.window) {
         int w, h;
         fk_platform_size(&w, &h);

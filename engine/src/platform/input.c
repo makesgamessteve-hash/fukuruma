@@ -1,7 +1,12 @@
 #include <SDL3/SDL.h>
 #include <math.h>
+#include <string.h>
 
 #include "platform/platform.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+EM_JS(void, vibrate, (int ms), { if (navigator.vibrate) navigator.vibrate(ms); });
+#endif
 
 #define SYNTH_WINDOW_NS 500000000ull /* mouse events this soon after a touch come from the touch */
 #define MAX_FRESH 32
@@ -226,4 +231,17 @@ void fk_input_emulate_touch(int64_t id, bool down, float x, float y) {
     e.tfinger.x = x;
     e.tfinger.y = y;
     fk_input_event(&e);
+}
+
+void fk_input_rumble(float low, float high, int ms) {
+    int n = 0;
+    SDL_JoystickID *ids = SDL_GetGamepads(&n);
+    for (int i = 0; i < n; i++) {
+        SDL_Gamepad *pad = SDL_GetGamepadFromID(ids[i]);
+        if (pad) SDL_RumbleGamepad(pad, (Uint16)(low * 65535.0f), (Uint16)(high * 65535.0f), (Uint32)ms);
+    }
+    SDL_free(ids);
+#ifdef __EMSCRIPTEN__
+    if (strcmp(in.device, "touch") == 0 && (low > 0.2f || high > 0.2f)) vibrate(ms); /* phones have one motor: strong rumbles only */
+#endif
 }

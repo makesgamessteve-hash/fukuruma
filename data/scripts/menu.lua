@@ -1,12 +1,17 @@
--- The in-game Settings > Graphics menu. Changes apply immediately and are saved; the scene keeps running.
+-- The in-game Settings menu (graphics and comfort). Changes apply immediately and are saved; the scene keeps running.
 local ui = require("fk.ui")
 local graphics = require("settings.graphics")
+local comfort = require("settings.comfort")
+local tween = require("fk.tween")
 
 local menu = { open = false }
 
 function menu.toggle()
   menu.open = not menu.open
-  if menu.open then ui.reset() end
+  if menu.open then
+    ui.reset()
+    menu.slide = tween.new(-24, 0, 0.25, "back_out") -- the panel drops in and settles
+  end
 end
 
 -- An option row over choices (default graphics.CHOICES[key]) with the given labels.
@@ -18,7 +23,7 @@ local function option(state, label, key, labels, on_change, choices)
   }
 end
 
-function menu.draw(state)
+function menu.draw(state, dt)
   if not menu.open then return end
   local function changed()
     graphics.apply(state)
@@ -55,9 +60,18 @@ function menu.draw(state)
     option(state, "Point lights", "lights", { "4", "8", "16", "32" }, level_option("lights")),
     option(state, "Dithering", "dither", { "On", "Off" }, plain("dither")),
     option(state, "Palette mode", "palette", { "Off", "On" }, plain("palette")),
-    { label = "Close", press = function() menu.open = false end },
   }
-  if ui.menu("SETTINGS - GRAPHICS", rows) == "back" then menu.open = false end
+  local function comfort_option(label, key, labels)
+    rows[#rows + 1] = option(comfort.current, label, key, labels, function(value)
+      comfort.current[key] = value
+      comfort.save()
+    end, comfort.CHOICES[key])
+  end
+  comfort_option("Camera shake", "shake", { "100%", "50%", "Off" })
+  comfort_option("Light flashes", "flashes", { "100%", "50%", "Off" })
+  comfort_option("Rumble", "rumble", { "On", "Off" })
+  rows[#rows + 1] = { label = "Close", press = function() menu.open = false end }
+  if ui.menu("SETTINGS", rows, menu.slide:update(dt or 0)) == "back" then menu.open = false end
 end
 
 return menu

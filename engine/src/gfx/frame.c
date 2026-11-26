@@ -7,7 +7,7 @@
 #include "core/mat4.h"
 
 static fk_frame frame;
-static fk_gfx_settings settings = {480, 270, 1, 2, 1024, 8, 8, true, true, true, false, true};
+static fk_gfx_settings settings = {480, 270, 1, 2, 1024, 8, 8, 4096, true, true, true, false, true};
 static int window[2] = {1, 1}, image[4] = {0, 0, 1, 1}, image_size[2] = {480, 270};
 
 fk_frame *fk_frame_get(void) { return &frame; }
@@ -124,7 +124,7 @@ void fk_frame_light(const fk_point_light *light) {
 }
 
 void fk_gfx_settings_default(fk_gfx_settings *s) {
-    *s = (fk_gfx_settings){480, 270, 1, 2, 1024, 8, 8, true, true, true, false, true};
+    *s = (fk_gfx_settings){480, 270, 1, 2, 1024, 8, 8, 4096, true, true, true, false, true};
     fk_gfx_set_image_size(s->width, s->height);
 }
 
@@ -149,6 +149,7 @@ const char *fk_gfx_settings_check(const fk_gfx_settings *s) {
     if (s->shadow_size < 256 || s->shadow_size > 4096) return "shadow_size";
     if (s->ao_samples < 0 || s->ao_samples > 16) return "ao_samples";
     if (s->max_lights < 0 || s->max_lights > FK_MAX_LIGHTS) return "max_lights";
+    if (s->max_particles < 0 || s->max_particles > 65536) return "max_particles";
     return NULL;
 }
 

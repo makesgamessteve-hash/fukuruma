@@ -62,11 +62,13 @@ end
 
 -- rows: { label = "...", values = { "A", "B" }, index = 1, change = function(i) end } (options)
 --    or { label = "...", press = function() end } (buttons).
+-- dy (optional): moves the drawn panel down by this many pixels (opening animations).
 -- Returns "back" when the player asks to leave the menu.
-function ui.menu(title, rows)
+function ui.menu(title, rows, dy)
   poll()
   local w, h = fk.gfx.size()
   local x, width, first_row_y, top = ui.layout(#rows)
+  local shift = math.floor((dy or 0) + 0.5)
   focus = math.min(focus, #rows)
 
   local function row_at(px, py)
@@ -103,10 +105,10 @@ function ui.menu(title, rows)
     end
   end
 
-  fk.gfx.rect(x - 8, top - 6, width + 16, (#rows + 2) * ui.ROW + 10, { 0.02, 0.03, 0.07, 0.85 })
-  fk.gfx.text(x, top, title, { 1, 0.75, 0.4 })
+  fk.gfx.rect(x - 8, top - 6 + shift, width + 16, (#rows + 2) * ui.ROW + 10, { 0.02, 0.03, 0.07, 0.85 })
+  fk.gfx.text(x, top + shift, title, { 1, 0.75, 0.4 })
   for i, r in ipairs(rows) do
-    local y = first_row_y + (i - 1) * ui.ROW
+    local y = first_row_y + (i - 1) * ui.ROW + shift
     local color = i == focus and { 1, 1, 1 } or { 0.7, 0.74, 0.82 }
     if i == focus then fk.gfx.rect(x - 4, y - 2, width + 8, ui.ROW, { 1, 0.6, 0.2, 0.3 }) end
     fk.gfx.text(x, y, r.label, color)

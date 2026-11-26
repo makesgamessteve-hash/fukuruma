@@ -142,6 +142,16 @@ static int l_touches(lua_State *L) {
     return 1;
 }
 
+/* fk.input.rumble(low, high, seconds): gamepad motors (0..1) or, on a phone, a vibration. */
+static int l_rumble(lua_State *L) {
+    lua_Number low = luaL_checknumber(L, 1), high = luaL_checknumber(L, 2), seconds = luaL_checknumber(L, 3);
+    luaL_argcheck(L, low >= 0 && low <= 1, 1, "must be from 0 to 1");
+    luaL_argcheck(L, high >= 0 && high <= 1, 2, "must be from 0 to 1");
+    luaL_argcheck(L, seconds >= 0 && seconds <= 5, 3, "must be from 0 to 5 seconds");
+    fk_input_rumble((float)low, (float)high, (int)(seconds * 1000));
+    return 0;
+}
+
 static int l_device(lua_State *L) {
     lua_pushstring(L, fk_input_device());
     return 1;
@@ -271,7 +281,7 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     lua_setfield(L, -2, "anim");
     static const luaL_Reg input[] = {{"key", l_key},       {"axis", l_axis},       {"button", l_button},
                                      {"mouse", l_mouse},   {"mouse_button", l_mouse_button},
-                                     {"touches", l_touches}, {"device", l_device}, {NULL, NULL}};
+                                     {"touches", l_touches}, {"device", l_device}, {"rumble", l_rumble}, {NULL, NULL}};
     luaL_newlib(L, input);
     lua_setfield(L, -2, "input");
     lua_setfield(L, -2, "fk");

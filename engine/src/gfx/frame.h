@@ -14,6 +14,7 @@ typedef struct {
     int shadow_size;     /* 256 to 4096 */
     int ao_samples;      /* 0 to 16 */
     int max_lights;      /* 0 to FK_MAX_LIGHTS */
+    int max_particles;   /* 0 to 65536 */
     bool bloom, hdr, dither;
     bool taa;  /* temporal anti-aliasing */
     bool fill; /* the internal image takes the window's shape; height is the target */

@@ -3,6 +3,7 @@
 #include <math.h>
 #include <string.h>
 
+#include "fx/particles.h"
 #include "gfx/frame.h"
 #include "gfx/gfx.h"
 #include "lauxlib.h"
@@ -325,6 +326,7 @@ static int l_configure(lua_State *L) {
     s.shadow_size = int_field(L, "shadow_size", s.shadow_size);
     s.ao_samples = int_field(L, "ao_samples", s.ao_samples);
     s.max_lights = int_field(L, "max_lights", s.max_lights);
+    s.max_particles = int_field(L, "max_particles", s.max_particles);
     s.bloom = bool_field(L, "bloom", s.bloom);
     s.hdr = bool_field(L, "hdr", s.hdr);
     s.dither = bool_field(L, "dither", s.dither);
@@ -333,6 +335,7 @@ static int l_configure(lua_State *L) {
     const char *bad = fk_gfx_settings_check(&s);
     if (bad) return luaL_error(L, "configure: '%s' is out of range", bad);
     *current = s;
+    fk_particles_budget(s.max_particles);
     if (!rendering || !s.fill) fk_gfx_set_image_size(s.width, s.height); /* with a window and fill, the pipeline sizes the image */
     if (rendering && !fk_gfx_configure()) return luaL_error(L, "configure: the renderer could not apply these settings");
     return 0;
@@ -346,7 +349,7 @@ static int l_settings(lua_State *L) {
         int value;
     } ints[] = {{"width", s->width},           {"height", s->height},           {"supersample", s->supersample},
                 {"shadow_cascades", s->shadow_cascades}, {"shadow_size", s->shadow_size}, {"ao_samples", s->ao_samples},
-                {"max_lights", s->max_lights}};
+                {"max_lights", s->max_lights}, {"max_particles", s->max_particles}};
     for (size_t i = 0; i < sizeof ints / sizeof *ints; i++) {
         lua_pushinteger(L, ints[i].value);
         lua_setfield(L, -2, ints[i].name);
@@ -372,13 +375,58 @@ static int l_size(lua_State *L) {
     return 2;
 }
 
+/* fk.gfx.emit{ position, count, ... }: a burst of presentation particles (see the effects spec). */
+static int l_emit(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    static const float UP[3] = {0, 1, 0}, WHITE[4] = {1, 1, 1, 1};
+    fk_emitter e;
+    memset(&e, 0, sizeof e);
+    e.count = (int)field_number(L, 1, "count", 1, 0, 4096, "emit");
+    field_vec3(L, 1, "position", e.position, ZERO, -1e7f, 1e7f, "emit");
+    e.radius = field_number(L, 1, "radius", 0, 0, 1000, "emit");
+    field_vec3(L, 1, "direction", e.direction, UP, -1, 1, "emit");
+    e.spread = field_number(L, 1, "spread", 3.1415927f, 0, 3.1415927f, "emit");
+    lua_getfield(L, 1, "ring");
+    e.ring = lua_toboolean(L, -1);
+    lua_getfield(L, 1, "glow");
+    e.glow = lua_toboolean(L, -1);
+    lua_pop(L, 2);
+    e.speed_min = field_number(L, 1, "speed_min", 0, 0, 1000, "emit");
+    e.speed_max = field_number(L, 1, "speed_max", e.speed_min, e.speed_min, 1000, "emit");
+    e.life_min = field_number(L, 1, "life_min", 1, 0.01f, 60, "emit");
+    e.life_max = field_number(L, 1, "life_max", e.life_min, e.life_min, 60, "emit");
+    e.size = field_number(L, 1, "size", 0.2f, 0, 100, "emit");
+    e.size_end = field_number(L, 1, "size_end", e.size, 0, 100, "emit");
+    e.gravity = field_number(L, 1, "gravity", 0, -100, 100, "emit");
+    e.drag = field_number(L, 1, "drag", 0, 0, 100, "emit");
+    float color[3], color_end[3], intensity = field_number(L, 1, "intensity", 1, 0, 1000, "emit");
+    field_vec3(L, 1, "color", color, WHITE, 0, 1, "emit");
+    field_vec3(L, 1, "color_end", color_end, color, 0, 1, "emit");
+    linear_times(e.color, color, intensity);
+    linear_times(e.color_end, color_end, intensity);
+    e.color[3] = field_number(L, 1, "alpha", 1, 0, 1, "emit");
+    e.color_end[3] = field_number(L, 1, "alpha_end", 0, 0, 1, "emit");
+    fk_particles_emit(&e);
+    return 0;
+}
+
+/* fk.gfx.particles(dt): moves the particles on by dt seconds (0 holds them, for hit-pause); returns how many live. */
+static int l_particles(lua_State *L) {
+    lua_Number dt = luaL_checknumber(L, 1);
+    luaL_argcheck(L, dt >= 0 && dt <= 1, 1, "dt must be from 0 to 1 second");
+    fk_particles_update((float)dt);
+    lua_pushinteger(L, fk_particles_count());
+    return 1;
+}
+
 void fk_lua_gfx_open(lua_State *L, bool render) {
     static const luaL_Reg gfx[] = {{"mesh", l_mesh},       {"draw", l_draw},         {"overlay", l_overlay},
                                    {"camera", l_camera},   {"sun", l_sun},           {"ambient", l_ambient},
                                    {"light", l_light},     {"clear", l_clear},       {"grade", l_grade},
                                    {"configure", l_configure}, {"settings", l_settings}, {"size", l_size},
                                    {"text", l_text},       {"rect", l_rect},         {"palette", l_palette},
-                                   {"device", l_device},   {NULL, NULL}};
+                                   {"device", l_device},   {"emit", l_emit},         {"particles", l_particles},
+                                   {NULL, NULL}};
     rendering = render;
     luaL_newmetatable(L, "fk.mesh");
     lua_pushcfunction(L, l_mesh_gc);

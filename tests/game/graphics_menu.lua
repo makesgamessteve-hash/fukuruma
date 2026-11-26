@@ -1,17 +1,19 @@
 -- graphics-settings spec: the menu switches detail levels live, Custom keeps the rest, palette mode by
--- tapping, game controls pause while the menu is open, and every change is stored.
+-- tapping, game controls pause while the menu is open, and every change is stored. The menu drops in over
+-- a quarter of a second; the screenshots wait for it.
 local sim = require("fk.sim")
 local ui = require("fk.ui")
 local graphics = require("settings.graphics")
+local game -- require("game") works once main.lua has run, inside run()
 
-local ROWS = 11 -- rows of the graphics menu; row 10 is Palette mode
+local ROWS = 14 -- rows of the settings menu; row 10 is Palette mode
 
 local function stored()
   return graphics.decode(fk.storage.load("graphics"), {})
 end
 
-local function speed()
-  for _, spin in sim.each("spin") do return spin.speed end
+local function wanted_x()
+  return sim.get(game.suit, "suit").wx
 end
 
 local function press(t, key)
@@ -23,14 +25,16 @@ return scenario {
   seed = 1,
   timeout_s = 60,
   run = function(t)
+    game = require("game")
     t.expect(stored().level == "low", "software renderers start on Low, and the choice is stored")
     t.expect(fk.gfx.settings().shadow_cascades == 1 and fk.gfx.settings().ao_samples == 0, "Low settings")
     t.screenshot("level_low")
 
     press(t, "Escape") -- open the menu: the Detail level row has the focus
+    t.frames(15)
     t.screenshot("menu_open")
-    t.key("D", true); t.frames(2) -- D is "right" in menus; the ship must not turn
-    t.expect(speed() == 0.5 and stored().level == "medium", "D changes the option, not the ship")
+    t.key("D", true); t.frames(2) -- D is "right" in menus; the suit must not walk
+    t.expect(wanted_x() == 0 and stored().level == "medium", "D changes the option, not the suit")
     t.key("D", false); t.frames(20)
     t.expect(fk.gfx.settings().taa, "Medium uses temporal anti-aliasing")
     t.screenshot("level_medium")
@@ -59,7 +63,7 @@ return scenario {
 
     press(t, "Escape") -- close: the controls work again
     t.key("D", true); t.frames(2)
-    t.expect(speed() == 2.0, "the ship turns again after closing the menu")
+    t.expect(wanted_x() == -game.WALK, "the suit walks again after closing the menu")
     t.key("D", false)
   end,
 }

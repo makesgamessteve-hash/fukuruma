@@ -1,15 +1,17 @@
 -- Graphics detail levels and options (graphics-settings spec). The levels change light, shadows and
 -- effects; every level renders the same models. Saved with fk.storage as "key=value" lines.
+local store = require("settings.store")
+
 local graphics = {}
 
 graphics.ORDER = { "low", "medium", "high", "ultra" }
 
 -- The rows a level controls. Changing one of them by hand makes the level "custom".
 local PRESETS = {
-  low = { shadows = 1, shadow_size = 1024, ao = 0, lights = 4, aa = "none" },
-  medium = { shadows = 2, shadow_size = 1024, ao = 6, lights = 8, aa = "taa" },
-  high = { shadows = 3, shadow_size = 2048, ao = 10, lights = 16, aa = "taa" },
-  ultra = { shadows = 4, shadow_size = 2048, ao = 16, lights = 32, aa = "ssaa" },
+  low = { shadows = 1, shadow_size = 1024, ao = 0, lights = 4, aa = "none", particles = 1000 },
+  medium = { shadows = 2, shadow_size = 1024, ao = 6, lights = 8, aa = "taa", particles = 3000 },
+  high = { shadows = 3, shadow_size = 2048, ao = 10, lights = 16, aa = "taa", particles = 6000 },
+  ultra = { shadows = 4, shadow_size = 2048, ao = 16, lights = 32, aa = "ssaa", particles = 12000 },
 }
 
 -- Allowed values of every stored setting.
@@ -21,6 +23,7 @@ graphics.CHOICES = {
   ao = { 0, 6, 10, 16 },
   lights = { 4, 8, 16, 32 },
   aa = { "none", "taa", "ssaa" },
+  particles = { 1000, 3000, 6000, 12000 },
   fill = { true, false },
   dither = { true, false },
   palette = { false, true },
@@ -83,43 +86,15 @@ function graphics.apply(state)
     width = resolution.width, height = resolution.height, fill = state.fill,
     supersample = state.aa == "ssaa" and 2 or 1, taa = state.aa == "taa",
     shadow_cascades = state.shadows, shadow_size = state.shadow_size, ao_samples = state.ao,
-    max_lights = state.lights, dither = state.dither,
+    max_lights = state.lights, max_particles = state.particles, dither = state.dither,
   })
   fk.gfx.palette(state.palette and graphics.PALETTE or nil)
 end
 
-function graphics.encode(state)
-  local keys, lines = {}, {}
-  for key in pairs(graphics.CHOICES) do keys[#keys + 1] = key end
-  table.sort(keys)
-  for _, key in ipairs(keys) do lines[#lines + 1] = key .. "=" .. tostring(state[key]) end
-  return table.concat(lines, "\n") .. "\n"
-end
-
--- Reads stored lines over a copy of base; unknown keys and values that are not allowed are ignored.
-function graphics.decode(text, base)
-  local state = {}
-  for key, value in pairs(base) do state[key] = value end
-  for key, raw in text:gmatch("([%w_]+)=([^\n]*)") do
-    for _, choice in ipairs(graphics.CHOICES[key] or {}) do
-      if tostring(choice) == raw then state[key] = choice end
-    end
-  end
-  return state
-end
-
-function graphics.save(state)
-  fk.storage.save("graphics", graphics.encode(state))
-end
-
--- The stored settings, or the device's defaults (stored right away, so they stay the same next time).
-function graphics.load(device)
-  local text = fk.storage.load("graphics")
-  if text then return graphics.decode(text, graphics.defaults(device)) end
-  local state = graphics.defaults(device)
-  graphics.save(state)
-  return state
-end
+function graphics.encode(state) return store.encode(state, graphics.CHOICES) end
+function graphics.decode(text, base) return store.decode(text, base, graphics.CHOICES) end
+function graphics.save(state) fk.storage.save("graphics", graphics.encode(state)) end
+function graphics.load(device) return store.load("graphics", graphics.defaults(device), graphics.CHOICES) end
 
 graphics.index_of = index_of
 return graphics
