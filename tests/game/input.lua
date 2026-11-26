@@ -35,6 +35,9 @@ return scenario {
     t.touch(1, 0.2, 0.7); t.frames(1)
     t.touch(1, 0.2 + actions.STICK_RANGE * h / w, 0.7); t.frames(2)
     t.expect(fk.input.device() == "touch" and near(select(1, want()), -game.WALK), "the touch stick walks right")
+    local x0 = sim.get(game.suit, "suit").x
+    t.frames(30)
+    t.expect(sim.get(game.suit, "suit").x < x0 - 0.5, "the suit walks to the right of the screen (-x)")
     t.touch(2, 0.86, 0.72); t.frames(2)
     t.expect(near(select(1, want()), -game.RUN), "the touch button sprints")
     t.screenshot("input_touch")

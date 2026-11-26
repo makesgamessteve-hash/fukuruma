@@ -9,7 +9,7 @@ from game tests.
 
 ### Requirement: Stored text values
 Scripts SHALL be able to store and load text values by name. Names SHALL consist of lowercase letters,
-digits and underscores; values SHALL be at most 64 KiB. Desktop builds SHALL keep them in the user's
+digits and underscores; values SHALL be at most 4 MiB. Desktop builds SHALL keep them in the user's
 application-data folder and web builds in the browser's IndexedDB, so they survive restarts and reloads.
 
 #### Scenario: Round trip
@@ -23,6 +23,10 @@ application-data folder and web builds in the browser's IndexedDB, so they survi
 #### Scenario: Invalid name
 - **WHEN** a script stores a value as "../evil"
 - **THEN** a script error names the problem and nothing is written
+
+#### Scenario: Too large
+- **WHEN** a script stores more than 4 MiB under one name
+- **THEN** a script error says so and nothing is written
 
 ### Requirement: Test runs are isolated
 Headless, render-free, scenario and unit-test runs SHALL keep stored values in memory only, so they

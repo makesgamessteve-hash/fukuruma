@@ -527,10 +527,11 @@ and the showcase scenes are reviewed on desktop, phone and VR.
   Ultra and Custom, bitmap text and immediate UI, the in-game *Settings → Graphics* menu, live
   switching, temporal anti-aliasing, palette mode, an internal resolution that fills the window,
   device defaults, saved settings; done), `add-asset-loading` (PNG and JPEG with mipmaps, glTF meshes, materials,
-  skins and clips, OGG, WAV, hot reload), `add-animation-runtime` (skinning, blend trees, state
-  machines, springs), `add-game-feel` (presentation layer: camera rigs, trauma shake, feedback table,
-  haptics, tweens, comfort settings), `add-audio` (mixer, 3D, reverb zones, music layers, the
-  ElevenLabs tool and a first set of sounds), `add-save-system` (snapshot and deltas, IDBFS, versioning).
+  skins and clips, OGG, WAV, hot reload; done), `add-animation-runtime` (skinning, blend trees, state
+  machines, springs; done), `add-game-feel` (presentation layer: camera rigs, trauma shake, feedback table,
+  haptics, tweens, comfort settings, particles; done), `add-audio` (mixer, 3D, reverb zones, music layers, the
+  ElevenLabs tool and a first set of sounds; done), `add-save-system` (snapshot and deltas, IDBFS, versioning;
+  done), `polish-m1-sandbox` (sharp TAA, touch walking test).
 - **Game tests:** a sandbox scene: a skinned placeholder Exosuit walks across a lit, shadowed test
   ground with keyboard input and with emulated touch input; a save/load round-trip keeps its
   position; showcase scenes for shadows, materials and skinning match their golden images; the
@@ -708,13 +709,12 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 ## 8. Needed from the Project Owner
 
-1. **Enable GitHub Pages** once: *Settings → Pages → Source: GitHub Actions*.
-2. **ElevenLabs:** an API key, and confirmation that your plan's terms allow publishing the generated
-   sound effects and music under CC BY 4.0 (the public pages say commercial use needs a paid plan,
-   and game rights for large studios need Enterprise; the binding text is in the
-   [Music Terms](https://elevenlabs.io/music-terms)). In this cloud environment the host
-   `api.elevenlabs.io` must also be allowed and the key stored as a network secret. I will request
-   both when M1's audio work starts.
+1. **Enable GitHub Pages** once: *Settings → Pages → Source: GitHub Actions* (done).
+2. **ElevenLabs:** the API key is provided (a network secret of the "fukuruma" cloud environment, which also
+   allows `api.elevenlabs.io`). Still open: confirmation that your plan's terms allow publishing the generated
+   sound effects and music under CC BY 4.0 (the public pages say commercial use needs a paid plan, and game
+   rights for large studios need Enterprise; the binding text is in the
+   [Music Terms](https://elevenlabs.io/music-terms)).
 3. Optional: install ponytail in your local Claude Code with `/plugin marketplace add DietrichGebert/ponytail`
    and then `/plugin install ponytail@ponytail` (two separate prompts). The repository already contains its `AGENTS.md`.
 4. Optional: name the phone and VR headset you want the game tuned for.

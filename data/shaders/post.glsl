@@ -9,14 +9,28 @@ uniform vec3 u_tint;
 uniform vec3 u_palette[64]; // sRGB
 uniform int u_palette_size; // 0: palette mode off
 out vec4 o_color;
-void main() {
-    vec3 c = texture(u_input, v_uv).rgb;
+
+vec3 toned(vec2 uv) { // exposure, bloom and the tone curve: 0..1
+    vec3 c = texture(u_input, uv).rgb;
 #ifdef HDR
     c *= texture(u_exposure, vec2(0.5)).r;
 #ifdef BLOOM
-    c += texture(u_bloom, v_uv).rgb * 0.08;
+    c += texture(u_bloom, uv).rgb * 0.08;
 #endif
     c = aces(c);
+#endif
+    return c;
+}
+
+void main() {
+    vec3 c = toned(v_uv);
+#ifdef TAA // TAA averages jittered frames, about a pixel of blur: contrast-adaptive sharpening (after AMD's CAS) restores it
+    vec2 t = 1.0 / vec2(textureSize(u_input, 0));
+    vec3 n = toned(v_uv + vec2(0.0, t.y)), s = toned(v_uv - vec2(0.0, t.y));
+    vec3 e = toned(v_uv + vec2(t.x, 0.0)), w = toned(v_uv - vec2(t.x, 0.0));
+    vec3 lo = min(c, min(min(n, s), min(e, w))), hi = max(c, max(max(n, s), max(e, w)));
+    vec3 amount = sqrt(clamp(min(lo, 1.0 - hi) / max(hi, vec3(1e-4)), 0.0, 1.0)) * (-1.0 / 5.0); // full strength
+    c = clamp((c + (n + s + e + w) * amount) / (1.0 + 4.0 * amount), 0.0, 1.0);
 #endif
     c *= u_tint;
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));

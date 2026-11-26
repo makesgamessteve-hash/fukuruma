@@ -131,9 +131,9 @@ bool fk_gfx_configure(void) {
     R.sw = w * R.s.supersample, R.sh = h * R.s.supersample;
 
     char defines[256], all[512];
-    snprintf(defines, sizeof defines, "#define SHADOW_CASCADES %d\n#define SHADOW_SIZE %d\n#define AO_SAMPLES %d\n#define MAX_LIGHTS %d\n%s%s%s",
+    snprintf(defines, sizeof defines, "#define SHADOW_CASCADES %d\n#define SHADOW_SIZE %d\n#define AO_SAMPLES %d\n#define MAX_LIGHTS %d\n%s%s%s%s",
              R.s.shadow_cascades, R.s.shadow_size, R.s.ao_samples, R.s.max_lights, R.s.hdr ? "#define HDR\n" : "",
-             R.s.hdr && R.s.bloom ? "#define BLOOM\n" : "", R.s.dither ? "#define DITHER\n" : "");
+             R.s.hdr && R.s.bloom ? "#define BLOOM\n" : "", R.s.dither ? "#define DITHER\n" : "", R.s.taa ? "#define TAA\n" : "");
     bool ok = true;
     for (int i = 0; i < P_COUNT; i++) {
         snprintf(all, sizeof all, "%s%s", defines, program_defines[i]);

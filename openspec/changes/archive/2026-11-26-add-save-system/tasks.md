@@ -16,5 +16,5 @@
 ## 3. Verification
 
 - [x] 3.1 Coverage gates, sanitizers, all CTest tests, web build and browser tests
-- [ ] 3.2 CI green on every target; Pages updated
-- [ ] 3.3 `openspec validate add-save-system --strict`; archive after deployment
+- [x] 3.2 CI green on every target; Pages updated
+- [x] 3.3 `openspec validate add-save-system --strict`; archive after deployment
