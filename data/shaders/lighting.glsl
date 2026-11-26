@@ -11,7 +11,7 @@ uniform mat4 u_cascade[SHADOW_CASCADES];
 #endif
 uniform vec4 u_splits;
 uniform vec4 u_texels;
-uniform mat4 u_inv_view_proj;
+uniform mat4 u_inv_view;
 uniform mat4 u_view;
 uniform vec3 u_camera;
 uniform vec3 u_sun_dir;
@@ -47,7 +47,7 @@ float shadow(vec3 world, vec3 n, float view_depth) {
 
 vec3 brdf(vec3 n, vec3 v, vec3 l, vec3 albedo, float rough, float metal) { // GGX, Smith, Schlick; Lambert
     vec3 h = normalize(v + l);
-    float nl = max(dot(n, l), 0.0), nv = max(dot(n, v), 1e-4), nh = max(dot(n, h), 0.0), vh = max(dot(v, h), 0.0);
+    float nl = max(dot(n, l), 0.0), nv = max(dot(n, v), 1e-4), nh = max(dot(n, h), 0.0), vh = clamp(dot(v, h), 0.0, 1.0); // pow of 1 - vh below 0 is NaN
     float a = rough * rough, a2 = a * a;
     float d = a2 / (PI * pow(nh * nh * (a2 - 1.0) + 1.0, 2.0));
     float k = (rough + 1.0) * (rough + 1.0) / 8.0;
@@ -62,11 +62,10 @@ vec3 brdf(vec3 n, vec3 v, vec3 l, vec3 albedo, float rough, float metal) { // GG
 void main() {
     float depth = texture(u_depth, v_uv).r;
     vec3 color;
-    if (depth >= 1.0) {
+    if (is_sky(depth)) {
         color = u_background;
     } else {
-        vec4 wp = u_inv_view_proj * vec4(vec3(v_uv, depth) * 2.0 - 1.0, 1.0);
-        vec3 world = wp.xyz / wp.w;
+        vec3 world = (u_inv_view * vec4(view_position(v_uv, depth), 1.0)).xyz;
         vec4 base = texture(u_base, v_uv);
         vec3 albedo = srgb_to_linear(base.rgb);
         float metal = base.a;
@@ -89,7 +88,7 @@ void main() {
 #endif
         float ao = texture(u_ao, v_uv).r;
         vec3 f0 = mix(vec3(0.04), albedo, metal);
-        vec3 fresnel = f0 + (max(vec3(1.0 - rough), f0) - f0) * pow(1.0 - max(dot(n, v), 0.0), 5.0);
+        vec3 fresnel = f0 + (max(vec3(1.0 - rough), f0) - f0) * pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 5.0);
         vec3 hemisphere = mix(u_ground, u_sky, n.y * 0.5 + 0.5);
         vec3 environment = mix(u_ground, u_sky, reflect(-v, n).y * 0.5 + 0.5);
         color += (hemisphere * albedo * (1.0 - metal) * (1.0 - fresnel) + environment * fresnel * (1.0 - 0.7 * rough)) * ao;

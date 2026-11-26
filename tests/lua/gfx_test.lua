@@ -43,6 +43,15 @@ return {
     fails(function() fk.gfx.draw(mesh, I, { emission = { -1, 0, 0 } }) end, "'emission' values")
     fails(function() fk.gfx.draw({}, I) end, "fk.mesh")
   end,
+  ["draws go into depth slices"] = function()
+    local mesh = fk.gfx.mesh(triangle)
+    for _, slice in ipairs({ "near", "local", "planetary", "celestial" }) do fk.gfx.draw(mesh, I, { slice = slice }) end
+    fails(function() fk.gfx.draw(mesh, I, { slice = "orbit" }) end, "'slice' must be near, local, planetary or celestial")
+    fails(function() fk.gfx.draw(mesh, I, { slice = 3 }) end, "'slice' must be")
+    fk.gfx.slices({ near = { 0.01, 4 }, planetary = { 500, 2e7 }, celestial = { 5e4, 1e9 }, ["local"] = "ignored" })
+    fails(function() fk.gfx.slices({ near = { 4, 1 } }) end, "'near' needs 0 < near < far")
+    fails(function() fk.gfx.slices({ celestial = 5 }) end, "'celestial' must be {near, far}")
+  end,
   ["planes can be tiled"] = function()
     local plane = require("shapes").plane(8, { 1, 1, 1 }, 2)
     assert(#plane.uvs == 8 and plane.uvs[2] == 4, "the texture repeats every 2 m")

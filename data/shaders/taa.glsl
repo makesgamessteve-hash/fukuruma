@@ -5,7 +5,7 @@
 uniform sampler2D u_current;
 uniform sampler2D u_history;
 uniform sampler2D u_depth;
-uniform mat4 u_inv_view_proj;
+uniform mat4 u_inv_view;
 uniform mat4 u_prev_view_proj;
 uniform vec2 u_texel;
 uniform float u_valid;
@@ -33,7 +33,7 @@ void main() {
             lo = min(lo, s);
             hi = max(hi, s);
         }
-    vec4 world = u_inv_view_proj * vec4(vec3(v_uv, texture(u_depth, v_uv).r) * 2.0 - 1.0, 1.0);
+    vec4 world = u_inv_view * vec4(view_position(v_uv, texture(u_depth, v_uv).r), 1.0);
     vec4 prev = u_prev_view_proj * vec4(world.xyz / world.w, 1.0);
     vec2 uv = prev.xy / prev.w * 0.5 + 0.5;
     if (u_valid < 0.5 || any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {

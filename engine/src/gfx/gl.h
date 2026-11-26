@@ -4,8 +4,12 @@
 #ifdef __EMSCRIPTEN__
 #include <GLES3/gl3.h>
 #define FK_APIENTRY
+#define FK_DEPTH_RANGE "glDepthRangef" /* GL ES and WebGL take floats, desktop GL 3.3 takes doubles */
+typedef GLfloat fk_gl_depth;
 #else
 #include <SDL3/SDL_opengl.h>
+#define FK_DEPTH_RANGE "glDepthRange"
+typedef GLdouble fk_gl_depth;
 #if defined(_WIN32)
 #define FK_APIENTRY __stdcall
 #else
@@ -78,6 +82,7 @@ struct fk_gl_api {
 #define X(ret, name, args) ret(FK_APIENTRY *name) args;
     FK_GL_FUNCS(X)
 #undef X
+    void(FK_APIENTRY *DepthRange)(fk_gl_depth, fk_gl_depth);
 };
 extern struct fk_gl_api fk_gl;
 #define gl fk_gl

@@ -22,6 +22,7 @@ void fk_gl_load(void) {
 #define X(ret, name, args) gl.name = (ret(FK_APIENTRY *) args)fk_platform_gl_proc("gl" #name);
     FK_GL_FUNCS(X)
 #undef X
+    gl.DepthRange = (void(FK_APIENTRY *)(fk_gl_depth, fk_gl_depth))fk_platform_gl_proc(FK_DEPTH_RANGE);
 }
 
 static GLuint compile(GLenum type, const char *const parts[5]) {

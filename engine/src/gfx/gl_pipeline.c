@@ -302,11 +302,13 @@ static void target(GLuint fb, int w, int h) {
 
 static void fullscreen(void) { gl.DrawArrays(GL_TRIANGLES, 0, 3); }
 
-static void draw_meshes(GLuint program, bool materials) {
+/* Draws the meshes of the slices in the mask (bit i: slice i). */
+static void draw_meshes(GLuint program, bool materials, unsigned slices) {
     fk_frame *f = fk_frame_get();
     sampler(program, "u_bones", materials ? 4 : 0, GL_TEXTURE_2D, R.bones);
     for (int i = 0; i < f->ndraws; i++) {
         const fk_draw *d = &f->draws[i];
+        if (!(slices & 1u << d->slice)) continue;
         gl.UniformMatrix4fv(LOC("u_model"), 1, GL_FALSE, d->model);
         gl.Uniform1i(LOC("u_bone_offset"), d->bone_offset);
         if (materials) {
@@ -326,6 +328,18 @@ static void draw_meshes(GLuint program, bool materials) {
     }
 }
 
+/* The slices' projections (with this frame's TAA jitter) and their inverses. */
+static float slice_proj[FK_SLICE_COUNT][16], slice_inv[FK_SLICE_COUNT][16];
+
+/* What the shaders need to find a pixel's view-space position from its depth (see view_position in common.glsl). */
+static void slice_uniforms(GLuint program) {
+    gl.Uniform4fv(LOC("u_slice_lo"), 1, FK_SLICE_DEPTH);
+    gl.Uniform4fv(LOC("u_slice_hi"), 1, FK_SLICE_DEPTH + 1);
+    gl.UniformMatrix4fv(LOC("u_slice_inv_proj"), FK_SLICE_COUNT, GL_FALSE, &slice_inv[0][0]);
+}
+
+static void depth_range(int slice) { gl.DepthRange(FK_SLICE_DEPTH[slice], FK_SLICE_DEPTH[slice + 1]); }
+
 static float particle_depth[65536];
 static int by_depth(const void *a, const void *b) { /* far ones first */
     float da = particle_depth[*(const int *)a], db = particle_depth[*(const int *)b];
@@ -334,7 +348,7 @@ static int by_depth(const void *a, const void *b) { /* far ones first */
 
 /* Camera-facing quads: lit, alpha-blended dust sorted back to front, then glowing particles added on top.
    Both test against the G-buffer depth in the shader and fade softly where they meet surfaces. */
-static void draw_particles(const float view_proj[16], const fk_frame *f, float z_near, float z_far) {
+static void draw_particles(const float view_proj[16], const fk_frame *f) {
     int n = fk_particles_count();
     if (!n) return;
     const fk_particle *list = fk_particles_list();
@@ -374,8 +388,8 @@ static void draw_particles(const float view_proj[16], const fk_frame *f, float z
     GLuint program = use(P_PARTICLE);
     gl.UniformMatrix4fv(LOC("u_view_proj"), 1, GL_FALSE, view_proj);
     sampler(program, "u_depth", 0, GL_TEXTURE_2D, R.g_depth);
-    gl.Uniform1f(LOC("u_near"), z_near);
-    gl.Uniform1f(LOC("u_far"), z_far);
+    slice_uniforms(program);
+    depth_range(FK_SLICE_LOCAL); /* particles are in the local slice: gl_FragCoord.z lands in its range */
     float sun_up = f->sun_dir[1] > 0 ? f->sun_dir[1] : 0, light[3];
     for (int k = 0; k < 3; k++) light[k] = 0.5f * (f->sky[k] + f->ground[k]) + 0.3f * sun_up * f->sun_color[k];
     gl.Uniform3fv(LOC("u_light"), 1, light);
@@ -392,6 +406,7 @@ static void draw_particles(const float view_proj[16], const fk_frame *f, float z
         gl.DrawArrays(GL_TRIANGLES, glow * 6, (n - glow) * 6);
     }
     gl.Disable(GL_BLEND);
+    gl.DepthRange(0, 1);
     gl.BindVertexArray(R.vao);
 }
 
@@ -406,7 +421,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     const float *p = f->projection;
     bool perspective = p[11] == -1.0f;
     /* TAA: a different sub-pixel offset every frame (8 Halton points), for everything but the shadows. */
-    float proj[16], plain_vp[16], plain_inv_vp[16], view_proj[16], inv_vp[16], inv_proj[16], inv_view[16];
+    float proj[16], plain_vp[16], plain_inv_vp[16], view_proj[16], inv_view[16];
     memcpy(proj, p, sizeof proj);
     if (R.s.taa) {
         int k = R.frame_index % 8 + 1;
@@ -417,9 +432,15 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     fk_mat4_mul(plain_vp, f->projection, f->view);
     fk_mat4_mul(view_proj, proj, f->view);
     if (!fk_mat4_inverse(plain_inv_vp, plain_vp)) fk_mat4_identity(plain_inv_vp);
-    if (!fk_mat4_inverse(inv_vp, view_proj)) fk_mat4_identity(inv_vp);
-    if (!fk_mat4_inverse(inv_proj, proj)) fk_mat4_identity(inv_proj);
     if (!fk_mat4_inverse(inv_view, f->view)) fk_mat4_identity(inv_view);
+    unsigned used = 0;
+    for (int i = 0; i < f->ndraws; i++) used |= 1u << f->draws[i].slice;
+    for (int sl = 0; sl < FK_SLICE_COUNT; sl++) {
+        fk_frame_slice_projection(f, sl, slice_proj[sl]);
+        slice_proj[sl][perspective ? 8 : 12] += proj[perspective ? 8 : 12] - p[perspective ? 8 : 12]; /* the jitter */
+        slice_proj[sl][perspective ? 9 : 13] += proj[perspective ? 9 : 13] - p[perspective ? 9 : 13];
+        if (!fk_mat4_inverse(slice_inv[sl], slice_proj[sl])) fk_mat4_identity(slice_inv[sl]);
+    }
     float z_near = perspective ? p[14] / (p[10] - 1.0f) : 0.1f, z_far = perspective ? p[14] / (p[10] + 1.0f) : 100.0f;
     GLuint program;
 
@@ -448,7 +469,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
             gl.FramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, R.shadow, 0, c);
             gl.Clear(GL_DEPTH_BUFFER_BIT);
             gl.UniformMatrix4fv(LOC("u_view_proj"), 1, GL_FALSE, cascades[c].view_proj);
-            draw_meshes(program, false);
+            draw_meshes(program, false, 1u << FK_SLICE_NEAR | 1u << FK_SLICE_LOCAL); /* far slices cast no shadows here */
         }
         gl.Disable(GL_POLYGON_OFFSET_FILL);
     }
@@ -458,8 +479,15 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     gl.ClearColor(0, 0, 0, 0);
     gl.Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     program = use(P_GBUFFER);
-    gl.UniformMatrix4fv(LOC("u_view_proj"), 1, GL_FALSE, view_proj);
-    draw_meshes(program, true);
+    for (int sl = 0; sl < FK_SLICE_COUNT; sl++) { /* each slice in its own part of the depth buffer */
+        if (!(used & 1u << sl)) continue;
+        float vp[16];
+        fk_mat4_mul(vp, slice_proj[sl], f->view);
+        depth_range(sl);
+        gl.UniformMatrix4fv(LOC("u_view_proj"), 1, GL_FALSE, vp);
+        draw_meshes(program, true, 1u << sl);
+    }
+    gl.DepthRange(0, 1);
     gl.Disable(GL_DEPTH_TEST);
     gl.BindVertexArray(R.vao);
 
@@ -470,7 +498,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         program = use(P_SSAO);
         sampler(program, "u_depth", 0, GL_TEXTURE_2D, R.g_depth);
         sampler(program, "u_normal", 1, GL_TEXTURE_2D, R.g_normal);
-        gl.UniformMatrix4fv(LOC("u_inv_proj"), 1, GL_FALSE, inv_proj);
+        slice_uniforms(program);
         gl.UniformMatrix4fv(LOC("u_proj"), 1, GL_FALSE, proj);
         gl.UniformMatrix4fv(LOC("u_view"), 1, GL_FALSE, f->view);
         fullscreen();
@@ -491,7 +519,8 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     sampler(program, "u_depth", 3, GL_TEXTURE_2D, R.g_depth);
     sampler(program, "u_ao", 4, GL_TEXTURE_2D, ao);
     sampler(program, "u_shadow", 5, GL_TEXTURE_2D_ARRAY, R.shadow);
-    gl.UniformMatrix4fv(LOC("u_inv_view_proj"), 1, GL_FALSE, inv_vp);
+    slice_uniforms(program);
+    gl.UniformMatrix4fv(LOC("u_inv_view"), 1, GL_FALSE, inv_view);
     gl.UniformMatrix4fv(LOC("u_view"), 1, GL_FALSE, f->view);
     if (nc) gl.UniformMatrix4fv(LOC("u_cascade"), nc, GL_FALSE, cascade_vp);
     gl.Uniform4fv(LOC("u_splits"), 1, splits);
@@ -519,7 +548,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     fullscreen();
 
     /* 4a. Particles: a forward pass into the lit image. */
-    draw_particles(view_proj, f, z_near, z_far);
+    draw_particles(view_proj, f);
 
     /* 4b. TAA: blend with the reprojected, neighbourhood-clamped history. */
     GLuint scene = R.light;
@@ -530,7 +559,8 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         sampler(program, "u_current", 0, GL_TEXTURE_2D, R.light);
         sampler(program, "u_history", 1, GL_TEXTURE_2D, R.history[R.history_index]);
         sampler(program, "u_depth", 2, GL_TEXTURE_2D, R.g_depth);
-        gl.UniformMatrix4fv(LOC("u_inv_view_proj"), 1, GL_FALSE, inv_vp);
+        slice_uniforms(program);
+        gl.UniformMatrix4fv(LOC("u_inv_view"), 1, GL_FALSE, inv_view);
         gl.UniformMatrix4fv(LOC("u_prev_view_proj"), 1, GL_FALSE, R.prev_view_proj);
         gl.Uniform2f(LOC("u_texel"), 1.0f / (float)R.sw, 1.0f / (float)R.sh);
         gl.Uniform1f(LOC("u_valid"), R.history_valid ? 1.0f : 0.0f);

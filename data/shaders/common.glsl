@@ -60,3 +60,22 @@ mat4 skin_matrix() { // bind pose to model space, blended from up to four bones
            a_weights.w * bone(a_joints.w);
 }
 #endif
+
+#ifdef FRAGMENT
+// Depth slices (gfx/frame.h): each slice writes its own part of the depth buffer, from u_slice_lo[i] to
+// u_slice_hi[i], with its own projection. These turn a depth value back into a view-space position.
+uniform vec4 u_slice_lo;
+uniform vec4 u_slice_hi;
+uniform mat4 u_slice_inv_proj[4];
+
+bool is_sky(float d) { return d >= u_slice_hi.w; } // nothing drawn: beyond the last slice
+
+int depth_slice(float d) { return d < u_slice_hi.x ? 0 : d < u_slice_hi.y ? 1 : d < u_slice_hi.z ? 2 : 3; }
+
+vec3 view_position(vec2 uv, float d) {
+    int i = depth_slice(d);
+    float z = clamp((d - u_slice_lo[i]) / (u_slice_hi[i] - u_slice_lo[i]), 0.0, 1.0); // the sky (1) sits on the far plane
+    vec4 p = u_slice_inv_proj[i] * vec4(vec3(uv, z) * 2.0 - 1.0, 1.0);
+    return p.xyz / p.w;
+}
+#endif

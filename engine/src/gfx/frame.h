@@ -29,11 +29,19 @@ typedef struct {
 
 void fk_material_default(fk_material *m); /* white, roughness 0.6, not metallic, no emission, no textures */
 
+/* Depth slices: layers drawn with their own near and far planes into their own part of the depth buffer, so a
+   nearer slice is always in front of a farther one. FK_SLICE_LOCAL uses the camera's projection as it is. */
+enum { FK_SLICE_NEAR, FK_SLICE_LOCAL, FK_SLICE_PLANETARY, FK_SLICE_CELESTIAL, FK_SLICE_COUNT };
+
+/* The part of the depth buffer each slice writes, from FK_SLICE_DEPTH[i] to FK_SLICE_DEPTH[i + 1]. */
+extern const float FK_SLICE_DEPTH[FK_SLICE_COUNT + 1];
+
 typedef struct {
     const fk_mesh *mesh;
     float model[16];
     fk_material material;
     int bone_offset; /* first matrix in the frame's bones, -1: not skinned */
+    int slice;       /* FK_SLICE_* */
 } fk_draw;
 
 #define FK_MAX_FRAME_BONES 4096 /* skinned draws beyond this are drawn in their bind pose */
@@ -74,6 +82,8 @@ typedef struct {
     int nbones, bone_cap;
     float palette[FK_MAX_PALETTE][3]; /* sRGB */
     int palette_size;                 /* 0: palette mode off */
+    float slice_near[FK_SLICE_COUNT], slice_far[FK_SLICE_COUNT]; /* metres; FK_SLICE_LOCAL's are unused */
+    int slice; /* the slice of the next draws */
 } fk_frame;
 
 fk_frame *fk_frame_get(void);
@@ -89,6 +99,9 @@ void fk_frame_light(const fk_point_light *light); /* lights beyond FK_MAX_LIGHTS
 /* Text in the 8x8 font at whole pixels; characters outside printable ASCII are drawn as '?'. */
 void fk_frame_text(float x, float y, const char *text, const float color[4]);
 void fk_frame_rect(float x, float y, float w, float h, const float color[4]);
+/* The projection of a slice: the camera's perspective projection with the slice's near and far planes (an
+   orthographic projection, and FK_SLICE_LOCAL, are used as they are). */
+void fk_frame_slice_projection(const fk_frame *f, int slice, float out[16]);
 /* Element index of the 2, 3 Halton sequences, centred on 0 (-0.5..0.5): sub-pixel jitter for TAA. */
 float fk_halton(int index, int base);
 float fk_srgb_to_linear(float c);

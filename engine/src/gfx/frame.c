@@ -10,7 +10,17 @@ static fk_frame frame;
 static fk_gfx_settings settings = {480, 270, 1, 2, 1024, 8, 8, 4096, true, true, true, false, true};
 static int window[2] = {1, 1}, image[4] = {0, 0, 1, 1}, image_size[2] = {480, 270};
 
+const float FK_SLICE_DEPTH[FK_SLICE_COUNT + 1] = {0.0f, 0.03f, 0.75f, 0.9f, 0.9999f}; /* 1: the sky */
+
 fk_frame *fk_frame_get(void) { return &frame; }
+
+void fk_frame_slice_projection(const fk_frame *f, int slice, float out[16]) {
+    memcpy(out, f->projection, 16 * sizeof(float));
+    if (slice == FK_SLICE_LOCAL || f->projection[11] != -1.0f) return;
+    float n = f->slice_near[slice], far = f->slice_far[slice];
+    out[10] = -(far + n) / (far - n);
+    out[14] = -2.0f * far * n / (far - n);
+}
 
 float fk_srgb_to_linear(float c) { return powf(fmaxf(c, 0.0f), 2.2f); }
 
@@ -30,6 +40,10 @@ void fk_frame_reset(void) {
     frame.ground[0] = 0.08f, frame.ground[1] = 0.07f, frame.ground[2] = 0.06f;
     frame.exposure = 0, frame.contrast = 1, frame.saturation = 1;
     frame.palette_size = 0;
+    const float near[FK_SLICE_COUNT] = {0.01f, 0, 500.0f, 5e4f}, far[FK_SLICE_COUNT] = {4.0f, 0, 2e7f, 1e9f};
+    memcpy(frame.slice_near, near, sizeof near);
+    memcpy(frame.slice_far, far, sizeof far);
+    frame.slice = FK_SLICE_LOCAL;
 }
 
 void fk_frame_begin(void) { frame.ndraws = frame.noverlays = frame.nlights = frame.nsprites = frame.nbones = 0; }
@@ -55,6 +69,7 @@ void fk_frame_draw_skinned(const fk_mesh *mesh, const float model[16], const fk_
     memcpy(d->model, model, sizeof d->model);
     d->material = *material;
     d->bone_offset = bone_offset;
+    d->slice = frame.slice;
 }
 
 void fk_frame_draw(const fk_mesh *mesh, const float model[16], const fk_material *material) {

@@ -124,8 +124,27 @@ static int l_mesh_gc(lua_State *L) {
 static const float ZERO[3] = {0, 0, 0}, ONE[3] = {1, 1, 1};
 
 /* fk.gfx.draw(mesh, matrix, { roughness, metalness, emission, texture }) or fk.gfx.draw(model, matrix, { pose }) */
+static const char *const SLICES[] = {"near", "local", "planetary", "celestial", NULL};
+
+/* opts.slice: the depth slice of this draw (default "local"). */
+static int slice_option(lua_State *L, int opts) {
+    if (lua_isnoneornil(L, opts)) return FK_SLICE_LOCAL;
+    luaL_checktype(L, opts, LUA_TTABLE);
+    int slice;
+    lua_getfield(L, opts, "slice");
+    if (lua_isnil(L, -1)) slice = FK_SLICE_LOCAL;
+    else {
+        const char *name = lua_tostring(L, -1);
+        for (slice = 0; name && SLICES[slice] && strcmp(SLICES[slice], name); slice++) {}
+        if (!name || !SLICES[slice]) return luaL_error(L, "draw: 'slice' must be near, local, planetary or celestial");
+    }
+    lua_pop(L, 1);
+    return slice;
+}
+
 static int l_draw(lua_State *L) {
     float model[16];
+    fk_frame_get()->slice = slice_option(L, 3);
     fk_model *mdl = fk_lua_model_arg(L, 1);
     if (mdl) {
         matrix_arg(L, 2, model, "draw");
@@ -137,6 +156,7 @@ static int l_draw(lua_State *L) {
         }
         keep_alive(L, 1);
         fk_lua_draw_model(mdl, model, globals);
+        fk_frame_get()->slice = FK_SLICE_LOCAL;
         return 0;
     }
     fk_mesh *m = luaL_checkudata(L, 1, "fk.mesh");
@@ -157,6 +177,25 @@ static int l_draw(lua_State *L) {
     }
     keep_alive(L, 1);
     fk_frame_draw(m, model, &mat);
+    fk_frame_get()->slice = FK_SLICE_LOCAL;
+    return 0;
+}
+
+/* fk.gfx.slices{near = {n, f}, planetary = {n, f}, celestial = {n, f}}: the near and far planes (metres) of the
+   depth slices; the local slice uses the camera's projection. Slices not named keep their planes. */
+static int l_slices(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    fk_frame *f = fk_frame_get();
+    for (int i = 0; SLICES[i]; i++) {
+        if (i == FK_SLICE_LOCAL) continue;
+        if (lua_getfield(L, 1, SLICES[i]) != LUA_TNIL) {
+            if (!lua_istable(L, -1) || luaL_len(L, -1) != 2) return luaL_error(L, "slices: '%s' must be {near, far}", SLICES[i]);
+            float n = number_at(L, lua_gettop(L), 1, SLICES[i]), far = number_at(L, lua_gettop(L), 2, SLICES[i]);
+            if (!(n > 0 && far > n)) return luaL_error(L, "slices: '%s' needs 0 < near < far", SLICES[i]);
+            f->slice_near[i] = n, f->slice_far[i] = far;
+        }
+        lua_pop(L, 1);
+    }
     return 0;
 }
 
@@ -426,6 +465,7 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
                                    {"configure", l_configure}, {"settings", l_settings}, {"size", l_size},
                                    {"text", l_text},       {"rect", l_rect},         {"palette", l_palette},
                                    {"device", l_device},   {"emit", l_emit},         {"particles", l_particles},
+                                   {"slices", l_slices},
                                    {NULL, NULL}};
     rendering = render;
     luaL_newmetatable(L, "fk.mesh");
