@@ -2,7 +2,8 @@
 
 ## Purpose
 
-TBD - created by archiving change add-reference-frames. Update Purpose after archive.
+Keeps everything precise from a 1 cm spore to a 144 km hull in a system 100 AU across: a tree of reference frames
+in double precision, frame transitions, drawing relative to the camera, and scaled space for far bodies.
 
 ## Requirements
 

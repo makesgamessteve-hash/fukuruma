@@ -131,6 +131,38 @@ function frames.reparent(entity, to)
   place.frame, place.p, place.v = to, p, v
 end
 
+-- Motion on rails --------------------------------------------------------------------------------------------
+
+-- A frame that follows a Kepler orbit around its parent's origin. elements: see fk.orbit (a, e, i, node,
+-- periapsis, anomaly, epoch, mu). Orbits belong in frames that do not spin; a body's spinning surface is a child.
+function frames.orbit(id, elements)
+  frame(id)
+  fk.orbit.period(elements) -- checks the elements
+  sim.set(id, "orbit", elements)
+end
+
+-- A frame that turns about an axis (in its parent) at rate rad/s, starting at phase radians.
+function frames.spin(id, axis, rate, phase)
+  frame(id)
+  local l = math.sqrt(axis[1] * axis[1] + axis[2] * axis[2] + axis[3] * axis[3])
+  assert(l > 0, "the spin axis must not be zero")
+  sim.set(id, "spin", { axis = { axis[1] / l, axis[2] / l, axis[3] / l }, rate = rate, phase = phase or 0 })
+end
+
+-- Places every frame on rails for the simulation time t (seconds). Deterministic: fk.orbit and fk.math.
+function frames.update(t)
+  for id, el in sim.each("orbit") do
+    local f = frame(id)
+    f.p, f.v = fk.orbit.state(el, t)
+  end
+  for id, s in sim.each("spin") do
+    local f, half = frame(id), (s.rate * t + s.phase) / 2
+    local sn = fk.math.sin(half)
+    f.q = { s.axis[1] * sn, s.axis[2] * sn, s.axis[3] * sn, fk.math.cos(half) }
+    f.w = { s.axis[1] * s.rate, s.axis[2] * s.rate, s.axis[3] * s.rate }
+  end
+end
+
 -- Drawing: camera-relative matrices and scaled space --------------------------------------------------------
 
 -- A column-major model matrix from a rotation, a position and a uniform scale.

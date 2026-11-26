@@ -1,5 +1,5 @@
--- The scale ladder (reference-frames spec): a 1 m cube beside a 144 km Jump Ship hull in orbit 300 km above an
--- Earth-sized planet at 1 AU from a Sun-like star, all in one frame tree. The camera can stand at four steps: by
+-- The scale ladder (reference-frames and orbital-mechanics specs): a 1 m cube beside a 144 km Jump Ship hull in
+-- orbit 300 km above an Earth-sized, turning planet that orbits a Sun-like star at 1 AU, all in one frame tree. The camera can stand at four steps: by
 -- the cube, off the hull, off the planet and off the star. Everything is drawn relative to the camera, in the
 -- depth slice its distance needs, with scaled space for the far bodies.
 local frames = require("fk.frames")
@@ -15,6 +15,8 @@ ladder.PLANET_RADIUS = 6.371e6
 ladder.HULL_LENGTH = 1.44e5
 local HULL_SCALE = ladder.HULL_LENGTH / 6.6 -- the placeholder hull is 6.6 units long
 local ORBIT = ladder.PLANET_RADIUS + 3e5
+ladder.MU_STAR, ladder.MU_PLANET = 1.32712440018e20, 3.986004418e14 -- m^3/s^2
+ladder.DAY = 86164 -- seconds per turn of the planet
 
 -- The steps: the camera's frame (by name), its position there, and where it looks (a point in the same frame).
 ladder.STEPS = {
@@ -24,12 +26,18 @@ ladder.STEPS = {
   { name = "star", frame = "system", eye = { 1.5e9, 1.2e9, 4.2e9 }, target = { 0, 0, 0 } },
 }
 
--- Builds the frame tree in the simulation and the meshes. Call after sim.reset().
+-- Builds the frame tree in the simulation (with the planet's and the ship's orbits and the planet's turning) and
+-- the meshes.
 function ladder.build()
   local f = {}
   f.system = frames.create()
-  f.planet = frames.create(f.system, { position = { ladder.AU, 0, 0 } })
-  f.ship = frames.create(f.planet, { position = { 0, 0, ORBIT } })
+  f.planet = frames.create(f.system) -- does not turn: the ship's orbit is in it
+  frames.orbit(f.planet, { a = ladder.AU, e = 0.0167, mu = ladder.MU_STAR })
+  f.surface = frames.create(f.planet) -- turns with the planet
+  frames.spin(f.surface, { 0.4, 1, 0 }, math.pi * 2 / ladder.DAY)
+  f.ship = frames.create(f.planet)
+  frames.orbit(f.ship, { a = ORBIT, mu = ladder.MU_PLANET, anomaly = -math.pi / 2 }) -- starts on +z
+  frames.update(0)
   ladder.frames = f
   ladder.meshes = ladder.meshes or {
     cube = fk.gfx.mesh(shapes.box(1, 1, 1, { 0.9, 0.5, 0.15 })),
@@ -53,6 +61,9 @@ local function normalized(v)
   return { v[1] / l, v[2] / l, v[3] / l }
 end
 
+-- Moves the bodies to the simulation time t (call from the simulation tick).
+function ladder.update(t) frames.update(t) end
+
 function ladder.draw(step, aspect)
   local f, m = ladder.frames, ladder.meshes
   local viewer, view = ladder.camera(step)
@@ -68,7 +79,7 @@ function ladder.draw(step, aspect)
     fk.gfx.draw(mesh, matrix, opts)
   end
   draw(m.star, f.system, { 0, 0, 0 }, 1, ladder.STAR_RADIUS, { emission = { 40, 34, 26 } })
-  draw(m.planet, f.planet, { 0, 0, 0 }, 1, ladder.PLANET_RADIUS, { roughness = 0.8 })
+  draw(m.planet, f.surface, { 0, 0, 0 }, 1, ladder.PLANET_RADIUS, { roughness = 0.8 })
   draw(m.hull, f.ship, { 0, 0, 0 }, 3.4, HULL_SCALE, { roughness = 0.5, metalness = 0.5 })
   draw(m.cube, f.ship, { 0, 2.0e4, 0 }, 0.87, 1, { roughness = 0.4 })
 end

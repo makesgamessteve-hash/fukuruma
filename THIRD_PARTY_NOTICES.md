@@ -82,3 +82,12 @@ SOFTWARE.
 - Used in: `third_party/cgltf/` (glTF 2.0 models)
 - Source: <https://github.com/jkuhlmann/cgltf> (tag v1.15)
 - Licence: MIT, see `third_party/cgltf/LICENSE`
+
+## fdlibm (sine and cosine kernels)
+
+- Used in: `engine/src/core/dmath.c` (the polynomial coefficients of `__kernel_sin` and `__kernel_cos` and the
+  pi/2 reduction constants, for deterministic trigonometry)
+- Source: fdlibm 5.3 by Sun Microsystems, as found in <https://www.netlib.org/fdlibm/>
+- Licence: "Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved. Developed at SunSoft, a Sun
+  Microsystems, Inc. business. Permission to use, copy, modify, and distribute this software is freely granted,
+  provided that this notice is preserved." (kept in the source file)

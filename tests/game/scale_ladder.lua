@@ -13,6 +13,12 @@ return scenario {
       shadow_size = 1024, ao_samples = 8, max_lights = 8, hdr = true, bloom = true, dither = true })
     fk.gfx.palette(nil)
     ladder.build()
+    local sim = require("fk.sim")
+    local tick = game.tick
+    game.tick = function() -- the bodies move on their orbits with the simulation
+      tick()
+      ladder.update(sim.tick * sim.dt)
+    end
     local step = 1
     game.draw = function()
       local w, h = fk.gfx.size()
