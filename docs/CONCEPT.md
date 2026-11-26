@@ -1,7 +1,8 @@
 # Fukuruma — Game Concept
 
-> Status: **v0.4**. Updated with the answers to the ten clarifying questions and the follow-up on
-> graphics and game feel (see §10, *Decisions*).
+> Status: **v0.5**. Updated with the answers to the ten clarifying questions, the follow-ups on
+> graphics and game feel, and the first-person rule: everything is seen through the Commander's eyes
+> (see §10, *Decisions*).
 > The build plan is in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
 Fukuruma is a space exploration game about **wonder** and **scale**, built on modern real-time
@@ -9,7 +10,8 @@ rendering and shown through a retro low-resolution filter. You command a
 moon-sized Jump Ship. It carries space stations, which carry mountain-sized explorers, which carry
 walking cities, which carry giant walkers, which carry you: the Commander in an environmental
 exosuit, the last and smallest doll. Every doll can be entered, walked through and deployed.
-Every planet is worth going down to, and any planet can kill you.
+Every planet is worth going down to, and any planet can kill you. You see all of it through the
+Commander's own eyes: from the Exosuit's helmet, or from the seat at a doll's controls.
 
 ---
 
@@ -21,19 +23,23 @@ Every planet is worth going down to, and any planet can kill you.
 2. **Fukuruma (the nesting doll).** Seven nested scales. Each doll is a vehicle you fly, drive or walk,
    and you can explore every one of them inside. Going *down* the chain brings you closer to
    discoveries and to danger. Going *up* the chain is how you survive.
-3. **Real danger, read through sensors.** You never walk in blind, but every sensor has a range and
+3. **Through the Commander's eyes.** The game is always first person. You walk inside the Exosuit
+   and steer every doll from its cockpit or bridge: the 72 m Walker from a cabin high above the
+   ground, the 144 km Jump Ship from its bridge. An outside view exists, but only to look around and
+   get your bearings; you cannot walk or steer from it.
+4. **Real danger, read through sensors.** You never walk in blind, but every sensor has a range and
    a resolution. Big vehicles see big threats and miss small ones. The exosuit sees the things that
    kill people.
-4. **Survive, don't conquer.** Scanning, avoiding, outrunning and outsmarting come first. Weapons are
+5. **Survive, don't conquer.** Scanning, avoiding, outrunning and outsmarting come first. Weapons are
    few, defensive and costly to use.
-5. **Modern rendering, retro resolution.** Detailed models, physically based lighting and shadows,
+6. **Modern rendering, retro resolution.** Detailed models, physically based lighting and shadows,
    and realistic fire, water, fog and clouds, rendered at a deliberately low resolution and scaled
    up with sharp pixels. Only the resolution is retro. It is a style and a budget: rendering a
    sixteenth of the pixels pays for the expensive effects.
-6. **Weight and juice.** The dolls move with believable mass, animations have weight, and every action
+7. **Weight and juice.** The dolls move with believable mass, animations have weight, and every action
    is answered with sound, light, particles, camera motion and rumble. A Walker's footstep shakes the
    ground under the Exosuit.
-7. **Open and moddable.** A C engine with the game itself in Lua. Assets, scripts and shaders live in
+8. **Open and moddable.** A C engine with the game itself in Lua. Assets, scripts and shaders live in
    folders beside the binary. Mods are folders you drop in.
 
 ---
@@ -92,9 +98,13 @@ Each doll matches one level of detail of the world:
 | Exosuit | a few hundred metres | voxels, caves, small life, artefacts (~0.25 m) |
 
 Exploration moves down the same level-of-detail pyramid the renderer needs anyway. The player never
-sees the engine switch detail levels. They see the next doll being deployed.
+sees the engine switch detail levels. They see the next doll being deployed, through the cockpit
+window or on the bridge screens.
 
 ### 2.4 Movement and travel
+
+Every doll is steered by the Commander in person, from the seat at its controls (§2.6). Autopilot lets
+the Commander leave the seat and walk around inside while the doll travels.
 
 - **Jump Ship:** jumps between systems; moves on rails inside a system.
 - **Teleport network:** the Commander teleports between the Jump Ship and every deployed station.
@@ -105,8 +115,10 @@ sees the engine switch detail levels. They see the next doll being deployed.
   detect a hazard, so better sensors mean faster and safer travel.
 - **Exosuit:** first person on foot, with jump jets and climbing.
 
-Every doll can **deploy** the next one, **recall** it, and be **boarded**. Vehicles you leave
-behind stay in the world, where they can be damaged, stranded or stolen.
+Every doll can **deploy** the next one, **recall** it, and be **boarded**. Boarding is walked in first
+person: out of the cockpit, down to the hangar or airlock, into the next doll and onto its seat (a
+quick "go to the controls" shortcut plays the walk as a short first-person sequence). Vehicles you
+leave behind stay in the world, where they can be damaged, stranded or stolen.
 
 ### 2.5 Fully explorable interiors
 
@@ -130,6 +142,37 @@ Hull (shape, zones)            e.g. Jump Ship: hangars, foundries, engineering, 
   feel vast and eerie.
 - Interiors are not safe. Boarders, parasites carried up from planets and failing systems make
   the dolls places to explore and defend.
+
+### 2.6 The Commander's view
+
+The game is seen **only through the Commander's eyes**. There is no chase camera.
+
+- **On foot:** the view from inside the Exosuit's helmet, with the visor HUD, the suit's arms and
+  hands, and its legs and feet when you look down. The head bobs and sways with the suit's mass.
+- **At the controls:** every doll has a cockpit or bridge with a seat, windows or a canopy, and
+  instruments. The Commander sits there and looks out: the Walker's cabin sways 60 m above the ground
+  with every step; the Land Explorer's bridge looks down over a kilometre of moving machinery; the
+  Continental Explorer, the Space Station and the Jump Ship are flown from bridges whose big screens
+  show what the windows cannot. The Commander's hands work the sticks, levers and switches.
+- **Looking around:** the head turns freely within the limits of the seat (and the helmet) while the
+  doll keeps its course: steering and looking are separate controls.
+- **Screens instead of camera tricks:** cockpit screens show the map, the sensors, the doll's status
+  and its external cameras. Scan results are drawn onto the windows and the visor as augmented-reality
+  markings (§5).
+- **The outside view, for orientation only:** a button switches to the doll's survey drone, which
+  circles the current doll (or the Exosuit) at a distance scaled to its size, so you can see where
+  you are, what surrounds you and where the next doll stands. You can turn and zoom the view and mark
+  a waypoint, but you cannot walk, steer or act from it: the Exosuit stands still, a doll holds its
+  course (or its autopilot keeps flying), and every control except "back to the Commander's eyes" is
+  inactive. The view is a drone
+  feed, with its range limits and a little signal noise, and it closes when the Commander takes
+  damage.
+- **Deploying and docking** are watched from the cockpit windows, on the bridge screens, or with the
+  outside view.
+- **Comfort:** first-person motion in swaying machines needs care: head-bob and cockpit-sway
+  strength, field of view, a horizon-steady option that keeps the horizon level while the cabin
+  rocks, and a vignette while turning are all in the comfort settings. In VR the head is never moved
+  by effects (§6.5).
 
 ---
 
@@ -299,13 +342,14 @@ Every hazard has a **signature**: its size, its kind (thermal, bio, EM, seismic,
 exotic) and its stealth. A doll's sensors detect what is big enough and of a kind they cover.
 Two rules follow:
 
-- *What kills you is smaller than your sensor's resolution*, so you watch the Exosuit HUD.
+- *What kills you is smaller than your sensor's resolution*, so you watch the Exosuit's visor HUD.
 - *What kills your vehicle is at least its own size*, so you scan ahead from the doll above.
 
 **Passive and active scanning:** an active ping sees more and farther, and it tells everything
 nearby that you are there. Scan data **ages**: creatures move, storms drift, patrols change route.
 
-**Seeing danger:** many hazards are visible if you look: spore clouds and toxic gas drift as
+**Seeing danger:** you look at the world through windows, the visor and cockpit screens, and many
+hazards are visible if you look: spore clouds and toxic gas drift as
 volumetric fog, lava shimmers with heat haze, a dust storm swallows the light. Others are invisible
 (radiation, a camouflaged predator, a thin crust over a sinkhole), and only sensors reveal them.
 
@@ -449,23 +493,28 @@ separately.
 - **Mechanical sequences:** deploying, docking and boarding play as choreographed machine
   animations: hangar doors, clamps, ramps, gantries, unfolding legs. They are timed in Lua and
   carry their sounds, lights and particles.
-- **The Commander** has first-person arms and hands for tools, climbing and controls.
+- **The Commander** has first-person arms and hands for tools, climbing and controls: they grip the
+  Exosuit's tools, pull levers and push sticks in the cockpits in step with the player's input, and
+  the Exosuit's legs and feet are animated when you look down.
 
 ### 6.5 Game feel ("juice")
 
 The aim is a realistic kind of juice: mass and physical response, not cartoon exaggeration.
 
 - **Mass and scale you can feel:** every doll has acceleration, braking and turning curves for its
-  mass; cameras have inertia; a Walker's footstep shakes the Exosuit's view and throws up dust, and a
-  Land Explorer's step can be felt kilometres away; the Continental Explorer's engines rumble in the
-  chest (low-frequency audio and controller rumble).
+  mass, felt from inside: the Commander's head lags and settles, the cabin sways and pitches, the
+  instruments rattle, loose cables swing, dust and rain run over the canopy. A Walker's footstep jolts
+  its cabin and, outside, shakes the Exosuit's view and throws up dust; a Land Explorer's step can be
+  felt kilometres away; the Continental Explorer's engines rumble in the chest (low-frequency audio
+  and controller rumble).
 - **Every action is answered:** each command is answered within one frame by a sound, a light, a
   particle effect, a camera response and a haptic pulse, scaled to its importance.
 - **Anticipation and follow-through:** deploy sequences build up (warning lights, alarms, unlocking
   clamps) before the release, and settle after it (sway, dust, servo whine).
 - **Impacts:** brief hit-pause on heavy impacts, camera kick, debris, sparks and decals; damage you can
   see on hulls and on the visor.
-- **Discovery moments:** a new marvel or species gets a camera beat, a music swell and a codex chime.
+- **Discovery moments:** a new marvel or species gets a music swell, a codex chime, a highlight on the
+  visor or window and a close-up on a cockpit screen. The view itself is never taken from the player.
 - **UI with springs and easing**, a visor HUD that glitches when the suit is damaged, and readouts
   that react to what the sensors see.
 - **Haptics** on gamepads, phones (vibration) and XR controllers.
@@ -477,7 +526,9 @@ so the game stays deterministic (§8.4).
 
 ### 6.6 Diegetic UI, art and audio
 
-- **Diegetic UI:** each doll has a cockpit or bridge, and the Exosuit HUD is drawn on the visor.
+- **Diegetic UI:** each doll has a cockpit or bridge whose instruments and screens are the interface,
+  and the Exosuit HUD is drawn on the visor. Menus (settings, codex, map) appear on a cockpit screen
+  or as a visor overlay; only the pause menu is a plain overlay.
 - **Visual art:** procedural generators build detailed content (hull parts and greebles from a
   grammar, creature bodies from body plans, materials from noise), together with free CC0 material
   and sky libraries and placeholder models that the project owner can replace with hand-made art.
@@ -493,9 +544,12 @@ so the game stays deterministic (§8.4).
 
 | Platform | Build | Input |
 |----------|-------|-------|
-| Windows / Linux / macOS | native, SDL3 + OpenGL 3.3 core | keyboard + mouse, gamepad |
-| Web | Emscripten, WebGL 2 | keyboard + mouse, gamepad; **touch on mobile** (virtual stick, look-drag, context buttons, switched on automatically on touch devices) |
+| Windows / Linux / macOS | native, SDL3 + OpenGL 3.3 core | keyboard + mouse (mouse look), gamepad (left stick moves or steers, right stick looks) |
+| Web | Emscripten, WebGL 2 | keyboard + mouse (pointer lock for mouse look), gamepad; **touch on mobile** (virtual stick, look-drag, context buttons, switched on automatically on touch devices) |
 | WebXR | same web build, "Enter VR" button | XR controllers; snap turn, teleport or smooth locomotion, comfort vignette; HUD on the visor |
+
+Every platform has one button for the outside view (for example V, the gamepad's View button, or a
+touch button) and one for taking or leaving the controls of a doll.
 
 The web build is published to GitHub Pages from `main`.
 
@@ -579,3 +633,4 @@ a story campaign with an ending · VR on native desktop (OpenXR) · console port
 | 9 | Retro look | **Only the resolution is retro** (follow-up, 2026-11-26; replaces the first answer, "late-90s PC"). Modern technology underneath: detailed models, realistic lighting and shadows, realistic fire, water, fog and clouds, good animation and a realistically juicy feel, all shown through a low-resolution filter that also saves rendering time. |
 | 10 | Art and audio | **Audio generated with the ElevenLabs API** (epic sound effects, ambient space music). Visual art was not specified; the default is procedural generators, CC0 material libraries and replaceable placeholder models. |
 | 11 | Detail levels | **Low, Medium, High, Ultra and Custom**, switched live in the in-game menu (follow-up, 2026-11-26). The levels differ mostly in light, shadows and effects, only a little in model detail (§6.2). |
+| 12 | View | **First person from the Commander's perspective, always** (follow-up, 2026-11-26): from the Exosuit's helmet on foot, from the seat at the controls in every doll. All walking and steering happens from inside. An outside view exists only for orientation and allows no movement or actions (§2.6). |
