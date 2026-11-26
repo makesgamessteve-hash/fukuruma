@@ -246,6 +246,7 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
         if (!fk_gfx_init()) return finish(1);
     }
     app.interactive = app.window && !app.opt.headless && !app.opt.scenario;
+    fk_storage_memory(!app.interactive); /* test runs must not read or change the player's settings */
 
     char *code = fk_vfs_read("scripts/main.lua", &size);
     if (!code) {

@@ -70,3 +70,9 @@ SOFTWARE.
 - Used in: `third_party/luacov/` (Lua coverage in tests only; the HTML reporter is not included)
 - Source: <https://github.com/lunarmodules/luacov> (tag v0.17.0)
 - Licence: MIT, see `third_party/luacov/LICENSE`
+
+## font8x8
+
+- Used in: `third_party/font8x8/` and the generated `data/fonts/font8x8.png` (menu and HUD text)
+- Source: <https://github.com/dhepper/font8x8> (commit 8e279d2d864e79128e96188a6b9526cfa3fbfef9), based on the IBM VGA fonts
+- Licence: Public domain

@@ -7,8 +7,8 @@
 #include "core/mat4.h"
 
 static fk_frame frame;
-static fk_gfx_settings settings = {480, 270, 1, 2, 1024, 8, 8, true, true, true};
-static int window[2] = {1, 1}, image[4] = {0, 0, 1, 1};
+static fk_gfx_settings settings = {480, 270, 1, 2, 1024, 8, 8, true, true, true, false, true};
+static int window[2] = {1, 1}, image[4] = {0, 0, 1, 1}, image_size[2] = {480, 270};
 
 fk_frame *fk_frame_get(void) { return &frame; }
 
@@ -29,9 +29,10 @@ void fk_frame_reset(void) {
     frame.sky[0] = 0.25f, frame.sky[1] = 0.3f, frame.sky[2] = 0.4f;
     frame.ground[0] = 0.08f, frame.ground[1] = 0.07f, frame.ground[2] = 0.06f;
     frame.exposure = 0, frame.contrast = 1, frame.saturation = 1;
+    frame.palette_size = 0;
 }
 
-void fk_frame_begin(void) { frame.ndraws = frame.noverlays = frame.nlights = 0; }
+void fk_frame_begin(void) { frame.ndraws = frame.noverlays = frame.nlights = frame.nsprites = 0; }
 
 static void *grow(void *items, int *cap, size_t size) {
     *cap = *cap ? *cap * 2 : 64;
@@ -53,13 +54,70 @@ void fk_frame_overlay(const fk_mesh *mesh, const float matrix[16]) {
     fk_overlay *o = &frame.overlays[frame.noverlays++];
     o->mesh = mesh;
     memcpy(o->matrix, matrix, sizeof o->matrix);
+    o->first = o->count = 0;
+}
+
+static void sprite(float x, float y, float w, float h, int cell, const float color[4]) {
+    if (frame.nsprites == frame.sprite_cap) frame.sprites = grow(frame.sprites, &frame.sprite_cap, sizeof *frame.sprites);
+    fk_overlay *last = frame.noverlays ? &frame.overlays[frame.noverlays - 1] : NULL;
+    if (!last || last->mesh || last->first + last->count != frame.nsprites) { /* start a new run */
+        if (frame.noverlays == frame.overlay_cap) frame.overlays = grow(frame.overlays, &frame.overlay_cap, sizeof *frame.overlays);
+        last = &frame.overlays[frame.noverlays++];
+        last->mesh = NULL;
+        last->first = frame.nsprites;
+        last->count = 0;
+    }
+    /* the atlas is 16x8 cells of 8x8 pixels; cell 0 is solid, for rectangles */
+    float u = (float)(cell % 16) / 16.0f, v = (float)(cell / 16) / 8.0f;
+    fk_sprite *s = &frame.sprites[frame.nsprites++];
+    *s = (fk_sprite){x, y, w, h, u, v, u + 1.0f / 16.0f, v + 1.0f / 8.0f, {color[0], color[1], color[2], color[3]}};
+    last->count++;
+}
+
+void fk_frame_text(float x, float y, const char *text, const float color[4]) {
+    float start = x;
+    for (const unsigned char *c = (const unsigned char *)text; *c; c++) {
+        if (*c == '\n') {
+            x = start;
+            y += 8;
+            continue;
+        }
+        if (*c >= 0x80 && *c < 0xC0) continue; /* UTF-8 continuation byte: one '?' per character */
+        if (*c != ' ') sprite(x, y, 8, 8, *c >= 33 && *c <= 126 ? *c : '?', color);
+        x += 8;
+    }
+}
+
+void fk_frame_rect(float x, float y, float w, float h, const float color[4]) { sprite(x, y, w, h, 0, color); }
+
+float fk_halton(int index, int base) {
+    float f = 1.0f, r = 0.0f;
+    for (int i = index; i > 0; i /= base) {
+        f /= (float)base;
+        r += f * (float)(i % base);
+    }
+    return r - 0.5f;
 }
 
 void fk_frame_light(const fk_point_light *light) {
     if (frame.nlights < FK_MAX_LIGHTS) frame.lights[frame.nlights++] = *light;
 }
 
-void fk_gfx_settings_default(fk_gfx_settings *s) { *s = (fk_gfx_settings){480, 270, 1, 2, 1024, 8, 8, true, true, true}; }
+void fk_gfx_settings_default(fk_gfx_settings *s) {
+    *s = (fk_gfx_settings){480, 270, 1, 2, 1024, 8, 8, true, true, true, false, true};
+    fk_gfx_set_image_size(s->width, s->height);
+}
+
+void fk_gfx_internal_size(const fk_gfx_settings *s, int win_w, int win_h, int *w, int *h) {
+    *w = s->width, *h = s->height;
+    if (!s->fill || win_w < s->width || win_h < s->height) return;
+    int scale = win_h / s->height;
+    *w = win_w / scale > 3840 ? 3840 : win_w / scale;
+    *h = win_h / scale;
+}
+
+void fk_gfx_image_size(int *w, int *h) { *w = image_size[0], *h = image_size[1]; }
+void fk_gfx_set_image_size(int w, int h) { image_size[0] = w, image_size[1] = h; }
 
 fk_gfx_settings *fk_gfx_settings_current(void) { return &settings; }
 

@@ -2,23 +2,26 @@
    supersample filter, overlay and the integer upscale to the window. */
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "core/mat4.h"
 #include "gfx/frame.h"
 #include "gfx/gfx.h"
 #include "gfx/gl.h"
+#include "assets/vfs.h"
 #include "gfx/shadow.h"
 #include "platform/platform.h"
+#include "stb_image.h"
 
 #define BLOOM_LEVELS 4
 #define LUM_W 64
 #define LUM_H 32
 #define LUM_LOD 6.0f /* the 1x1 mip level of the 64x32 luminance target */
 
-enum { P_GBUFFER, P_SHADOW, P_SSAO, P_BLUR, P_LIGHT, P_BRIGHT, P_DOWN, P_UP, P_LUM, P_EXPOSURE, P_POST, P_OVERLAY, P_COUNT };
-static const char *const program_files[P_COUNT] = {"gbuffer", "shadow", "ssao",     "blur",     "lighting", "bloom",
-                                                   "bloom",   "bloom",  "luminance", "exposure", "post",     "flat"};
+enum { P_GBUFFER, P_SHADOW, P_SSAO, P_BLUR, P_LIGHT, P_BRIGHT, P_DOWN, P_UP, P_LUM, P_EXPOSURE, P_POST, P_OVERLAY, P_TAA, P_SPRITE, P_COUNT };
+static const char *const program_files[P_COUNT] = {"gbuffer", "shadow", "ssao",     "blur",     "lighting", "bloom", "bloom",
+                                                   "bloom",   "luminance", "exposure", "post", "flat", "taa", "sprite"};
 static const char *const program_defines[P_COUNT] = {
     "",
     "",
@@ -31,11 +34,19 @@ static const char *const program_defines[P_COUNT] = {
     "#define FULLSCREEN\n",
     "#define FULLSCREEN\n",
     "#define FULLSCREEN\n",
+    "",
+    "#define FULLSCREEN\n",
     ""};
 
 static struct {
     bool hdr_supported;
-    GLuint vao, white, programs[P_COUNT];
+    GLuint vao, white, font, sprite_vao, sprite_vbo, programs[P_COUNT]; /* the first six survive reconfiguration */
+    char renderer[128];
+    GLuint history[2], fb_history[2]; /* temporal anti-aliasing */
+    int history_index, frame_index;
+    bool history_valid;
+    float prev_view_proj[16];
+    int w, h; /* internal image size */
     GLuint g_base, g_normal, g_emission, g_depth, fb_gbuffer;
     GLuint shadow, fb_shadow;
     GLuint ao[2], fb_ao[2];
@@ -85,16 +96,20 @@ static void release(void) {
         if (R.programs[i]) gl.DeleteProgram(R.programs[i]);
     GLuint textures[] = {R.g_base,      R.g_normal, R.g_emission,  R.g_depth,     R.shadow,   R.ao[0],    R.ao[1],
                          R.light,       R.bloom[0], R.bloom[1],    R.bloom[2],    R.bloom[3], R.lum,      R.exposure[0],
-                         R.exposure[1], R.final_ss, R.final};
+                         R.exposure[1], R.final_ss, R.final, R.history[0], R.history[1]};
     GLuint fbs[] = {R.fb_gbuffer, R.fb_shadow,   R.fb_ao[0],       R.fb_ao[1],       R.fb_light,    R.fb_bloom[0],
                     R.fb_bloom[1], R.fb_bloom[2], R.fb_bloom[3],    R.fb_lum,         R.fb_exposure[0],
-                    R.fb_exposure[1], R.fb_final_ss, R.fb_final};
+                    R.fb_exposure[1], R.fb_final_ss, R.fb_final, R.fb_history[0], R.fb_history[1]};
     gl.DeleteTextures((GLsizei)(sizeof textures / sizeof *textures), textures);
     gl.DeleteFramebuffers((GLsizei)(sizeof fbs / sizeof *fbs), fbs);
     bool hdr_supported = R.hdr_supported;
-    GLuint vao = R.vao, white = R.white;
+    GLuint vao = R.vao, white = R.white, font = R.font, sprite_vao = R.sprite_vao, sprite_vbo = R.sprite_vbo;
+    char renderer[sizeof R.renderer];
+    memcpy(renderer, R.renderer, sizeof renderer);
     memset(&R, 0, sizeof R);
-    R.hdr_supported = hdr_supported, R.vao = vao, R.white = white;
+    R.hdr_supported = hdr_supported, R.vao = vao, R.white = white, R.font = font;
+    R.sprite_vao = sprite_vao, R.sprite_vbo = sprite_vbo;
+    memcpy(R.renderer, renderer, sizeof renderer);
 }
 
 bool fk_gfx_configure(void) {
@@ -102,7 +117,9 @@ bool fk_gfx_configure(void) {
     if (!R.hdr_supported) current->hdr = false; /* no float render targets: the LDR fallback */
     release();
     R.s = *current;
-    int w = R.s.width, h = R.s.height;
+    int w, h;
+    fk_gfx_image_size(&w, &h);
+    R.w = w, R.h = h;
     R.sw = w * R.s.supersample, R.sh = h * R.s.supersample;
 
     char defines[256], all[512];
@@ -150,6 +167,12 @@ bool fk_gfx_configure(void) {
     R.light = R.s.hdr ? texture(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT, R.sw, R.sh, GL_LINEAR)
                       : texture(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, R.sw, R.sh, GL_LINEAR);
     R.fb_light = framebuffer(1, &R.light, 0);
+    if (R.s.taa)
+        for (int i = 0; i < 2; i++) {
+            R.history[i] = R.s.hdr ? texture(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT, R.sw, R.sh, GL_LINEAR)
+                                   : texture(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, R.sw, R.sh, GL_LINEAR);
+            R.fb_history[i] = framebuffer(1, &R.history[i], 0);
+        }
     if (R.s.hdr) {
         for (int i = 0; R.s.bloom && i < BLOOM_LEVELS; i++) {
             R.bloom_w[i] = R.sw >> (i + 1) > 0 ? R.sw >> (i + 1) : 1;
@@ -188,13 +211,46 @@ bool fk_gfx_init(void) {
     gl.BindTexture(GL_TEXTURE_2D, R.white);
     gl.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
     gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    const char *renderer = (const char *)gl.GetString(GL_RENDERER);
+    snprintf(R.renderer, sizeof R.renderer, "%s", renderer ? renderer : "unknown");
+
+    /* The 8x8 font atlas for text and rectangles. */
+    char path[1024];
+    size_t size;
+    unsigned char *png = fk_vfs_read("fonts/font8x8.png", &size);
+    int fw = 0, fh = 0, n;
+    unsigned char *pixels = png ? stbi_load_from_memory(png, (int)size, &fw, &fh, &n, 4) : NULL;
+    fk_platform_free(png);
+    if (!pixels) {
+        fk_log("cannot load the font %s", fk_vfs_path("fonts/font8x8.png", path, sizeof path));
+        return false;
+    }
+    gl.GenTextures(1, &R.font);
+    gl.BindTexture(GL_TEXTURE_2D, R.font);
+    gl.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, fw, fh, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    stbi_image_free(pixels);
+    gl.GenVertexArrays(1, &R.sprite_vao);
+    gl.GenBuffers(1, &R.sprite_vbo);
+    gl.BindVertexArray(R.sprite_vao);
+    gl.BindBuffer(GL_ARRAY_BUFFER, R.sprite_vbo);
+    for (GLuint a = 0; a < 2; a++) { /* x, y, u, v; r, g, b, a */
+        gl.VertexAttribPointer(a, 4, GL_FLOAT, GL_FALSE, 8 * (GLsizei)sizeof(float), (const void *)(a * 4 * sizeof(float)));
+        gl.EnableVertexAttribArray(a);
+    }
+    gl.BindVertexArray(0);
     return fk_gfx_configure();
 }
 
+const char *fk_gfx_renderer(void) { return R.renderer; }
+
 void fk_gfx_shutdown(void) {
     release();
-    gl.DeleteTextures(1, &R.white);
-    gl.DeleteVertexArrays(1, &R.vao);
+    GLuint textures[2] = {R.white, R.font}, vaos[2] = {R.vao, R.sprite_vao};
+    gl.DeleteTextures(2, textures);
+    gl.DeleteVertexArrays(2, vaos);
+    gl.DeleteBuffers(1, &R.sprite_vbo);
     memset(&R, 0, sizeof R);
 }
 
@@ -234,14 +290,30 @@ static void draw_meshes(GLuint program, bool materials) {
 }
 
 void fk_gfx_render(double dt, int window_w, int window_h) {
+    int want_w, want_h;
+    fk_gfx_internal_size(fk_gfx_settings_current(), window_w, window_h, &want_w, &want_h);
+    if (want_w != R.w || want_h != R.h) { /* the window changed shape: new targets */
+        fk_gfx_set_image_size(want_w, want_h);
+        fk_gfx_configure();
+    }
     fk_frame *f = fk_frame_get();
-    float view_proj[16], inv_vp[16], inv_proj[16], inv_view[16];
-    fk_mat4_mul(view_proj, f->projection, f->view);
-    if (!fk_mat4_inverse(inv_vp, view_proj)) fk_mat4_identity(inv_vp);
-    if (!fk_mat4_inverse(inv_proj, f->projection)) fk_mat4_identity(inv_proj);
-    if (!fk_mat4_inverse(inv_view, f->view)) fk_mat4_identity(inv_view);
     const float *p = f->projection;
     bool perspective = p[11] == -1.0f;
+    /* TAA: a different sub-pixel offset every frame (8 Halton points), for everything but the shadows. */
+    float proj[16], plain_vp[16], plain_inv_vp[16], view_proj[16], inv_vp[16], inv_proj[16], inv_view[16];
+    memcpy(proj, p, sizeof proj);
+    if (R.s.taa) {
+        int k = R.frame_index % 8 + 1;
+        proj[perspective ? 8 : 12] += fk_halton(k, 2) * 2.0f / (float)R.sw;
+        proj[perspective ? 9 : 13] += fk_halton(k, 3) * 2.0f / (float)R.sh;
+    }
+    R.frame_index++;
+    fk_mat4_mul(plain_vp, f->projection, f->view);
+    fk_mat4_mul(view_proj, proj, f->view);
+    if (!fk_mat4_inverse(plain_inv_vp, plain_vp)) fk_mat4_identity(plain_inv_vp);
+    if (!fk_mat4_inverse(inv_vp, view_proj)) fk_mat4_identity(inv_vp);
+    if (!fk_mat4_inverse(inv_proj, proj)) fk_mat4_identity(inv_proj);
+    if (!fk_mat4_inverse(inv_view, f->view)) fk_mat4_identity(inv_view);
     float z_near = perspective ? p[14] / (p[10] - 1.0f) : 0.1f, z_far = perspective ? p[14] / (p[10] + 1.0f) : 100.0f;
     GLuint program;
 
@@ -257,7 +329,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         program = use(P_SHADOW);
         for (int c = 0; c < nc; c++) {
             float d0 = c ? cascades[c - 1].split : z_near;
-            fk_shadow_cascade(&cascades[c], inv_vp, z_near, z_far, d0, fk_shadow_split(c, nc, z_near, z_far), f->sun_dir, R.s.shadow_size);
+            fk_shadow_cascade(&cascades[c], plain_inv_vp, z_near, z_far, d0, fk_shadow_split(c, nc, z_near, z_far), f->sun_dir, R.s.shadow_size);
             memcpy(&cascade_vp[c * 16], cascades[c].view_proj, sizeof cascades[c].view_proj);
             splits[c] = cascades[c].split;
             texels[c] = cascades[c].texel;
@@ -287,7 +359,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         sampler(program, "u_depth", 0, GL_TEXTURE_2D, R.g_depth);
         sampler(program, "u_normal", 1, GL_TEXTURE_2D, R.g_normal);
         gl.UniformMatrix4fv(LOC("u_inv_proj"), 1, GL_FALSE, inv_proj);
-        gl.UniformMatrix4fv(LOC("u_proj"), 1, GL_FALSE, f->projection);
+        gl.UniformMatrix4fv(LOC("u_proj"), 1, GL_FALSE, proj);
         gl.UniformMatrix4fv(LOC("u_view"), 1, GL_FALSE, f->view);
         fullscreen();
         target(R.fb_ao[1], R.sw, R.sh);
@@ -334,11 +406,31 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     }
     fullscreen();
 
+    /* 4b. TAA: blend with the reprojected, neighbourhood-clamped history. */
+    GLuint scene = R.light;
+    if (R.s.taa) {
+        int next = 1 - R.history_index;
+        target(R.fb_history[next], R.sw, R.sh);
+        program = use(P_TAA);
+        sampler(program, "u_current", 0, GL_TEXTURE_2D, R.light);
+        sampler(program, "u_history", 1, GL_TEXTURE_2D, R.history[R.history_index]);
+        sampler(program, "u_depth", 2, GL_TEXTURE_2D, R.g_depth);
+        gl.UniformMatrix4fv(LOC("u_inv_view_proj"), 1, GL_FALSE, inv_vp);
+        gl.UniformMatrix4fv(LOC("u_prev_view_proj"), 1, GL_FALSE, R.prev_view_proj);
+        gl.Uniform2f(LOC("u_texel"), 1.0f / (float)R.sw, 1.0f / (float)R.sh);
+        gl.Uniform1f(LOC("u_valid"), R.history_valid ? 1.0f : 0.0f);
+        fullscreen();
+        R.history_index = next;
+        R.history_valid = true;
+        scene = R.history[next];
+    }
+    memcpy(R.prev_view_proj, plain_vp, sizeof plain_vp);
+
     /* 5. HDR: average luminance, eye adaptation, bloom. */
     if (R.s.hdr) {
         target(R.fb_lum, LUM_W, LUM_H);
         program = use(P_LUM);
-        sampler(program, "u_input", 0, GL_TEXTURE_2D, R.light);
+        sampler(program, "u_input", 0, GL_TEXTURE_2D, scene);
         fullscreen();
         gl.BindTexture(GL_TEXTURE_2D, R.lum);
         gl.GenerateMipmap(GL_TEXTURE_2D);
@@ -357,7 +449,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
             for (int i = 0; i < BLOOM_LEVELS; i++) {
                 target(R.fb_bloom[i], R.bloom_w[i], R.bloom_h[i]);
                 program = use(i ? P_DOWN : P_BRIGHT);
-                sampler(program, "u_input", 0, GL_TEXTURE_2D, i ? R.bloom[i - 1] : R.light);
+                sampler(program, "u_input", 0, GL_TEXTURE_2D, i ? R.bloom[i - 1] : scene);
                 sampler(program, "u_exposure", 1, GL_TEXTURE_2D, R.exposure[R.exposure_index]);
                 gl.Uniform2f(LOC("u_texel"), 1.0f / (float)(i ? R.bloom_w[i - 1] : R.sw), 1.0f / (float)(i ? R.bloom_h[i - 1] : R.sh));
                 fullscreen();
@@ -376,11 +468,13 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     }
 
     /* 6. Post: exposure, bloom, tone curve, grading, sRGB, dither. */
-    int w = R.s.width, h = R.s.height;
+    int w = R.w, h = R.h;
     if (R.s.supersample > 1) target(R.fb_final_ss, R.sw, R.sh);
     else target(R.fb_final, w, h);
     program = use(P_POST);
-    sampler(program, "u_input", 0, GL_TEXTURE_2D, R.light);
+    sampler(program, "u_input", 0, GL_TEXTURE_2D, scene);
+    gl.Uniform1i(LOC("u_palette_size"), f->palette_size);
+    if (f->palette_size) gl.Uniform3fv(LOC("u_palette"), f->palette_size, &f->palette[0][0]);
     sampler(program, "u_bloom", 1, GL_TEXTURE_2D, R.s.hdr && R.s.bloom ? R.bloom[0] : R.white);
     sampler(program, "u_exposure", 2, GL_TEXTURE_2D, R.s.hdr ? R.exposure[R.exposure_index] : R.white);
     gl.Uniform1f(LOC("u_contrast"), f->contrast);
@@ -395,13 +489,50 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         gl.BlitFramebuffer(0, 0, R.sw, R.sh, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
     }
 
-    /* 8. Overlay: unlit, in draw order, on the finished image. */
+    /* 8. Overlay: meshes and sprite runs (text, rectangles), unlit, in draw order, on the finished image. */
     target(R.fb_final, w, h);
-    program = use(P_OVERLAY);
+    if (f->nsprites) { /* two triangles per sprite: x, y, u, v, r, g, b, a per vertex */
+        static float *vertices;
+        static int capacity;
+        if (f->nsprites > capacity) {
+            capacity = f->nsprites * 2;
+            float *grown = realloc(vertices, (size_t)capacity * 6 * 8 * sizeof(float));
+            if (!grown) abort(); /* out of memory while drawing: nothing sensible to continue with */
+            vertices = grown;
+        }
+        for (int i = 0; i < f->nsprites; i++) {
+            const fk_sprite *q = &f->sprites[i];
+            const float corners[6][4] = {{q->x, q->y, q->u0, q->v0},
+                                         {q->x + q->w, q->y, q->u1, q->v0},
+                                         {q->x + q->w, q->y + q->h, q->u1, q->v1},
+                                         {q->x, q->y, q->u0, q->v0},
+                                         {q->x + q->w, q->y + q->h, q->u1, q->v1},
+                                         {q->x, q->y + q->h, q->u0, q->v1}};
+            for (int c = 0; c < 6; c++) {
+                memcpy(&vertices[(i * 6 + c) * 8], corners[c], 4 * sizeof(float));
+                memcpy(&vertices[(i * 6 + c) * 8 + 4], q->color, 4 * sizeof(float));
+            }
+        }
+        gl.BindBuffer(GL_ARRAY_BUFFER, R.sprite_vbo);
+        gl.BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)f->nsprites * 6 * 8 * (GLsizeiptr)sizeof(float), vertices, GL_STREAM_DRAW);
+    }
+    gl.BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     for (int i = 0; i < f->noverlays; i++) {
-        gl.UniformMatrix4fv(LOC("u_mvp"), 1, GL_FALSE, f->overlays[i].matrix);
-        gl.BindVertexArray(f->overlays[i].mesh->vao);
-        gl.DrawElements(GL_TRIANGLES, f->overlays[i].mesh->count, GL_UNSIGNED_INT, (const void *)0);
+        const fk_overlay *o = &f->overlays[i];
+        if (o->mesh) {
+            program = use(P_OVERLAY);
+            gl.UniformMatrix4fv(LOC("u_mvp"), 1, GL_FALSE, o->matrix);
+            gl.BindVertexArray(o->mesh->vao);
+            gl.DrawElements(GL_TRIANGLES, o->mesh->count, GL_UNSIGNED_INT, (const void *)0);
+        } else {
+            program = use(P_SPRITE);
+            sampler(program, "u_font", 0, GL_TEXTURE_2D, R.font);
+            gl.Uniform2f(LOC("u_size"), (float)w, (float)h);
+            gl.Enable(GL_BLEND);
+            gl.BindVertexArray(R.sprite_vao);
+            gl.DrawArrays(GL_TRIANGLES, o->first * 6, o->count * 6);
+            gl.Disable(GL_BLEND);
+        }
     }
 
     /* 9. The window: black bars around the integer-scaled image. */
@@ -411,6 +542,9 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     fk_gfx_clear_window(0, 0, 0);
     gl.BindFramebuffer(GL_READ_FRAMEBUFFER, R.fb_final);
     gl.BlitFramebuffer(0, 0, w, h, rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3], GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    /* Leave nothing of ours bound: Chrome stops showing a WebGL canvas once a texture of the bound read
+       framebuffer is deleted, which is what reconfiguring does. */
+    gl.BindFramebuffer(GL_FRAMEBUFFER, 0);
     gl.BindVertexArray(0);
 }
 
@@ -424,7 +558,7 @@ void fk_gfx_clear_window(float r, float g, float b) {
 }
 
 void fk_gfx_read_pixels(uint8_t *rgba) {
-    int w = R.s.width, h = R.s.height;
+    int w = R.w, h = R.h;
     gl.BindFramebuffer(GL_READ_FRAMEBUFFER, R.fb_final);
     gl.PixelStorei(GL_PACK_ALIGNMENT, 1);
     gl.ReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba);

@@ -19,9 +19,10 @@ explored. Every planet is worth going down to, and any planet can kill you.
 
 ## Status
 
-Milestone M0 (build, test and deployment pipeline) is done: the engine opens a window, runs the Lua
-game from `data/` and shows a spinning placeholder Jump Ship, on Windows, Linux, macOS and in the
-browser. Next is M1, the engine core (see the plan).
+Milestone M0 (build, test and deployment pipeline) is done. M1, the engine core, is under way: a fixed-step
+deterministic simulation, input actions with touch controls, a deferred PBR renderer with shadows, ambient
+occlusion, bloom and eye adaptation at a low internal resolution, and a graphics menu with four detail
+levels. The scene is still a placeholder stage with a spinning Jump Ship.
 
 - [Game concept](docs/CONCEPT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
@@ -33,6 +34,11 @@ browser. Next is M1, the engine core (see the plan).
 |---|---|---|---|
 | Turn the Jump Ship | A / D or ← / → | left stick | stick on the left half of the screen |
 | Boost | Space | A | button on the right |
+| Settings > Graphics | Escape | Start | button at the top right |
+| In the menu: choose, change, close | ↑ / ↓, ← / →, Escape (or the mouse) | d-pad or stick, A, B | tap a row, tap left or right of a value |
+
+The graphics settings are saved (in the browser in its local storage) and start on a level that suits the
+device: Low on phones and software renderers, Medium in desktop browsers, High elsewhere.
 
 ## Technology
 

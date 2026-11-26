@@ -28,3 +28,7 @@ int fk_script_control(lua_State *L, int arg, int (*lookup)(const char *), const 
 void fk_lua_gfx_open(lua_State *L, bool rendering);
 /* Starts a frame's recording: forgets last frame's draws and the meshes kept alive for them. */
 void fk_script_frame_begin(lua_State *L);
+/* fk.storage (script/lua_storage.c): pushes the table. */
+void fk_lua_storage_open(lua_State *L);
+/* true (the default): stored values live in memory only, as test runs need; false: the user's files. */
+void fk_storage_memory(bool in_memory);

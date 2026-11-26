@@ -98,6 +98,22 @@ void fk_platform_message(const char *title, const char *text) {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, text, window);
 }
 
+const char *fk_platform_pref_path(void) {
+    static char *path;
+    if (!path) path = SDL_GetPrefPath("fukuruma", "fukuruma");
+    return path;
+}
+
+#ifdef __EMSCRIPTEN__
+bool fk_platform_web(void) { return true; }
+EM_JS(bool, fk_platform_phone, (void), { return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); });
+EM_JS(void, fk_platform_storage_sync, (void), { FS.syncfs(false, function(err) { if (err) console.warn('storage sync failed', err); }); });
+#else
+bool fk_platform_web(void) { return false; }
+bool fk_platform_phone(void) { return false; }
+void fk_platform_storage_sync(void) {}
+#endif
+
 #ifdef __EMSCRIPTEN__
 EM_JS(void, fk_platform_report, (const char *status, const char *message), {
     window.fukurumaResult = {status : UTF8ToString(status), message : UTF8ToString(message)};

@@ -1,0 +1,125 @@
+-- Graphics detail levels and options (graphics-settings spec). The levels change light, shadows and
+-- effects; every level renders the same models. Saved with fk.storage as "key=value" lines.
+local graphics = {}
+
+graphics.ORDER = { "low", "medium", "high", "ultra" }
+
+-- The rows a level controls. Changing one of them by hand makes the level "custom".
+local PRESETS = {
+  low = { shadows = 1, shadow_size = 1024, ao = 0, lights = 4, aa = "none" },
+  medium = { shadows = 2, shadow_size = 1024, ao = 6, lights = 8, aa = "taa" },
+  high = { shadows = 3, shadow_size = 2048, ao = 10, lights = 16, aa = "taa" },
+  ultra = { shadows = 4, shadow_size = 2048, ao = 16, lights = 32, aa = "ssaa" },
+}
+
+-- Allowed values of every stored setting.
+graphics.CHOICES = {
+  level = { "low", "medium", "high", "ultra", "custom" },
+  resolution = { "classic", "sharp", "fine" },
+  shadows = { 0, 1, 2, 3, 4 },
+  shadow_size = { 1024, 2048 },
+  ao = { 0, 6, 10, 16 },
+  lights = { 4, 8, 16, 32 },
+  aa = { "none", "taa", "ssaa" },
+  fill = { true, false },
+  dither = { true, false },
+  palette = { false, true },
+}
+
+graphics.RESOLUTIONS = {
+  classic = { width = 480, height = 270 },
+  sharp = { width = 640, height = 360 },
+  fine = { width = 960, height = 540 },
+}
+
+-- 32 colours for the palette mode: dusk, rust, steel and signal tones.
+graphics.PALETTE = {
+  { 0.04, 0.04, 0.08 }, { 0.1, 0.1, 0.18 }, { 0.18, 0.2, 0.32 }, { 0.28, 0.32, 0.5 }, { 0.4, 0.48, 0.7 },
+  { 0.58, 0.68, 0.86 }, { 0.82, 0.88, 0.96 }, { 1, 1, 1 }, { 0.16, 0.08, 0.06 }, { 0.3, 0.14, 0.08 },
+  { 0.46, 0.22, 0.1 }, { 0.62, 0.32, 0.14 }, { 0.78, 0.46, 0.2 }, { 0.9, 0.62, 0.3 }, { 0.98, 0.8, 0.5 },
+  { 1, 0.94, 0.76 }, { 0.22, 0.2, 0.18 }, { 0.36, 0.33, 0.3 }, { 0.52, 0.48, 0.44 }, { 0.68, 0.64, 0.6 },
+  { 0.12, 0.22, 0.14 }, { 0.22, 0.4, 0.22 }, { 0.4, 0.6, 0.3 }, { 0.66, 0.8, 0.42 }, { 0.5, 0.08, 0.1 },
+  { 0.8, 0.16, 0.14 }, { 1, 0.4, 0.22 }, { 1, 0.78, 0.2 }, { 0.06, 0.26, 0.36 }, { 0.12, 0.5, 0.6 },
+  { 0.4, 0.8, 0.84 }, { 0.6, 0.3, 0.6 },
+}
+
+local function index_of(list, value)
+  for i, v in ipairs(list) do
+    if v == value then return i end
+  end
+end
+
+-- Software renderers, phones and runs without a GPU start on Low, desktop browsers on Medium, the rest on High.
+function graphics.default_level(device)
+  local renderer = device.renderer:lower()
+  if renderer == "none" then return "low" end
+  for _, software in ipairs({ "llvmpipe", "swiftshader", "softpipe", "basic render" }) do
+    if renderer:find(software, 1, true) then return "low" end
+  end
+  if device.phone then return "low" end
+  return device.web and "medium" or "high"
+end
+
+function graphics.set_level(state, level)
+  for key, value in pairs(PRESETS[level]) do state[key] = value end
+  state.level = level
+end
+
+-- Changes one option; options that a level controls turn the level into "custom".
+function graphics.set(state, key, value)
+  state[key] = value
+  if PRESETS.low[key] ~= nil then state.level = "custom" end
+end
+
+function graphics.defaults(device)
+  local state = { resolution = "classic", fill = true, dither = true, palette = false }
+  graphics.set_level(state, graphics.default_level(device))
+  return state
+end
+
+function graphics.apply(state)
+  local resolution = graphics.RESOLUTIONS[state.resolution]
+  fk.gfx.configure({
+    width = resolution.width, height = resolution.height, fill = state.fill,
+    supersample = state.aa == "ssaa" and 2 or 1, taa = state.aa == "taa",
+    shadow_cascades = state.shadows, shadow_size = state.shadow_size, ao_samples = state.ao,
+    max_lights = state.lights, dither = state.dither,
+  })
+  fk.gfx.palette(state.palette and graphics.PALETTE or nil)
+end
+
+function graphics.encode(state)
+  local keys, lines = {}, {}
+  for key in pairs(graphics.CHOICES) do keys[#keys + 1] = key end
+  table.sort(keys)
+  for _, key in ipairs(keys) do lines[#lines + 1] = key .. "=" .. tostring(state[key]) end
+  return table.concat(lines, "\n") .. "\n"
+end
+
+-- Reads stored lines over a copy of base; unknown keys and values that are not allowed are ignored.
+function graphics.decode(text, base)
+  local state = {}
+  for key, value in pairs(base) do state[key] = value end
+  for key, raw in text:gmatch("([%w_]+)=([^\n]*)") do
+    for _, choice in ipairs(graphics.CHOICES[key] or {}) do
+      if tostring(choice) == raw then state[key] = choice end
+    end
+  end
+  return state
+end
+
+function graphics.save(state)
+  fk.storage.save("graphics", graphics.encode(state))
+end
+
+-- The stored settings, or the device's defaults (stored right away, so they stay the same next time).
+function graphics.load(device)
+  local text = fk.storage.load("graphics")
+  if text then return graphics.decode(text, graphics.defaults(device)) end
+  local state = graphics.defaults(device)
+  graphics.save(state)
+  return state
+end
+
+graphics.index_of = index_of
+return graphics

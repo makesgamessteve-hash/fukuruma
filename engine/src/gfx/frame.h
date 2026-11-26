@@ -15,6 +15,8 @@ typedef struct {
     int ao_samples;      /* 0 to 16 */
     int max_lights;      /* 0 to FK_MAX_LIGHTS */
     bool bloom, hdr, dither;
+    bool taa;  /* temporal anti-aliasing */
+    bool fill; /* the internal image takes the window's shape; height is the target */
 } fk_gfx_settings;
 
 typedef struct {
@@ -27,9 +29,18 @@ typedef struct {
     fk_material material;
 } fk_draw;
 
+#define FK_MAX_PALETTE 64
+
+/* A textured quad of the sprite batch (text and rectangles), in internal-image pixels. */
+typedef struct {
+    float x, y, w, h, u0, v0, u1, v1, color[4];
+} fk_sprite;
+
+/* Overlay items in draw order: a mesh, or a run of sprites (mesh == NULL). */
 typedef struct {
     const fk_mesh *mesh;
     float matrix[16];
+    int first, count;
 } fk_overlay;
 
 typedef struct {
@@ -48,6 +59,10 @@ typedef struct {
     int ndraws, draw_cap;
     fk_overlay *overlays;
     int noverlays, overlay_cap;
+    fk_sprite *sprites;
+    int nsprites, sprite_cap;
+    float palette[FK_MAX_PALETTE][3]; /* sRGB */
+    int palette_size;                 /* 0: palette mode off */
 } fk_frame;
 
 fk_frame *fk_frame_get(void);
@@ -56,11 +71,23 @@ void fk_frame_begin(void); /* empties draws, overlays and point lights for a new
 void fk_frame_draw(const fk_mesh *mesh, const float model[16], const fk_material *material);
 void fk_frame_overlay(const fk_mesh *mesh, const float matrix[16]);
 void fk_frame_light(const fk_point_light *light); /* lights beyond FK_MAX_LIGHTS are ignored */
+/* Text in the 8x8 font at whole pixels; characters outside printable ASCII are drawn as '?'. */
+void fk_frame_text(float x, float y, const char *text, const float color[4]);
+void fk_frame_rect(float x, float y, float w, float h, const float color[4]);
+/* Element index of the 2, 3 Halton sequences, centred on 0 (-0.5..0.5): sub-pixel jitter for TAA. */
+float fk_halton(int index, int base);
 float fk_srgb_to_linear(float c);
 
 void fk_gfx_settings_default(fk_gfx_settings *s);
 fk_gfx_settings *fk_gfx_settings_current(void);
 const char *fk_gfx_settings_check(const fk_gfx_settings *s); /* NULL when valid, else the bad field's name */
+
+/* The internal image size for a window: the configured size, or with fill the window divided by
+   floor(window_h / height) when the window is at least as large as the configured size. */
+void fk_gfx_internal_size(const fk_gfx_settings *s, int win_w, int win_h, int *w, int *h);
+/* The internal image size in use (set by configure and by the pipeline when filling the window). */
+void fk_gfx_image_size(int *w, int *h);
+void fk_gfx_set_image_size(int w, int h);
 
 /* The integer-scaled, centred rectangle (x, y, w, h in window pixels) for an image in a window. */
 void fk_gfx_upscale_rect(int win_w, int win_h, int img_w, int img_h, int rect[4]);

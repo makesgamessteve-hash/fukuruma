@@ -83,6 +83,54 @@ await test('touch input reaches the game on a phone', async (page) => {
   assert(result && result.status === 'passed', `touch scenario: ${JSON.stringify(result)}`);
 }, { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
 
+// The stored graphics settings as IndexedDB holds them (Emscripten's IDBFS keeps files in FILE_DATA).
+const storedGraphics = (page) => page.evaluate(() => new Promise((resolve) => {
+  const open = indexedDB.open('/libsdl');
+  open.onerror = () => resolve(null);
+  open.onsuccess = () => {
+    const db = open.result;
+    if (!db.objectStoreNames.contains('FILE_DATA')) return resolve(null);
+    const all = db.transaction('FILE_DATA').objectStore('FILE_DATA').openCursor();
+    let text = null;
+    all.onsuccess = () => {
+      const cursor = all.result;
+      if (!cursor) return resolve(text);
+      if (String(cursor.key).endsWith('/graphics.txt')) text = new TextDecoder().decode(cursor.value.contents);
+      cursor.continue();
+    };
+  };
+}));
+const waitForStored = async (page, pattern) => {
+  for (let i = 0; i < 100; i++) {
+    const text = await storedGraphics(page);
+    if (text && pattern.test(text)) return text;
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`stored settings never matched ${pattern}: ${await storedGraphics(page)}`);
+};
+
+await test('the menu opens with a tap and stored settings survive a reload', async (page) => {
+  await page.goto(base);
+  await page.waitForFunction(() => document.getElementById('message').hidden, null, { timeout: 60000 });
+  await waitForStored(page, /level=low/); // SwiftShader is a software renderer: Low, stored on the first start
+  const box = await page.locator('canvas').boundingBox();
+  await page.touchscreen.tap(box.x + box.width * 0.94, box.y + box.height * 0.1); // the touch menu button
+  await page.waitForTimeout(300);
+  await page.keyboard.down('ArrowRight'); // Detail level: Low -> Medium
+  await page.waitForTimeout(200);
+  await page.keyboard.up('ArrowRight');
+  await waitForStored(page, /level=medium/);
+  // The game keeps showing new frames after the renderer was rebuilt for the new level.
+  const first = await page.locator('canvas').screenshot();
+  await page.waitForTimeout(500);
+  assert(!first.equals(await page.locator('canvas').screenshot()), 'the picture froze after the settings changed');
+  await page.reload();
+  await page.waitForFunction(() => document.getElementById('message').hidden, null, { timeout: 60000 });
+  await page.waitForTimeout(1000); // a failed load would store the defaults again by now
+  const text = await storedGraphics(page);
+  assert(/level=medium/.test(text), `after the reload: ${text}`);
+}, { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+
 await test('browsers without WebGL 2 get a message', async (page) => {
   await page.addInitScript(() => {
     const getContext = HTMLCanvasElement.prototype.getContext;

@@ -64,10 +64,25 @@ return {
     fk.gfx.grade({})
     fails(function() fk.gfx.grade({ contrast = 9 }) end, "'contrast'")
   end,
+  ["text, rectangles and palette"] = function()
+    fk.gfx.text(8, 8, "FUKURUMA", { 1, 0.8, 0.4 })
+    fk.gfx.text(8, 20, "white by default")
+    fk.gfx.rect(4, 4, 100, 30, { 0, 0, 0, 0.5 })
+    fails(function() fk.gfx.rect(0, 0, 1, 1, { 1, 1 }) end, "3 or 4 numbers")
+    fails(function() fk.gfx.text(0, 0, "x", { 2, 0, 0 }) end, "colour values must be from 0 to 1")
+    fk.gfx.palette({ { 0, 0, 0 }, { 1, 1, 1 } })
+    fk.gfx.palette(nil)
+    fails(function() fk.gfx.palette({}) end, "give 1 to 64 colours")
+  end,
+  ["device"] = function()
+    local d = fk.gfx.device()
+    assert(d.renderer == "none" and d.web == false and d.phone == false)
+  end,
   ["configure and settings"] = function()
     local before = fk.gfx.settings()
     fk.gfx.configure({ width = 640, height = 360, supersample = 2, shadow_cascades = 3, shadow_size = 512,
-      ao_samples = 4, max_lights = 4, bloom = false, hdr = true, dither = false })
+      ao_samples = 4, max_lights = 4, bloom = false, hdr = true, dither = false, taa = true, fill = false })
+    assert(fk.gfx.settings().taa and not fk.gfx.settings().fill)
     local s = fk.gfx.settings()
     assert(s.width == 640 and s.supersample == 2 and s.shadow_cascades == 3 and s.bloom == false and s.dither == false)
     local w, h = fk.gfx.size()

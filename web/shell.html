@@ -7,8 +7,8 @@
   <style>
     html, body { margin: 0; height: 100%; background: #05060f; color: #c9d1e0; font: 16px/1.5 system-ui, sans-serif; overflow: hidden; }
     main { display: flex; height: 100%; align-items: center; justify-content: center; }
-    /* 16:9, as large as the window allows */
-    canvas { display: block; width: min(100vw, 177.78vh) !important; height: min(56.25vw, 100vh) !important; image-rendering: pixelated; }
+    /* The whole window: the game fills it or adds black bars itself (the Fill window setting). */
+    canvas { display: block; width: 100vw !important; height: 100vh !important; image-rendering: pixelated; }
     #message { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 36em; padding: 1em; text-align: center; }
     #message[hidden] { display: none; }
     a { color: #f0a040; }

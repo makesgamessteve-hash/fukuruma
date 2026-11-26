@@ -4,6 +4,12 @@
 #include "platform/platform.h"
 
 #define SYNTH_WINDOW_NS 500000000ull /* mouse events this soon after a touch come from the touch */
+#define MAX_FRESH 32
+
+typedef struct {
+    uint32_t down_type;
+    int64_t code;
+} press;
 
 static struct {
     bool keys[SDL_SCANCODE_COUNT];
@@ -15,6 +21,11 @@ static struct {
     int ntouches;
     const char *device;
     uint64_t last_touch_ns;
+    /* A press and release between two frames would never be seen, so such releases wait for the frame end. */
+    press fresh[MAX_FRESH]; /* controls pressed since the last frame end */
+    int nfresh;
+    SDL_Event late[MAX_FRESH]; /* releases that wait */
+    int nlate;
 } in = {.device = "keyboard"};
 
 void fk_input_reset(void) {
@@ -41,10 +52,53 @@ static int find_touch(int64_t id) {
     return -1;
 }
 
+/* Which control a press or release event is about; false for other events. */
+static bool press_of(const SDL_Event *e, press *p) {
+    switch (e->type) {
+    case SDL_EVENT_KEY_DOWN:
+    case SDL_EVENT_KEY_UP:
+        *p = (press){SDL_EVENT_KEY_DOWN, e->key.scancode};
+        return true;
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        *p = (press){SDL_EVENT_MOUSE_BUTTON_DOWN, e->button.button};
+        return true;
+    case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+    case SDL_EVENT_GAMEPAD_BUTTON_UP:
+        *p = (press){SDL_EVENT_GAMEPAD_BUTTON_DOWN, e->gbutton.button};
+        return true;
+    case SDL_EVENT_FINGER_DOWN:
+    case SDL_EVENT_FINGER_UP:
+        *p = (press){SDL_EVENT_FINGER_DOWN, (int64_t)e->tfinger.fingerID};
+        return true;
+    default:
+        return false;
+    }
+}
+
+/* true: e is a release that waits for the frame end. A new press drops a waiting release of the same control. */
+static bool hold_release(const SDL_Event *e) {
+    press p, q;
+    if (!press_of(e, &p)) return false;
+    if (e->type == p.down_type) {
+        for (int i = 0; i < in.nlate; i++)
+            if (press_of(&in.late[i], &q) && q.down_type == p.down_type && q.code == p.code) in.late[i--] = in.late[--in.nlate];
+        if (in.nfresh < MAX_FRESH) in.fresh[in.nfresh++] = p;
+        return false;
+    }
+    for (int i = 0; i < in.nfresh; i++)
+        if (in.fresh[i].down_type == p.down_type && in.fresh[i].code == p.code && in.nlate < MAX_FRESH) {
+            in.late[in.nlate++] = *e;
+            return true;
+        }
+    return false;
+}
+
 void fk_input_event(const void *sdl_event) {
     const SDL_Event *e = sdl_event;
     float w, h;
     int t;
+    if (hold_release(e)) return;
     switch (e->type) {
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP:
@@ -103,7 +157,15 @@ void fk_input_event(const void *sdl_event) {
     }
 }
 
-void fk_input_frame_end(void) { in.mdx = in.mdy = 0; }
+void fk_input_frame_end(void) {
+    in.mdx = in.mdy = 0;
+    in.nfresh = 0;
+    SDL_Event late[MAX_FRESH];
+    int n = in.nlate;
+    SDL_memcpy(late, in.late, sizeof late);
+    in.nlate = 0;
+    for (int i = 0; i < n; i++) fk_input_event(&late[i]);
+}
 
 int fk_input_key_code(const char *name) {
     SDL_Scancode code = SDL_GetScancodeFromName(name);

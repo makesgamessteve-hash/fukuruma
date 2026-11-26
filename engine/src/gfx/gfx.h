@@ -17,6 +17,8 @@ bool fk_gfx_configure(void);
 /* Renders the recorded frame into the internal image and shows it in the window. dt: seconds since the last frame. */
 void fk_gfx_render(double dt, int window_w, int window_h);
 void fk_gfx_clear_window(float r, float g, float b);
+/* The GL renderer's name, e.g. "llvmpipe (LLVM 20.1, 256 bits)" (empty before fk_gfx_init). */
+const char *fk_gfx_renderer(void);
 /* Reads the finished internal image (settings width x height) as RGBA, top row first. */
 void fk_gfx_read_pixels(uint8_t *rgba);
 /* vertices: x, y, z, r, g, b, nx, ny, nz per vertex; indices: triangles, 0-based. */

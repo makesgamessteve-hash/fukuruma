@@ -3,8 +3,16 @@ return scenario {
   seed = 1,
   timeout_s = 30,
   run = function(t)
+    -- independent of the detail level the game starts with
+    fk.gfx.configure({ shadow_cascades = 2, shadow_size = 1024, ao_samples = 8, max_lights = 8, taa = false })
     t.frames(60)
     t.screenshot("showcase_hdr")
+
+    fk.gfx.configure({ taa = true })
+    t.frames(30)
+    t.expect(fk.gfx.settings().taa, "TAA is on")
+    t.screenshot("showcase_taa")
+    fk.gfx.configure({ taa = false })
 
     fk.gfx.configure({ supersample = 2 })
     t.frames(30)

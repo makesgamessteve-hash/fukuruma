@@ -162,3 +162,59 @@ UTEST(mesh, normals) {
     EXPECT_NEAR(v[1 * 9 + 7], 1.0f, 1e-6);
     EXPECT_NEAR(v[4 * 9 + 7], 1.0f, 1e-6); /* degenerate: up rather than zero */
 }
+
+UTEST(frame, text_rects_and_runs) {
+    fk_frame_reset();
+    fk_frame *f = fk_frame_get();
+    const float white[4] = {1, 1, 1, 1};
+    fk_frame_text(8, 8, "Gr\xc3\xbc\xc3\x9f" "e A\nB", white); /* "Grüße A", a line break, "B" */
+    EXPECT_EQ(f->nsprites, 7);              /* G r ? ? e A B: spaces draw nothing, one '?' per character */
+    EXPECT_NEAR(f->sprites[2].u0, (float)('?' % 16) / 16.0f, 1e-6);
+    EXPECT_EQ(f->sprites[6].y, 16.0f);      /* "B" is on the next line */
+    EXPECT_EQ(f->sprites[6].x, 8.0f);
+    fk_mesh mesh = {0};
+    float m[16];
+    fk_mat4_identity(m);
+    fk_frame_overlay(&mesh, m);
+    fk_frame_rect(0, 0, 10, 5, white);
+    fk_frame_rect(1, 1, 2, 2, white);
+    EXPECT_EQ(f->noverlays, 3); /* text run, mesh, rectangle run */
+    EXPECT_TRUE(f->overlays[0].mesh == NULL && f->overlays[0].count == 7);
+    EXPECT_TRUE(f->overlays[2].mesh == NULL && f->overlays[2].first == 7 && f->overlays[2].count == 2);
+    EXPECT_EQ(f->sprites[7].u0, 0.0f); /* rectangles use the solid cell 0 */
+    for (int i = 0; i < 300; i++) fk_frame_rect(0, 0, 1, 1, white); /* grows */
+    EXPECT_EQ(f->nsprites, 309);
+    fk_frame_reset();
+}
+
+UTEST(frame, halton) {
+    EXPECT_NEAR(fk_halton(1, 2), 0.0f, 1e-6);
+    EXPECT_NEAR(fk_halton(2, 2), -0.25f, 1e-6);
+    EXPECT_NEAR(fk_halton(1, 3), 1.0f / 3.0f - 0.5f, 1e-6);
+    EXPECT_NEAR(fk_halton(0, 2), -0.5f, 1e-6);
+}
+
+UTEST(settings, fill_the_window) {
+    fk_gfx_settings s;
+    fk_gfx_settings_default(&s);
+    int w, h;
+    fk_gfx_internal_size(&s, 2340, 1080, &w, &h);
+    EXPECT_TRUE(w == 585 && h == 270);
+    fk_gfx_internal_size(&s, 1920, 1080, &w, &h);
+    EXPECT_TRUE(w == 480 && h == 270);
+    fk_gfx_internal_size(&s, 1280, 720, &w, &h);
+    EXPECT_TRUE(w == 640 && h == 360);
+    fk_gfx_internal_size(&s, 400, 300, &w, &h); /* smaller than the configured size */
+    EXPECT_TRUE(w == 480 && h == 270);
+    fk_gfx_internal_size(&s, 8000, 280, &w, &h); /* very wide: capped */
+    EXPECT_EQ(w, 3840);
+    s.fill = false;
+    fk_gfx_internal_size(&s, 2340, 1080, &w, &h);
+    EXPECT_TRUE(w == 480 && h == 270);
+    fk_gfx_set_image_size(640, 360);
+    fk_gfx_image_size(&w, &h);
+    EXPECT_TRUE(w == 640 && h == 360);
+    fk_gfx_settings_default(&s); /* also resets the image size */
+    fk_gfx_image_size(&w, &h);
+    EXPECT_EQ(w, 480);
+}

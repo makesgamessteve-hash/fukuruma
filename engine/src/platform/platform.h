@@ -32,6 +32,12 @@ typedef void (*fk_file_fn)(const char *path, void *user);
 void fk_platform_find_files(const char *dir, const char *suffix, fk_file_fn fn, void *user);
 
 void fk_platform_message(const char *title, const char *text);
+bool fk_platform_web(void);   /* running in a browser */
+bool fk_platform_phone(void); /* a browser on a device with a coarse pointer (phone, tablet) */
+/* The folder for stored values (ends with a separator), or NULL when there is none. */
+const char *fk_platform_pref_path(void);
+/* Web: writes the IndexedDB-backed folder back to the browser. No-op elsewhere. */
+void fk_platform_storage_sync(void);
 /* Web only: publishes a scenario result as window.fukurumaResult. No-op elsewhere. */
 void fk_platform_report(const char *status, const char *message);
 
@@ -44,7 +50,7 @@ typedef struct {
 } fk_touch;
 
 void fk_input_event(const void *sdl_event); /* every SDL_Event goes through here */
-void fk_input_frame_end(void);               /* clears the per-frame mouse motion */
+void fk_input_frame_end(void);               /* clears the per-frame mouse motion, applies held-back releases */
 void fk_input_reset(void);                   /* releases everything */
 int fk_input_key_code(const char *name);     /* SDL key name such as "W" or "Space"; -1 when unknown */
 int fk_input_axis_code(const char *name);    /* SDL gamepad axis name such as "leftx"; -1 when unknown */

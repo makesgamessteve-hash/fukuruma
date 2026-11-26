@@ -14,6 +14,7 @@
 #endif
 
 #define FK_GL_FUNCS(X)                                                                                         \
+    X(const GLubyte *, GetString, (GLenum))                                                                    \
     X(void, Viewport, (GLint, GLint, GLsizei, GLsizei))                                                        \
     X(void, ClearColor, (GLfloat, GLfloat, GLfloat, GLfloat))                                                  \
     X(void, Clear, (GLbitfield))                                                                               \

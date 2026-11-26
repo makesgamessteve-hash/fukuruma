@@ -11,8 +11,47 @@ UTEST(input, keys_and_device) {
     fk_input_emulate_key(d, true);
     EXPECT_TRUE(fk_input_key(d));
     EXPECT_STREQ(fk_input_device(), "keyboard");
+    fk_input_frame_end();
     fk_input_emulate_key(d, false);
     EXPECT_FALSE(fk_input_key(d));
+}
+
+/* A press and release between two frames still shows for one frame (fast taps on slow devices). */
+UTEST(input, quick_presses_last_a_frame) {
+    fk_input_reset();
+    int d = fk_input_key_code("D"), a = fk_input_button_code("a");
+    fk_touch t[FK_MAX_TOUCHES];
+    fk_input_emulate_key(d, true);
+    fk_input_emulate_key(d, false);
+    fk_input_emulate_button(a, true);
+    fk_input_emulate_button(a, false);
+    fk_input_emulate_mouse_button(1, true);
+    fk_input_emulate_mouse_button(1, false);
+    fk_input_emulate_touch(7, true, 0.5f, 0.5f);
+    fk_input_emulate_touch(7, false, 0, 0);
+    EXPECT_TRUE(fk_input_key(d));
+    EXPECT_TRUE(fk_input_button(a));
+    EXPECT_TRUE(fk_input_mouse_button(1));
+    EXPECT_EQ(fk_input_touches(t), 1);
+    fk_input_frame_end();
+    EXPECT_FALSE(fk_input_key(d));
+    EXPECT_FALSE(fk_input_button(a));
+    EXPECT_FALSE(fk_input_mouse_button(1));
+    EXPECT_EQ(fk_input_touches(t), 0);
+    /* pressed again before the frame end: it stays down */
+    fk_input_emulate_key(d, true);
+    fk_input_emulate_key(d, false);
+    fk_input_emulate_key(d, true);
+    fk_input_frame_end();
+    EXPECT_TRUE(fk_input_key(d));
+    fk_input_emulate_key(d, false);
+    EXPECT_FALSE(fk_input_key(d));
+    /* more quick presses than can wait: the rest are released at once */
+    for (int i = 0; i < 40; i++) fk_input_emulate_key(100 + i, true);
+    fk_input_emulate_key(d, true);
+    fk_input_emulate_key(d, false);
+    EXPECT_FALSE(fk_input_key(d));
+    fk_input_frame_end();
 }
 
 UTEST(input, gamepad) {
@@ -55,6 +94,7 @@ UTEST(input, mouse) {
     EXPECT_TRUE(fk_input_mouse_button(3));
     EXPECT_FALSE(fk_input_mouse_button(1));
     EXPECT_FALSE(fk_input_mouse_button(0));
+    fk_input_frame_end();
     fk_input_emulate_mouse_button(3, false);
     EXPECT_FALSE(fk_input_mouse_button(3));
 }
@@ -80,6 +120,7 @@ UTEST(input, touches) {
     EXPECT_STREQ(fk_input_device(), "touch");
     for (int i = 0; i < FK_MAX_TOUCHES + 2; i++) fk_input_emulate_touch(100 + i, true, 0.1f, 0.1f);
     EXPECT_EQ(fk_input_touches(t), FK_MAX_TOUCHES);
+    fk_input_frame_end();
     fk_input_emulate_touch(5, false, 0, 0);
     EXPECT_EQ(fk_input_touches(t), FK_MAX_TOUCHES - 1);
     fk_input_emulate_touch(999, false, 0, 0); /* lifting an unknown finger is harmless */

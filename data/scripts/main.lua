@@ -2,17 +2,22 @@
 -- (fixed 60 Hz) and draw(alpha).
 -- M1: a lit stage at dusk. The placeholder Jump Ship hovers over the ground and is a simulation entity,
 -- turned with A/D, the arrow keys, the left stick or the touch stick, and sped up with Space, the A button
--- or the touch button.
+-- or the touch button. Escape, the gamepad's Start button or the touch button at the top right opens
+-- Settings > Graphics.
 local mat4 = require("mat4")
 local jump_ship = require("jump_ship")
 local sim = require("fk.sim")
 local actions = require("fk.actions")
 local touch_view = require("touch_view")
 local shapes = require("shapes")
+local graphics = require("settings.graphics")
+local menu = require("menu")
 
 local game = {}
 
 function game.init()
+  game.graphics = graphics.load(fk.gfx.device())
+  graphics.apply(game.graphics)
   game.mesh = fk.gfx.mesh(jump_ship.build())
   game.ground = fk.gfx.mesh(shapes.plane(240, { 0.34, 0.3, 0.26 }))
   game.crate = fk.gfx.mesh(shapes.box(1, 1, 1, { 0.55, 0.5, 0.42 }))
@@ -29,13 +34,17 @@ function game.init()
     gamepad = "leftx", touch = "stick_x" })
   actions.define("boost", { kind = "button", keys = { "Space" }, gamepad = { "a" }, touch = "boost" })
   actions.touch_button("boost", 0.85, 0.7, 0.1)
+  actions.define("menu", { kind = "button", keys = { "Escape" }, gamepad = { "start" }, touch = "menu" })
+  actions.touch_button("menu", 0.94, 0.1, 0.06)
   game.control = { turn = 0, boost = false }
 end
 
--- Input becomes commands; a command is sent only when an action changes.
+-- Input becomes commands; a command is sent only when an action changes. The menu pauses the controls.
 function game.input()
   actions.update()
+  if actions.pressed("menu") then menu.toggle() end
   local turn, boost = actions.value("turn"), actions.held("boost")
+  if menu.open then turn, boost = 0, false end
   if turn ~= game.control.turn or boost ~= game.control.boost then
     game.control = { turn = turn, boost = boost }
     sim.send("ship.control", { ship = game.ship, turn = turn, boost = boost })
@@ -75,6 +84,7 @@ function game.draw(alpha)
   fk.gfx.draw(game.orb, mat4.translation(2.2, GROUND_Y + 0.6, 3.0), { roughness = 0.15, metalness = 1 })
   fk.gfx.draw(game.mesh, mat4.multiply(mat4.translation(0, 0.9, 0), mat4.rotation_y(angle)), { roughness = 0.35, metalness = 0.6 })
   touch_view.draw(actions.touch_controls())
+  menu.draw(game.graphics)
 end
 
 return game

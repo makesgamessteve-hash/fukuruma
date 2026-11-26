@@ -6,6 +6,7 @@
 #include "gfx/frame.h"
 #include "gfx/gfx.h"
 #include "lauxlib.h"
+#include "platform/platform.h"
 #include "script/script.h"
 
 #define FK_MAX_VERTICES (1 << 20)
@@ -206,6 +207,69 @@ static int l_grade(lua_State *L) {
     return 0;
 }
 
+/* An optional colour argument {r, g, b[, a]} (sRGB, 0..1); default opaque white. */
+static void color_arg(lua_State *L, int arg, float out[4], const char *what) {
+    out[0] = out[1] = out[2] = out[3] = 1.0f;
+    if (lua_isnoneornil(L, arg)) return;
+    luaL_checktype(L, arg, LUA_TTABLE);
+    lua_Integer n = luaL_len(L, arg);
+    if (n != 3 && n != 4) luaL_error(L, "%s: the colour must have 3 or 4 numbers", what);
+    for (int i = 0; i < n; i++) {
+        out[i] = number_at(L, arg, i + 1, "colour");
+        if (out[i] < 0 || out[i] > 1) luaL_error(L, "%s: colour values must be from 0 to 1", what);
+    }
+}
+
+static int l_text(lua_State *L) {
+    float x = (float)luaL_checknumber(L, 1), y = (float)luaL_checknumber(L, 2), color[4];
+    const char *text = luaL_checkstring(L, 3);
+    color_arg(L, 4, color, "text");
+    fk_frame_text(floorf(x), floorf(y), text, color); /* whole pixels keep the font crisp */
+    return 0;
+}
+
+static int l_rect(lua_State *L) {
+    float r[4], color[4];
+    for (int i = 0; i < 4; i++) r[i] = floorf((float)luaL_checknumber(L, i + 1));
+    color_arg(L, 5, color, "rect");
+    fk_frame_rect(r[0], r[1], r[2], r[3], color);
+    return 0;
+}
+
+/* fk.gfx.palette({{r, g, b}, ...}) quantises the image to these sRGB colours; fk.gfx.palette(nil) switches it off. */
+static int l_palette(lua_State *L) {
+    fk_frame *f = fk_frame_get();
+    if (lua_isnoneornil(L, 1)) {
+        f->palette_size = 0;
+        return 0;
+    }
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua_Integer n = luaL_len(L, 1);
+    if (n < 1 || n > FK_MAX_PALETTE) return luaL_error(L, "palette: give 1 to %d colours", FK_MAX_PALETTE);
+    float colors[FK_MAX_PALETTE][3];
+    for (lua_Integer i = 0; i < n; i++) {
+        lua_rawgeti(L, 1, i + 1);
+        float c[4];
+        color_arg(L, lua_gettop(L), c, "palette");
+        memcpy(colors[i], c, sizeof colors[i]);
+        lua_pop(L, 1);
+    }
+    memcpy(f->palette, colors, sizeof colors);
+    f->palette_size = (int)n;
+    return 0;
+}
+
+static int l_device(lua_State *L) {
+    lua_createtable(L, 0, 3);
+    lua_pushstring(L, rendering ? fk_gfx_renderer() : "none");
+    lua_setfield(L, -2, "renderer");
+    lua_pushboolean(L, fk_platform_web());
+    lua_setfield(L, -2, "web");
+    lua_pushboolean(L, fk_platform_phone());
+    lua_setfield(L, -2, "phone");
+    return 1;
+}
+
 static int int_field(lua_State *L, const char *name, int def) {
     lua_getfield(L, 1, name);
     int ok = 1;
@@ -236,9 +300,12 @@ static int l_configure(lua_State *L) {
     s.bloom = bool_field(L, "bloom", s.bloom);
     s.hdr = bool_field(L, "hdr", s.hdr);
     s.dither = bool_field(L, "dither", s.dither);
+    s.taa = bool_field(L, "taa", s.taa);
+    s.fill = bool_field(L, "fill", s.fill);
     const char *bad = fk_gfx_settings_check(&s);
     if (bad) return luaL_error(L, "configure: '%s' is out of range", bad);
     *current = s;
+    if (!rendering || !s.fill) fk_gfx_set_image_size(s.width, s.height); /* with a window and fill, the pipeline sizes the image */
     if (rendering && !fk_gfx_configure()) return luaL_error(L, "configure: the renderer could not apply these settings");
     return 0;
 }
@@ -262,12 +329,18 @@ static int l_settings(lua_State *L) {
     lua_setfield(L, -2, "hdr");
     lua_pushboolean(L, s->dither);
     lua_setfield(L, -2, "dither");
+    lua_pushboolean(L, s->taa);
+    lua_setfield(L, -2, "taa");
+    lua_pushboolean(L, s->fill);
+    lua_setfield(L, -2, "fill");
     return 1;
 }
 
 static int l_size(lua_State *L) {
-    lua_pushinteger(L, fk_gfx_settings_current()->width);
-    lua_pushinteger(L, fk_gfx_settings_current()->height);
+    int w, h;
+    fk_gfx_image_size(&w, &h);
+    lua_pushinteger(L, w);
+    lua_pushinteger(L, h);
     return 2;
 }
 
@@ -276,7 +349,8 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
                                    {"camera", l_camera},   {"sun", l_sun},           {"ambient", l_ambient},
                                    {"light", l_light},     {"clear", l_clear},       {"grade", l_grade},
                                    {"configure", l_configure}, {"settings", l_settings}, {"size", l_size},
-                                   {NULL, NULL}};
+                                   {"text", l_text},       {"rect", l_rect},         {"palette", l_palette},
+                                   {"device", l_device},   {NULL, NULL}};
     rendering = render;
     luaL_newmetatable(L, "fk.mesh");
     lua_pushcfunction(L, l_mesh_gc);
