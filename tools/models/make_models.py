@@ -2,7 +2,7 @@
 
 usage: python3 tools/models/make_models.py   (from the repository root; needs numpy and Pillow)
 
-- exosuit.glb: the Exosuit (3.6 m), a rigidly skinned mech with 14 joints and the clips idle, walk and run
+- exosuit.glb: the Exosuit (3.6 m), a rigidly skinned mech with 15 joints (the antenna sways on a spring in the game) and the clips idle, walk and run
   (in place; the game moves the body). Painted panels, dark frame, glowing visor.
 - ../textures/test_ground.jpg: the test range deck (1 m slabs, repeats every 4 m).
 - showcase_materials.glb: five spheres for the materials showcase (plastic, gold, painted panels with a
@@ -69,7 +69,7 @@ def brushed_textures(size=256):
 
 JOINTS = [  # name, parent, position in model space (rest pose)
     ("hips", None, (0, 1.9, 0)), ("spine", "hips", (0, 2.15, 0)), ("chest", "spine", (0, 2.45, 0)),
-    ("head", "chest", (0, 3.1, 0)),
+    ("head", "chest", (0, 3.1, 0)), ("antenna", "head", (0.2, 3.5, -0.15)),
     ("upper_arm_l", "chest", (0.75, 3.0, 0)), ("forearm_l", "upper_arm_l", (0.75, 2.4, 0)),
     ("upper_arm_r", "chest", (-0.75, 3.0, 0)), ("forearm_r", "upper_arm_r", (-0.75, 2.4, 0)),
     ("thigh_l", "hips", (0.3, 1.85, 0)), ("shin_l", "thigh_l", (0.3, 1.0, 0)), ("foot_l", "shin_l", (0.3, 0.2, 0)),
@@ -107,7 +107,9 @@ BODY = [
     ("chest", "accent", (0.2, 0.5, 0.1), (-0.28, 2.85, -0.75)),
     ("head", "hull", (0.52, 0.46, 0.56), (0, 3.33, 0.02)),
     ("head", "visor", (0.44, 0.13, 0.06), (0, 3.36, 0.3)),
-    ("head", "frame", (0.08, 0.3, 0.08), (0.2, 3.62, -0.15)),
+    ("head", "frame", (0.12, 0.08, 0.12), (0.2, 3.54, -0.15)),
+    ("antenna", "frame", (0.04, 0.62, 0.04), (0.2, 3.85, -0.15)),
+    ("antenna", "lamp", (0.07, 0.07, 0.07), (0.2, 4.18, -0.15)),
 ]
 
 

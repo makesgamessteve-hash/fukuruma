@@ -43,3 +43,20 @@ uint fk_hash(uvec2 p) { // integer hash: the same noise on every GPU
     h *= 3266489917u;
     return h ^ (h >> 16u);
 }
+
+#if defined(SCENE_MESH) && defined(VERTEX)
+in vec4 a_joints;
+in vec4 a_weights;
+uniform highp sampler2D u_bones; // one row of four texels (the matrix columns) per bone
+uniform int u_bone_offset;       // the draw's first bone, -1: not skinned
+mat4 bone(float joint) {
+    int row = u_bone_offset + int(joint);
+    return mat4(texelFetch(u_bones, ivec2(0, row), 0), texelFetch(u_bones, ivec2(1, row), 0),
+                texelFetch(u_bones, ivec2(2, row), 0), texelFetch(u_bones, ivec2(3, row), 0));
+}
+mat4 skin_matrix() { // bind pose to model space, blended from up to four bones
+    if (u_bone_offset < 0) return mat4(1.0);
+    return a_weights.x * bone(a_joints.x) + a_weights.y * bone(a_joints.y) + a_weights.z * bone(a_joints.z) +
+           a_weights.w * bone(a_joints.w);
+}
+#endif

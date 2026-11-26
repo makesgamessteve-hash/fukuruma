@@ -185,14 +185,27 @@ fk_model *fk_lua_model_arg(lua_State *L, int arg) {
     return m ? &m->model : NULL;
 }
 
-/* Records a draw per primitive of the model at its nodes' rest pose (or the given node matrices). */
+static const float *global_of(const fk_model *m, const float *node_matrices, int n) {
+    return node_matrices ? &node_matrices[n * 16] : m->nodes[n].global;
+}
+
+/* Records a draw per primitive of the model; skinned nodes get their bone matrices from the node matrices. */
 void fk_lua_draw_model(const fk_model *m, const float matrix[16], const float *node_matrices) {
-    static const fk_mesh empty; /* without rendering there are no GPU meshes */
+    static const fk_mesh empty = {0}; /* without rendering there are no GPU meshes */
     for (int n = 0; n < m->node_count; n++) {
         const fk_node *node = &m->nodes[n];
         if (!node->primitive_count) continue;
+        int bones = -1;
+        if (node->skin >= 0) { /* glTF: a skinned mesh follows its joints, not its own node */
+            const fk_skin *s = &m->skins[node->skin];
+            float skin[FK_MAX_JOINTS * 16];
+            for (int j = 0; j < s->joint_count; j++)
+                fk_mat4_mul(&skin[j * 16], global_of(m, node_matrices, s->joints[j]), &s->inverse_bind[j * 16]);
+            bones = fk_frame_bones(skin, s->joint_count); /* -1 when the frame is full: drawn in its bind pose */
+        }
         float world[16];
-        fk_mat4_mul(world, matrix, node_matrices ? &node_matrices[n * 16] : node->global);
+        if (bones >= 0) memcpy(world, matrix, sizeof world);
+        else fk_mat4_mul(world, matrix, global_of(m, node_matrices, n));
         for (int i = node->first_primitive; i < node->first_primitive + node->primitive_count; i++) {
             fk_material mat;
             fk_material_default(&mat);
@@ -211,7 +224,7 @@ void fk_lua_draw_model(const fk_model *m, const float matrix[16], const float *n
                     mat.emission_tex = src->emission_tex >= 0 ? &m->textures[src->emission_tex] : NULL;
                 }
             }
-            fk_frame_draw(m->meshes ? &m->meshes[i] : &empty, world, &mat);
+            fk_frame_draw_skinned(m->meshes ? &m->meshes[i] : &empty, world, &mat, bones);
         }
     }
 }

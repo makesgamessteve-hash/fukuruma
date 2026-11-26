@@ -12,12 +12,13 @@ out vec3 v_normal;
 out vec2 v_uv;
 out vec4 v_tangent;
 void main() {
-    mat3 m = mat3(u_model); // shortcut: assumes uniform scale; add a normal matrix for non-uniform scaling
+    mat4 model = u_model * skin_matrix();
+    mat3 m = mat3(model); // shortcut: assumes uniform scale; add a normal matrix for non-uniform scaling
     v_color = a_color;
     v_normal = m * a_normal;
     v_uv = a_uv;
     v_tangent = vec4(m * a_tangent.xyz, a_tangent.w);
-    gl_Position = u_view_proj * (u_model * vec4(a_position, 1.0));
+    gl_Position = u_view_proj * (model * vec4(a_position, 1.0));
 }
 #endif
 

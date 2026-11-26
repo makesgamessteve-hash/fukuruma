@@ -122,14 +122,20 @@ static int l_mesh_gc(lua_State *L) {
 
 static const float ZERO[3] = {0, 0, 0}, ONE[3] = {1, 1, 1};
 
-/* fk.gfx.draw(mesh, matrix, { roughness, metalness, emission, texture }) or fk.gfx.draw(model, matrix) */
+/* fk.gfx.draw(mesh, matrix, { roughness, metalness, emission, texture }) or fk.gfx.draw(model, matrix, { pose }) */
 static int l_draw(lua_State *L) {
     float model[16];
     fk_model *mdl = fk_lua_model_arg(L, 1);
     if (mdl) {
         matrix_arg(L, 2, model, "draw");
+        const float *globals = NULL;
+        if (!lua_isnoneornil(L, 3)) {
+            luaL_checktype(L, 3, LUA_TTABLE);
+            if (lua_getfield(L, 3, "pose") != LUA_TNIL) globals = fk_lua_pose_globals(L, lua_gettop(L), mdl);
+            lua_pop(L, 1);
+        }
         keep_alive(L, 1);
-        fk_lua_draw_model(mdl, model, NULL);
+        fk_lua_draw_model(mdl, model, globals);
         return 0;
     }
     fk_mesh *m = luaL_checkudata(L, 1, "fk.mesh");

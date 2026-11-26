@@ -40,3 +40,8 @@ const fk_texture *fk_lua_texture_arg(lua_State *L, int arg); /* NULL when arg is
 fk_model *fk_lua_model_arg(lua_State *L, int arg);           /* NULL when arg is not a model */
 /* Records the model's primitives; node_matrices: 16 floats per node in model space, or NULL for the rest pose. */
 void fk_lua_draw_model(const fk_model *m, const float matrix[16], const float *node_matrices);
+/* fk.anim (script/lua_anim.c): pushes the table. */
+void fk_lua_anim_open(lua_State *L);
+/* The model-space node matrices of the pose at arg (valid until the next fk.anim call); errors when the pose
+   belongs to another model. */
+const float *fk_lua_pose_globals(lua_State *L, int arg, const fk_model *model);

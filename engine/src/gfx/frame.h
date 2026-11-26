@@ -32,7 +32,10 @@ typedef struct {
     const fk_mesh *mesh;
     float model[16];
     fk_material material;
+    int bone_offset; /* first matrix in the frame's bones, -1: not skinned */
 } fk_draw;
+
+#define FK_MAX_FRAME_BONES 4096 /* skinned draws beyond this are drawn in their bind pose */
 
 #define FK_MAX_PALETTE 64
 
@@ -66,6 +69,8 @@ typedef struct {
     int noverlays, overlay_cap;
     fk_sprite *sprites;
     int nsprites, sprite_cap;
+    float *bones; /* 16 floats per bone matrix, for skinned draws */
+    int nbones, bone_cap;
     float palette[FK_MAX_PALETTE][3]; /* sRGB */
     int palette_size;                 /* 0: palette mode off */
 } fk_frame;
@@ -74,6 +79,10 @@ fk_frame *fk_frame_get(void);
 void fk_frame_reset(void); /* defaults for camera, lights and grading; empties the lists */
 void fk_frame_begin(void); /* empties draws, overlays and point lights for a new frame */
 void fk_frame_draw(const fk_mesh *mesh, const float model[16], const fk_material *material);
+/* Stores count bone matrices for skinned draws and returns their offset, or -1 when the frame is full. */
+int fk_frame_bones(const float *matrices, int count);
+/* A skinned draw: vertices are moved by the bone matrices stored at bone_offset (see fk_frame_bones). */
+void fk_frame_draw_skinned(const fk_mesh *mesh, const float model[16], const fk_material *material, int bone_offset);
 void fk_frame_overlay(const fk_mesh *mesh, const float matrix[16]);
 void fk_frame_light(const fk_point_light *light); /* lights beyond FK_MAX_LIGHTS are ignored */
 /* Text in the 8x8 font at whole pixels; characters outside printable ASCII are drawn as '?'. */

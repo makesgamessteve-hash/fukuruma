@@ -74,7 +74,7 @@ return {
     local names = {}
     for _, clip in ipairs(suit:clips()) do names[#names + 1] = clip.name .. "=" .. clip.duration end
     assert(table.concat(names, " ") == "idle=4.0 walk=1.2000000476837 run=0.75", table.concat(names, " "))
-    assert(suit:nodes()[1] == "Exosuit" and #suit:nodes() == 16, "nodes")
+    assert(suit:nodes()[1] == "Exosuit" and #suit:nodes() == 17, "nodes")
     fk.gfx.draw(suit, I)
     fails(function() fk.gfx.model("models/none.glb") end, "model: cannot find models/none.glb")
     fails(function() fk.gfx.model("scripts/main.lua") end, "not a valid glTF file")

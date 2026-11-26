@@ -32,7 +32,7 @@ void fk_frame_reset(void) {
     frame.palette_size = 0;
 }
 
-void fk_frame_begin(void) { frame.ndraws = frame.noverlays = frame.nlights = frame.nsprites = 0; }
+void fk_frame_begin(void) { frame.ndraws = frame.noverlays = frame.nlights = frame.nsprites = frame.nbones = 0; }
 
 static void *grow(void *items, int *cap, size_t size) {
     *cap = *cap ? *cap * 2 : 64;
@@ -48,12 +48,25 @@ void fk_material_default(fk_material *m) {
     m->normal_scale = 1;
 }
 
-void fk_frame_draw(const fk_mesh *mesh, const float model[16], const fk_material *material) {
+void fk_frame_draw_skinned(const fk_mesh *mesh, const float model[16], const fk_material *material, int bone_offset) {
     if (frame.ndraws == frame.draw_cap) frame.draws = grow(frame.draws, &frame.draw_cap, sizeof *frame.draws);
     fk_draw *d = &frame.draws[frame.ndraws++];
     d->mesh = mesh;
     memcpy(d->model, model, sizeof d->model);
     d->material = *material;
+    d->bone_offset = bone_offset;
+}
+
+void fk_frame_draw(const fk_mesh *mesh, const float model[16], const fk_material *material) {
+    fk_frame_draw_skinned(mesh, model, material, -1);
+}
+
+int fk_frame_bones(const float *matrices, int count) {
+    if (frame.nbones + count > FK_MAX_FRAME_BONES) return -1;
+    while (frame.nbones + count > frame.bone_cap) frame.bones = grow(frame.bones, &frame.bone_cap, 16 * sizeof(float));
+    memcpy(&frame.bones[frame.nbones * 16], matrices, (size_t)count * 16 * sizeof(float));
+    frame.nbones += count;
+    return frame.nbones - count;
 }
 
 void fk_frame_overlay(const fk_mesh *mesh, const float matrix[16]) {

@@ -23,8 +23,8 @@ enum { P_GBUFFER, P_SHADOW, P_SSAO, P_BLUR, P_LIGHT, P_BRIGHT, P_DOWN, P_UP, P_L
 static const char *const program_files[P_COUNT] = {"gbuffer", "shadow", "ssao",     "blur",     "lighting", "bloom", "bloom",
                                                    "bloom",   "luminance", "exposure", "post", "flat", "taa", "sprite"};
 static const char *const program_defines[P_COUNT] = {
-    "",
-    "",
+    "#define SCENE_MESH\n",
+    "#define SCENE_MESH\n",
     "#define FULLSCREEN\n",
     "#define FULLSCREEN\n",
     "#define FULLSCREEN\n",
@@ -40,7 +40,7 @@ static const char *const program_defines[P_COUNT] = {
 
 static struct {
     bool hdr_supported;
-    GLuint vao, white, font, sprite_vao, sprite_vbo, programs[P_COUNT]; /* the first six survive reconfiguration */
+    GLuint vao, white, font, sprite_vao, sprite_vbo, bones, programs[P_COUNT]; /* the first seven survive reconfiguration */
     char renderer[128];
     GLuint history[2], fb_history[2]; /* temporal anti-aliasing */
     int history_index, frame_index;
@@ -103,12 +103,12 @@ static void release(void) {
     gl.DeleteTextures((GLsizei)(sizeof textures / sizeof *textures), textures);
     gl.DeleteFramebuffers((GLsizei)(sizeof fbs / sizeof *fbs), fbs);
     bool hdr_supported = R.hdr_supported;
-    GLuint vao = R.vao, white = R.white, font = R.font, sprite_vao = R.sprite_vao, sprite_vbo = R.sprite_vbo;
+    GLuint vao = R.vao, white = R.white, font = R.font, sprite_vao = R.sprite_vao, sprite_vbo = R.sprite_vbo, bones = R.bones;
     char renderer[sizeof R.renderer];
     memcpy(renderer, R.renderer, sizeof renderer);
     memset(&R, 0, sizeof R);
     R.hdr_supported = hdr_supported, R.vao = vao, R.white = white, R.font = font;
-    R.sprite_vao = sprite_vao, R.sprite_vbo = sprite_vbo;
+    R.sprite_vao = sprite_vao, R.sprite_vbo = sprite_vbo, R.bones = bones;
     memcpy(R.renderer, renderer, sizeof renderer);
 }
 
@@ -211,6 +211,12 @@ bool fk_gfx_init(void) {
     gl.BindTexture(GL_TEXTURE_2D, R.white);
     gl.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
     gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    static const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    gl.GenTextures(1, &R.bones); /* starts with one identity bone, so it is complete before any skinned draw */
+    gl.BindTexture(GL_TEXTURE_2D, R.bones);
+    gl.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 4, 1, 0, GL_RGBA, GL_FLOAT, identity);
+    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     const char *renderer = (const char *)gl.GetString(GL_RENDERER);
     snprintf(R.renderer, sizeof R.renderer, "%s", renderer ? renderer : "unknown");
 
@@ -247,8 +253,8 @@ const char *fk_gfx_renderer(void) { return R.renderer; }
 
 void fk_gfx_shutdown(void) {
     release();
-    GLuint textures[2] = {R.white, R.font}, vaos[2] = {R.vao, R.sprite_vao};
-    gl.DeleteTextures(2, textures);
+    GLuint textures[3] = {R.white, R.font, R.bones}, vaos[2] = {R.vao, R.sprite_vao};
+    gl.DeleteTextures(3, textures);
     gl.DeleteVertexArrays(2, vaos);
     gl.DeleteBuffers(1, &R.sprite_vbo);
     memset(&R, 0, sizeof R);
@@ -276,9 +282,11 @@ static void fullscreen(void) { gl.DrawArrays(GL_TRIANGLES, 0, 3); }
 
 static void draw_meshes(GLuint program, bool materials) {
     fk_frame *f = fk_frame_get();
+    sampler(program, "u_bones", materials ? 4 : 0, GL_TEXTURE_2D, R.bones);
     for (int i = 0; i < f->ndraws; i++) {
         const fk_draw *d = &f->draws[i];
         gl.UniformMatrix4fv(LOC("u_model"), 1, GL_FALSE, d->model);
+        gl.Uniform1i(LOC("u_bone_offset"), d->bone_offset);
         if (materials) {
             const fk_material *m = &d->material;
             gl.Uniform4fv(LOC("u_base"), 1, m->base);
@@ -323,6 +331,12 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     if (!fk_mat4_inverse(inv_view, f->view)) fk_mat4_identity(inv_view);
     float z_near = perspective ? p[14] / (p[10] - 1.0f) : 0.1f, z_far = perspective ? p[14] / (p[10] + 1.0f) : 100.0f;
     GLuint program;
+
+    /* 0. Bone matrices of the skinned draws: one row of four RGBA32F texels (the columns) per bone. */
+    if (f->nbones) {
+        gl.BindTexture(GL_TEXTURE_2D, R.bones);
+        gl.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 4, f->nbones, 0, GL_RGBA, GL_FLOAT, f->bones);
+    }
 
     /* 1. Star shadows, one cascade per texture layer. */
     fk_cascade cascades[FK_MAX_CASCADES];
