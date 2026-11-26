@@ -61,6 +61,7 @@ void fk_platform_close(void) {
 void fk_platform_size(int *w, int *h) { SDL_GetWindowSizeInPixels(window, w, h); }
 void fk_platform_swap(void) { SDL_GL_SwapWindow(window); }
 fk_proc fk_platform_gl_proc(const char *name) { return (fk_proc)SDL_GL_GetProcAddress(name); }
+bool fk_platform_gl_extension(const char *name) { return SDL_GL_ExtensionSupported(name); }
 uint64_t fk_platform_ticks_ns(void) { return SDL_GetTicksNS(); }
 
 void *fk_platform_read_file(const char *path, size_t *size) { return SDL_LoadFile(path, size); }

@@ -23,3 +23,8 @@ const char *fk_script_error(void);
 void fk_script_set_error(const char *message);
 /* Reads the control name at arg and looks it up (for example fk_input_key_code); raises a script error when unknown. */
 int fk_script_control(lua_State *L, int arg, int (*lookup)(const char *), const char *what);
+
+/* fk.gfx (script/lua_gfx.c): pushes the table. rendering: create GL meshes (otherwise only validate). */
+void fk_lua_gfx_open(lua_State *L, bool rendering);
+/* Starts a frame's recording: forgets last frame's draws and the meshes kept alive for them. */
+void fk_script_frame_begin(lua_State *L);

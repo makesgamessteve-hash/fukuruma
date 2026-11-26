@@ -18,6 +18,7 @@ void fk_platform_size(int *w, int *h);
 void fk_platform_swap(void);
 typedef void (*fk_proc)(void);
 fk_proc fk_platform_gl_proc(const char *name);
+bool fk_platform_gl_extension(const char *name);
 uint64_t fk_platform_ticks_ns(void);
 
 /* Reads a whole file, NUL-terminated. Returns NULL when it cannot be read. Free with fk_platform_free. */

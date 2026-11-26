@@ -1,9 +1,10 @@
 -- fk.gfx validates what scripts (and mods) pass to it, also when nothing is rendered.
 local function fails(fn, pattern)
   local ok, err = pcall(fn)
-  assert(not ok and err:find(pattern, 1, true), tostring(err))
+  assert(not ok and tostring(err):find(pattern, 1, true), tostring(err))
 end
 
+local I = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 }
 local triangle = { positions = { 0, 0, 0, 1, 0, 0, 0, 1, 0 }, colors = { 1, 1, 1, 1, 1, 1, 1, 1, 1 }, indices = { 1, 2, 3 } }
 
 return {
@@ -16,30 +17,65 @@ return {
   ["mesh needs a colour per vertex"] = function()
     fails(function() fk.gfx.mesh({ positions = { 0, 0, 0 }, colors = {}, indices = { 1, 1, 1 } }) end, "r, g, b")
   end,
+  ["mesh normals must match the vertices"] = function()
+    fails(function() fk.gfx.mesh({ positions = { 0, 0, 0 }, colors = { 1, 1, 1 }, normals = { 0, 1 }, indices = { 1, 1, 1 } }) end, "normals must hold")
+    fails(function() fk.gfx.mesh({ positions = { 0, 0, 0 }, colors = { 1, 1, 1 }, normals = 5, indices = { 1, 1, 1 } }) end, "normals must hold")
+    assert(fk.gfx.mesh({ positions = { 0, 0, 0 }, colors = { 1, 1, 1 }, normals = { 0, 1, 0 }, indices = { 1, 1, 1 } }))
+  end,
   ["mesh needs whole triangles"] = function()
     fails(function() fk.gfx.mesh({ positions = { 0, 0, 0 }, colors = { 1, 1, 1 }, indices = { 1 } }) end, "whole triangles")
   end,
   ["mesh rejects non-numbers"] = function()
     fails(function() fk.gfx.mesh({ positions = { 0, "x", 0 }, colors = { 1, 1, 1 }, indices = { 1, 1, 1 } }) end, "positions[2]")
+    fails(function() fk.gfx.mesh({ positions = { 0, 0 / 0, 0 }, colors = { 1, 1, 1 }, indices = { 1, 1, 1 } }) end, "finite")
   end,
   ["mesh rejects indices out of range"] = function()
     fails(function() fk.gfx.mesh({ positions = { 0, 0, 0 }, colors = { 1, 1, 1 }, indices = { 1, 1, 2 } }) end, "indices[3]")
   end,
-  ["draw needs 16 numbers"] = function()
+  ["draw takes a model matrix and a material"] = function()
     local mesh = fk.gfx.mesh(triangle)
+    fk.gfx.draw(mesh, I)
+    fk.gfx.draw(mesh, I, { roughness = 0.2, metalness = 1, emission = { 4, 2, 1 } })
     fails(function() fk.gfx.draw(mesh, { 1, 2, 3 }) end, "16 numbers")
-    local m = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, "x" }
-    fails(function() fk.gfx.draw(mesh, m) end, "matrix[16]")
+    fails(function() fk.gfx.draw(mesh, I, { roughness = 2 }) end, "'roughness' must be a number from 0.0 to 1.0")
+    fails(function() fk.gfx.draw(mesh, I, { metalness = "x" }) end, "'metalness'")
+    fails(function() fk.gfx.draw(mesh, I, { emission = { 1, 2 } }) end, "'emission' must be a table of 3 numbers")
+    fails(function() fk.gfx.draw(mesh, I, { emission = { -1, 0, 0 } }) end, "'emission' values")
+    fails(function() fk.gfx.draw({}, I) end, "fk.mesh")
   end,
-  ["draw needs a mesh"] = function()
-    fails(function() fk.gfx.draw({}, {}) end, "fk.mesh")
+  ["overlay and camera"] = function()
+    local mesh = fk.gfx.mesh(triangle)
+    fk.gfx.overlay(mesh, I)
+    fk.gfx.camera(I, I)
+    fails(function() fk.gfx.camera(I, { 1 }) end, "camera: the matrix must have 16 numbers")
   end,
-  ["clear and size work without a window"] = function()
-    fk.gfx.clear(0, 0, 0)
+  ["lights"] = function()
+    fk.gfx.sun({ direction = { 0, 1, 0 }, color = { 1, 0.9, 0.8 }, intensity = 3 })
+    fk.gfx.sun({})
+    fails(function() fk.gfx.sun({ direction = { 0, 0, 0 } }) end, "must not be zero")
+    fk.gfx.ambient({ sky = { 0.5, 0.6, 0.8 }, ground = { 0.2, 0.2, 0.2 }, intensity = 0.5 })
+    fk.gfx.ambient({})
+    fk.gfx.light({ position = { 1, 2, 3 }, color = { 1, 0.5, 0 }, intensity = 20, radius = 5 })
+    fails(function() fk.gfx.light({ radius = 0 }) end, "'radius'")
+    fk.gfx.clear(0.1, 0.2, 0.3)
+  end,
+  ["grading"] = function()
+    fk.gfx.grade({ exposure = -1, contrast = 1.2, saturation = 0.8, tint = { 1, 0.9, 0.8 } })
+    fk.gfx.grade({})
+    fails(function() fk.gfx.grade({ contrast = 9 }) end, "'contrast'")
+  end,
+  ["configure and settings"] = function()
+    local before = fk.gfx.settings()
+    fk.gfx.configure({ width = 640, height = 360, supersample = 2, shadow_cascades = 3, shadow_size = 512,
+      ao_samples = 4, max_lights = 4, bloom = false, hdr = true, dither = false })
+    local s = fk.gfx.settings()
+    assert(s.width == 640 and s.supersample == 2 and s.shadow_cascades == 3 and s.bloom == false and s.dither == false)
     local w, h = fk.gfx.size()
-    assert(w == 480 and h == 270)
-  end,
-  ["print accepts anything"] = function()
-    print("test", 1, nil, true)
+    assert(w == 640 and h == 360)
+    fails(function() fk.gfx.configure({ supersample = 3 }) end, "'supersample' is out of range")
+    fails(function() fk.gfx.configure({ width = "wide" }) end, "'width' must be an integer")
+    fails(function() fk.gfx.configure({ bloom = 1 }) end, "'bloom' must be true or false")
+    fk.gfx.configure(before)
+    assert(fk.gfx.settings().width == before.width)
   end,
 }

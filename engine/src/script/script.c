@@ -5,14 +5,13 @@
 
 #include "assets/vfs.h"
 #include "core/rng.h"
-#include "gfx/gfx.h"
+#include "gfx/frame.h"
 #include "lauxlib.h"
 #include "lualib.h"
 #include "platform/platform.h"
 
 #define FK_MAX_VERTICES (1 << 20)
 
-static bool rendering;
 static char last_error[4096];
 
 const char *fk_script_error(void) { return last_error; }
@@ -20,92 +19,6 @@ const char *fk_script_error(void) { return last_error; }
 void fk_script_set_error(const char *message) {
     snprintf(last_error, sizeof last_error, "%s", message);
     fk_log("%s", last_error);
-}
-
-/* --- fk.gfx ---------------------------------------------------------------- */
-
-static int l_clear(lua_State *L) {
-    float r = (float)luaL_checknumber(L, 1), g = (float)luaL_checknumber(L, 2), b = (float)luaL_checknumber(L, 3);
-    if (rendering) fk_gfx_clear(r, g, b);
-    return 0;
-}
-
-static lua_Integer field_table(lua_State *L, const char *name) {
-    if (lua_getfield(L, 1, name) != LUA_TTABLE) luaL_error(L, "mesh: '%s' must be a table", name);
-    return luaL_len(L, -1);
-}
-
-static float number_at(lua_State *L, int table, lua_Integer i, const char *name) {
-    lua_rawgeti(L, table, i);
-    int ok;
-    lua_Number v = lua_tonumberx(L, -1, &ok);
-    if (!ok) luaL_error(L, "mesh: %s[%d] is not a number", name, (int)i);
-    lua_pop(L, 1);
-    return (float)v;
-}
-
-static int l_mesh(lua_State *L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
-    lua_settop(L, 1);
-    lua_Integer np = field_table(L, "positions"), nc = field_table(L, "colors"), ni = field_table(L, "indices");
-    if (np == 0 || np % 3) return luaL_error(L, "mesh: positions must hold x, y, z for at least one vertex");
-    if (nc != np) return luaL_error(L, "mesh: colors must hold r, g, b for every vertex");
-    if (ni == 0 || ni % 3) return luaL_error(L, "mesh: indices must describe whole triangles");
-    lua_Integer nv = np / 3;
-    if (nv > FK_MAX_VERTICES || ni > 3 * FK_MAX_VERTICES) return luaL_error(L, "mesh: too large");
-    /* Scratch buffers are userdata, so an error in the middle does not leak them. */
-    float *v = lua_newuserdatauv(L, (size_t)nv * 6 * sizeof(float), 0);
-    uint32_t *idx = lua_newuserdatauv(L, (size_t)ni * sizeof(uint32_t), 0);
-    for (lua_Integer i = 0; i < nv; i++) {
-        for (int k = 0; k < 3; k++) {
-            v[i * 6 + k] = number_at(L, 2, i * 3 + k + 1, "positions");
-            v[i * 6 + 3 + k] = number_at(L, 3, i * 3 + k + 1, "colors");
-        }
-    }
-    for (lua_Integer i = 0; i < ni; i++) {
-        lua_rawgeti(L, 4, i + 1);
-        int ok;
-        lua_Integer x = lua_tointegerx(L, -1, &ok);
-        if (!ok || x < 1 || x > nv) return luaL_error(L, "mesh: indices[%d] must be a vertex number from 1 to %d", (int)i + 1, (int)nv);
-        idx[i] = (uint32_t)(x - 1);
-        lua_pop(L, 1);
-    }
-    fk_mesh *m = lua_newuserdatauv(L, sizeof *m, 0);
-    memset(m, 0, sizeof *m);
-    m->count = (int)ni;
-    if (rendering) fk_gfx_mesh_create(m, v, (int)nv, idx, (int)ni);
-    luaL_setmetatable(L, "fk.mesh");
-    return 1;
-}
-
-static int l_mesh_gc(lua_State *L) {
-    fk_mesh *m = luaL_checkudata(L, 1, "fk.mesh");
-    if (m->vao) fk_gfx_mesh_destroy(m);
-    return 0;
-}
-
-static int l_draw(lua_State *L) {
-    fk_mesh *m = luaL_checkudata(L, 1, "fk.mesh");
-    luaL_checktype(L, 2, LUA_TTABLE);
-    if (luaL_len(L, 2) != 16) return luaL_error(L, "draw: the matrix must have 16 numbers");
-    float mvp[16];
-    for (int i = 0; i < 16; i++) {
-        lua_rawgeti(L, 2, i + 1);
-        int ok;
-        mvp[i] = (float)lua_tonumberx(L, -1, &ok);
-        if (!ok) return luaL_error(L, "draw: matrix[%d] is not a number", i + 1);
-        lua_pop(L, 1);
-    }
-    if (rendering) fk_gfx_mesh_draw(m, mvp);
-    return 0;
-}
-
-static int l_size(lua_State *L) {
-    int w = FK_HEADLESS_W, h = FK_HEADLESS_H;
-    if (rendering) fk_platform_size(&w, &h);
-    lua_pushinteger(L, w);
-    lua_pushinteger(L, h);
-    return 2;
 }
 
 /* --- fk.rng and fk.hash --------------------------------------------------------- */
@@ -197,6 +110,8 @@ static int l_button(lua_State *L) {
 static int l_mouse(lua_State *L) {
     float x, y, dx, dy;
     fk_input_mouse(&x, &y, &dx, &dy);
+    fk_gfx_map_point(&x, &y); /* relative to the game image, not the window with its bars */
+    fk_gfx_map_delta(&dx, &dy);
     lua_pushnumber(L, x);
     lua_pushnumber(L, y);
     lua_pushnumber(L, dx);
@@ -214,6 +129,7 @@ static int l_touches(lua_State *L) {
     int n = fk_input_touches(touches);
     lua_createtable(L, n, 0);
     for (int i = 0; i < n; i++) {
+        fk_gfx_map_point(&touches[i].x, &touches[i].y);
         lua_createtable(L, 0, 3);
         lua_pushinteger(L, touches[i].id);
         lua_setfield(L, -2, "id");
@@ -307,8 +223,6 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
                                     {LUA_TABLIBNAME, luaopen_table}, {LUA_STRLIBNAME, luaopen_string},
                                     {LUA_MATHLIBNAME, luaopen_math}, {LUA_UTF8LIBNAME, luaopen_utf8},
                                     {NULL, NULL}};
-    static const luaL_Reg gfx[] = {{"clear", l_clear}, {"mesh", l_mesh}, {"draw", l_draw}, {"size", l_size}, {NULL, NULL}};
-    rendering = render;
     lua_State *L = luaL_newstate();
     if (coverage) luaL_openlibs(L);
     else
@@ -319,10 +233,6 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     fk_script_set_seed(L, seed);
     lua_newtable(L);
     lua_setfield(L, LUA_REGISTRYINDEX, "fk.loaded");
-    luaL_newmetatable(L, "fk.mesh");
-    lua_pushcfunction(L, l_mesh_gc);
-    lua_setfield(L, -2, "__gc");
-    lua_pop(L, 1);
     static const luaL_Reg rng_methods[] = {
         {"int", l_rng_int}, {"float", l_rng_float}, {"range", l_rng_range}, {"chance", l_rng_chance}, {NULL, NULL}};
     luaL_newmetatable(L, "fk.rng");
@@ -353,7 +263,7 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     lua_setfield(L, -2, "rng");
     lua_pushcfunction(L, l_hash);
     lua_setfield(L, -2, "hash");
-    luaL_newlib(L, gfx);
+    fk_lua_gfx_open(L, render);
     lua_setfield(L, -2, "gfx");
     static const luaL_Reg input[] = {{"key", l_key},       {"axis", l_axis},       {"button", l_button},
                                      {"mouse", l_mouse},   {"mouse_button", l_mouse_button},

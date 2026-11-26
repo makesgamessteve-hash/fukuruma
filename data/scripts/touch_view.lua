@@ -1,5 +1,5 @@
--- Draws the touch controls from fk.actions.touch_controls() as flat circles on top of the scene.
--- shortcut: plain meshes at the near plane; replaced by UI widgets in add-render-pipeline.
+-- Draws the touch controls from fk.actions.touch_controls() as unlit overlay circles on the finished image.
+-- shortcut: plain overlay meshes; replaced by UI widgets with the in-game UI (add-graphics-settings).
 local mat4 = require("mat4")
 
 local view = {}
@@ -25,9 +25,9 @@ function view.init()
   view.button_held = circle({ 0.95, 0.6, 0.25 }, 32)
 end
 
--- Maps screen coordinates (0..1, y down) to clip space at depth z (-1 is the near plane).
-local function place(x, y, rx, ry, z)
-  local screen = { 2, 0, 0, 0, 0, -2, 0, 0, 0, 0, 0, 0, -1, 1, z, 1 }
+-- Maps image coordinates (0..1, y down) to clip space.
+local function place(x, y, rx, ry)
+  local screen = { 2, 0, 0, 0, 0, -2, 0, 0, 0, 0, 0, 0, -1, 1, 0, 1 }
   return mat4.multiply(screen, { rx, 0, 0, 0, 0, ry, 0, 0, 0, 0, 1, 0, x, y, 0, 1 })
 end
 
@@ -36,10 +36,10 @@ function view.draw(controls)
   local w, h = fk.gfx.size()
   local a = w / h
   local s = controls.stick
-  fk.gfx.draw(view.base, place(s.x, s.y, s.r / a, s.r, -0.998))
-  fk.gfx.draw(view.knob, place(s.knob_x, s.knob_y, 0.4 * s.r / a, 0.4 * s.r, -0.999))
+  fk.gfx.overlay(view.base, place(s.x, s.y, s.r / a, s.r))
+  fk.gfx.overlay(view.knob, place(s.knob_x, s.knob_y, 0.4 * s.r / a, 0.4 * s.r))
   for _, b in ipairs(controls.buttons) do
-    fk.gfx.draw(b.held and view.button_held or view.button, place(b.x, b.y, b.r / a, b.r, -0.998))
+    fk.gfx.overlay(b.held and view.button_held or view.button, place(b.x, b.y, b.r / a, b.r))
   end
 end
 

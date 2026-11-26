@@ -37,7 +37,8 @@ return {
     assert(ok, err)
     assert(sim.get(game.ship, "spin").speed == 2.0)
   end,
-  ["transform is a 4x4 matrix"] = function()
-    assert(#game.transform(480, 270, 0) == 16)
+  ["camera gives view and projection matrices"] = function()
+    local view, projection = game.camera(480, 270)
+    assert(#view == 16 and #projection == 16)
   end,
 }

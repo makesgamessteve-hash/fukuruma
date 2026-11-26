@@ -134,11 +134,13 @@ add_test(NAME game_simulation_norender COMMAND fukuruma --no-render --scenario $
 add_test(NAME game_input_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/input.lua)
 add_test(NAME game_input COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/input.lua)
 add_test(NAME game_boot COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/boot.lua)
+add_test(NAME game_showcase_lighting COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/showcase_lighting.lua)
 add_test(NAME game_boot_reproducible COMMAND ${CMAKE_COMMAND} -DEXE=${FK_EXE} -DSRC=${FK_SRC}
   -P ${FK_SRC}/tests/reproducible.cmake)
 set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_cwd scenario_timeout_exit_code video_unavailable
   game_call_order game_only_tick game_simulation_norender game_input_norender PROPERTIES LABELS unit)
-set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible game_input PROPERTIES LABELS game)
+set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible game_input
+  game_showcase_lighting PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
 

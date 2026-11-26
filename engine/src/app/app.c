@@ -7,6 +7,7 @@
 #include "app/cli.h"
 #include "app/golden.h"
 #include "assets/vfs.h"
+#include "gfx/frame.h"
 #include "gfx/gfx.h"
 #include "lauxlib.h"
 #include "platform/platform.h"
@@ -176,10 +177,9 @@ static bool screenshot(const char *name) {
         fk_log("screenshot '%s' skipped (no rendering)", name);
         return true;
     }
-    int w, h;
-    fk_platform_size(&w, &h);
+    int w = fk_gfx_settings_current()->width, h = fk_gfx_settings_current()->height; /* the internal image */
     uint8_t *pixels = malloc((size_t)w * h * 4);
-    fk_gfx_read_pixels(w, h, pixels);
+    fk_gfx_read_pixels(pixels);
     char golden[1100];
     snprintf(golden, sizeof golden, "%s%s.png", app.golden_dir, name);
     bool ok = fk_golden_check(golden, "test-output", name, pixels, w, h, app.opt.update_golden);
@@ -228,6 +228,8 @@ static int scenario_step(void) {
 fk_status fk_app_init(int argc, char **argv, const char *base) {
     memset(&app, 0, sizeof app);
     fk_input_reset();
+    fk_gfx_settings_default(fk_gfx_settings_current());
+    fk_frame_reset();
     app.game_ref = app.step_ref = app.co_ref = LUA_NOREF;
     if (!fk_cli_parse(argc, argv, &app.opt)) return finish(1);
     fk_vfs_init(base);
@@ -241,11 +243,7 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
     if (render) {
         if (!fk_platform_open(app.opt.headless)) return finish(1);
         app.window = true;
-        char *shader = fk_vfs_read("shaders/flat.glsl", &size);
-        bool ok = shader && fk_gfx_init(shader);
-        if (!shader) fk_log("cannot find %s", fk_vfs_path("shaders/flat.glsl", path, sizeof path));
-        fk_platform_free(shader);
-        if (!ok) return finish(1);
+        if (!fk_gfx_init()) return finish(1);
     }
     app.interactive = app.window && !app.opt.headless && !app.opt.scenario;
 
@@ -279,26 +277,28 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
 
 fk_status fk_app_iterate(void) {
     int ticks = 1; /* headless runs and scenarios: one tick per frame, so they are reproducible */
-    double alpha = 1.0;
+    double alpha = 1.0, dt = FK_TICK;
     if (app.interactive) {
         uint64_t now = fk_platform_ticks_ns();
-        ticks = fk_ticks_due(&app.acc, (double)(now - app.last_ns) / 1e9, &alpha);
+        dt = (double)(now - app.last_ns) / 1e9;
+        ticks = fk_ticks_due(&app.acc, dt, &alpha);
         app.last_ns = now;
     }
-    if (app.window) {
-        int w, h;
-        fk_platform_size(&w, &h);
-        fk_gfx_viewport(w, h);
-    }
     if (app.broken) {
-        fk_gfx_clear(0.25f, 0.0f, 0.0f);
+        fk_gfx_clear_window(0.25f, 0.0f, 0.0f);
         fk_platform_swap();
         return FK_RUNNING;
     }
+    fk_script_frame_begin(app.L);
     if (!call_game("input", -1)) return fail();
     for (int i = 0; i < ticks; i++)
         if (!sim_step()) return fail();
     if (!call_game("draw", alpha)) return fail();
+    if (app.window) {
+        int w, h;
+        fk_platform_size(&w, &h);
+        fk_gfx_render(dt, w, h);
+    }
     if (app.co) {
         int code = scenario_step();
         if (code >= 0) return finish(code);

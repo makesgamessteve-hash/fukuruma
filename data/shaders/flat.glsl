@@ -1,4 +1,4 @@
-// Unlit vertex colours. The engine prepends #version and defines VERTEX or FRAGMENT.
+// Unlit vertex colours: the overlay (UI, touch controls). The engine prepends #version and defines VERTEX or FRAGMENT.
 #ifdef VERTEX
 in vec3 a_position;
 in vec3 a_color;

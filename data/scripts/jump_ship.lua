@@ -1,23 +1,16 @@
--- Placeholder Jump Ship for M0: a faceted spindle hull with a ring, flat-shaded in the vertex colours.
+-- Placeholder Jump Ship: a faceted spindle hull with a ring. Base colours only; the renderer lights it.
 -- Replaced by the procedural hull grammar in M6.
 local jump_ship = {}
 
-local LIGHT = { 0.48, 0.64, 0.6 } -- normalised direction towards the star
 local HULL = { 0.62, 0.66, 0.72 }
 local RING = { 0.9, 0.55, 0.2 }
 
--- Appends one flat-shaded triangle (three corners as {x, y, z}) to the mesh tables.
+-- Appends one triangle (three corners as {x, y, z}) with its own vertices, so it is flat-shaded.
 local function triangle(mesh, a, b, c, color)
-  local ux, uy, uz = b[1] - a[1], b[2] - a[2], b[3] - a[3]
-  local vx, vy, vz = c[1] - a[1], c[2] - a[2], c[3] - a[3]
-  local nx, ny, nz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx
-  local len = math.sqrt(nx * nx + ny * ny + nz * nz)
-  local light = math.max(0, (nx * LIGHT[1] + ny * LIGHT[2] + nz * LIGHT[3]) / len)
-  local shade = 0.3 + 0.7 * light
   for _, p in ipairs({ a, b, c }) do
     local n = #mesh.positions
     mesh.positions[n + 1], mesh.positions[n + 2], mesh.positions[n + 3] = p[1], p[2], p[3]
-    mesh.colors[n + 1], mesh.colors[n + 2], mesh.colors[n + 3] = color[1] * shade, color[2] * shade, color[3] * shade
+    mesh.colors[n + 1], mesh.colors[n + 2], mesh.colors[n + 3] = color[1], color[2], color[3]
     mesh.indices[#mesh.indices + 1] = n // 3 + 1
   end
 end
