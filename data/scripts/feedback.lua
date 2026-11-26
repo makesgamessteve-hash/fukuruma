@@ -10,6 +10,15 @@ return {
     rumble = { 0.25, 0.05, 0.07 },
     sound = "footstep",
   },
+  -- Something heavy hitting the deck or the suit: a burst of grit, a boom, a jolt (scaled by how hard).
+  impact = {
+    particles = { count = 14, radius = 0.4, direction = { 0, 1, 0 }, spread = 1.5, speed_min = 0.8, speed_max = 2.4,
+      life_min = 0.4, life_max = 0.9, size = 0.2, size_end = 0.7, gravity = 1.2, drag = 2, color = { 0.6, 0.56, 0.5 },
+      alpha = 0.6, alpha_end = 0 },
+    trauma = 0.12,
+    rumble = { 0.45, 0.2, 0.12 },
+    sound = "impact",
+  },
   -- The suit's sensor pulse: a ring of light racing over the ground, a cyan flash, a ping.
   scan = {
     particles = {

@@ -146,6 +146,8 @@ add_test(NAME game_first_person_norender COMMAND fukuruma --no-render --scenario
 add_test(NAME game_scale_ladder COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/scale_ladder.lua)
 add_test(NAME game_scale_ladder_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/scale_ladder.lua)
 add_test(NAME game_orbits_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/orbits.lua)
+add_test(NAME game_physics COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/physics.lua)
+add_test(NAME game_physics_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/physics.lua)
 add_test(NAME game_graphics_menu COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/graphics_menu.lua)
 add_test(NAME game_graphics_menu_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/graphics_menu.lua)
 add_test(NAME game_boot_reproducible COMMAND ${CMAKE_COMMAND} -DEXE=${FK_EXE} -DSRC=${FK_SRC}
@@ -153,10 +155,10 @@ add_test(NAME game_boot_reproducible COMMAND ${CMAKE_COMMAND} -DEXE=${FK_EXE} -D
 set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_cwd scenario_timeout_exit_code video_unavailable
   game_call_order game_only_tick game_simulation_norender game_input_norender game_graphics_menu_norender
   game_feel_norender game_audio_norender game_save_norender game_first_person_norender
-  game_scale_ladder_norender game_orbits_norender PROPERTIES LABELS unit)
+  game_scale_ladder_norender game_orbits_norender game_physics_norender PROPERTIES LABELS unit)
 set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible game_input
   game_showcase_lighting game_showcase_materials game_showcase_skinning game_feel game_graphics_menu game_first_person
-  game_scale_ladder PROPERTIES LABELS game)
+  game_scale_ladder game_physics PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
 

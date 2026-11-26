@@ -290,6 +290,8 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     fk_lua_audio_open(L);
     lua_setfield(L, -2, "audio");
     fk_lua_orbit_open(L);
+    fk_lua_physics_open(L);
+    lua_setfield(L, -2, "physics");
     static const luaL_Reg input[] = {{"key", l_key},       {"axis", l_axis},       {"button", l_button},
                                      {"mouse", l_mouse},   {"mouse_button", l_mouse_button},
                                      {"touches", l_touches}, {"device", l_device}, {"rumble", l_rumble}, {"capture", l_capture}, {NULL, NULL}};

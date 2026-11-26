@@ -29,10 +29,42 @@ return {
     local s = start()
     sim.send("move", { x = -2.6, z = 0, fx = -1, fz = 0 })
     for _ = 1, 60 do sim.step(game) end
-    assert(s.vx == -2.6 and s.x < -1.5, "reaches walking speed within a second")
+    assert(math.abs(s.vx + 2.6) < 1e-3 and s.x < -1.5, "reaches walking speed within a second")
     assert(s.fx < -0.9, "faces where the Commander looks")
     for _ = 1, 3000 do sim.step(game) end
-    assert(s.x == -78, "stops at the edge of the ground")
+    assert(math.abs(s.x + 78.7) < 0.01 and math.abs(s.vx) < 0.2, "stops at the wall along the edge of the ground")
+  end,
+  ["the suit pushes crates, stops at the tower and the crates thud"] = function()
+    local s = start()
+    local crate = game.world:get(game.crates[3]).position -- at (9, 0.8, -4)
+    s.x, s.z = 5, -4
+    game.world:set(s.body, { position = { 5, 1.8, -4 } })
+    sim.send("move", { x = 2.6, z = 0, fx = 1, fz = 0 })
+    local impacts = 0
+    sim.listen("impact", function(e) impacts = impacts + 1; assert(e.strength > 0 and e.strength <= 1) end)
+    for _ = 1, 180 do sim.step(game) end
+    local moved = game.world:get(game.crates[3]).position
+    assert(moved[1] > crate[1] + 2, "the crate was pushed along")
+    assert(s.x > 7, "the suit walked on behind it")
+    s = start()
+    s.x, s.z = 6, 1
+    game.world:set(s.body, { position = { 6, 1.8, 1 } })
+    sim.send("move", { x = 0, z = 2.6, fx = 0, fz = 1 })
+    for _ = 1, 120 do sim.step(game) end
+    assert(math.abs(s.z - (4 - 0.4 - 0.8)) < 0.02 and math.abs(s.x - 6) < 0.05, "the beacon tower stops the suit")
+    local drop = game.world:add({ shape = "box", size = { 1, 1, 1 }, mass = 50, position = { 0, 3, 10 } })
+    for _ = 1, 60 do sim.step(game) end
+    assert(impacts > 0 and game.world:get(drop).position[2] < 0.6, "a dropped box lands with an impact")
+  end,
+  ["saves keep the physics world"] = function()
+    local s = start()
+    local crate = game.world:get(game.crates[1]).position
+    game.save()
+    s.x = 3
+    game.world:set(game.crates[1], { position = { 0, 10, 0 } })
+    game.load()
+    local back = game.world:get(game.crates[1]).position
+    assert(sim.get(game.suit, "suit").x == 0 and back[1] == crate[1] and back[2] == crate[2], "back where they were")
   end,
   ["input becomes move and scan commands"] = function()
     start()

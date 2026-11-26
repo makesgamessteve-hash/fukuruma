@@ -7,6 +7,8 @@
   "prompt": "Giant mech suit step on a steel and concrete floor, weighty thump with rattling armor plates and a hydraulic release"},
  {"id": "scan", "kind": "sfx", "seconds": 2.0, "path": "sounds/scan.ogg",
   "prompt": "Epic futuristic sensor scan pulse, a deep sonar ping that blooms into a shimmering energy sweep racing outwards, sci-fi"},
+ {"id": "impact", "kind": "sfx", "seconds": 0.8, "path": "sounds/impact.ogg",
+  "prompt": "Heavy metal cargo crate slamming onto a concrete deck, deep hollow boom with a short scrape and rattle, close, punchy"},
  {"id": "ui_move", "kind": "sfx", "seconds": 0.5, "path": "sounds/ui_move.ogg",
   "prompt": "Soft short sci-fi interface tick, a subtle clean digital click for moving through a menu"},
  {"id": "ui_confirm", "kind": "sfx", "seconds": 0.6, "path": "sounds/ui_confirm.ogg",

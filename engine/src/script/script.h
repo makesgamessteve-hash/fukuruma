@@ -47,5 +47,7 @@ void fk_lua_anim_open(lua_State *L);
 const float *fk_lua_pose_globals(lua_State *L, int arg, const fk_model *model);
 /* fk.math and fk.orbit (script/lua_orbit.c): sets both fields in the table on top of the stack. */
 void fk_lua_orbit_open(lua_State *L);
+/* fk.physics (script/lua_physics.c): pushes the table. */
+void fk_lua_physics_open(lua_State *L);
 /* fk.audio (script/lua_audio.c): pushes the table. */
 void fk_lua_audio_open(lua_State *L);

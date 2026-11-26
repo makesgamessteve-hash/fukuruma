@@ -6,13 +6,13 @@ local MAX_DEPTH = 8
 
 sim.dt = 1 / 60 -- seconds of game time per tick
 
-local handlers, listeners
+local handlers, listeners, attached
 local queue, events
 local next_id, alive, components
 
 function sim.reset()
   sim.tick = 0
-  handlers, listeners = {}, {}
+  handlers, listeners, attached = {}, {}, {}
   queue, events = {}, {}
   next_id, alive, components = 1, {}, {}
 end
@@ -143,6 +143,21 @@ function sim.each(name)
   end
 end
 
+-- State kept outside the components (a physics world in C): provider.state() gives plain data, and
+-- provider.restore(data) continues from it. Snapshots and the state hash include it under its name.
+function sim.attach(name, provider)
+  attached[name] = provider
+end
+
+local function attached_states() -- nil when nothing is attached, so such states hash as before
+  local states
+  for name, provider in pairs(attached) do
+    states = states or {}
+    states[name] = provider.state()
+  end
+  return states
+end
+
 -- Snapshots (saves) ----------------------------------------------------------------
 
 -- Everything needed to continue exactly where the simulation is: the tick, the next entity ID, the living
@@ -156,7 +171,8 @@ function sim.snapshot()
     sets[name] = { ids = table.move(set.ids, 1, #set.ids, 1, {}), values = copy(set.values, name, -1) }
   end
   -- depths start below 0: the wrapping tables (values by ID, the queue's command records) do not count
-  return { tick = sim.tick, next_id = next_id, alive = living, components = sets, queue = copy(queue, "queue", -2) }
+  return { tick = sim.tick, next_id = next_id, alive = living, components = sets, queue = copy(queue, "queue", -2),
+    attached = attached_states() }
 end
 
 -- Continues from a snapshot. Handlers and listeners stay (they are code, not state).
@@ -168,6 +184,9 @@ function sim.restore(snap)
     local set = { ids = table.move(s.ids, 1, #s.ids, 1, {}), index = {}, values = copy(s.values, name, -1) }
     for i, id in ipairs(set.ids) do set.index[id] = i end
     components[name] = set
+  end
+  for name, data in pairs(snap.attached or {}) do
+    if attached[name] then attached[name].restore(data) end
   end
 end
 
@@ -204,7 +223,7 @@ local function encode(value, out)
 end
 
 function sim.state()
-  local state = { tick = sim.tick, next_id = next_id, components = {} }
+  local state = { tick = sim.tick, next_id = next_id, components = {}, attached = attached_states() }
   for name, set in pairs(components) do state.components[name] = set.values end
   return state
 end

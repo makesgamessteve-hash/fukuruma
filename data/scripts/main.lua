@@ -3,6 +3,7 @@
 -- touch screen; walk with WASD, the arrow keys, the left stick or the touch stick, towards where you look;
 -- sprint with Shift, A or RUN; scan with E, X or SCAN. V, the gamepad's Back button or VIEW opens the survey
 -- drone's outside view, which is for looking only. Escape, Start or MENU opens the settings; F5 saves, F9 loads.
+-- The suit is a physics character: it climbs low steps, stops at walls and the beacon tower, and pushes the crates.
 -- Simulation (sim.*) uses only arithmetic and sqrt, so it is the same on every platform; animation, camera
 -- and effects are presentation.
 local mat4 = require("mat4")
@@ -25,6 +26,7 @@ local feedback = require("feedback")
 local save = require("fk.save")
 local tween = require("fk.tween")
 local hud = require("hud")
+local frames = require("fk.frames")
 
 local game = {}
 
@@ -33,6 +35,10 @@ local ACCEL = 9                -- m/s^2 towards the wanted velocity
 local GROUND_SIZE = 160
 local SCAN_COOLDOWN = 120      -- ticks between scans
 local EYE = { 0, 0.26, 0.22 }  -- the eyes behind the visor, from the head joint
+local SUIT_RADIUS, SUIT_HEIGHT = 0.8, 3.6
+local CRATES = { { -6, 5 }, { -4.6, 7.2 }, { 9, -4 } }
+local CRATE_SIZE, CRATE_MASS = 1.6, 400 -- kg: the suit can push them
+local GRAVITY = -9.81
 
 function game.init()
   game.graphics = graphics.load(fk.gfx.device())
@@ -69,8 +75,27 @@ function game.init()
   game.spheres = fk.gfx.model("models/showcase_materials.glb")
   touch_view.init()
 
+  -- The physics world: the deck, walls along its edges, the beacon tower, the crates and the suit.
+  game.world = fk.physics.world({ gravity = { 0, GRAVITY, 0 } })
+  local half = GROUND_SIZE / 2
+  game.world:add({ shape = "box", size = { GROUND_SIZE, 1, GROUND_SIZE }, position = { 0, -0.5, 0 }, friction = 0.8 })
+  for _, wall in ipairs({ { half, 0, 1, GROUND_SIZE }, { -half, 0, 1, GROUND_SIZE }, { 0, half, GROUND_SIZE, 1 }, { 0, -half, GROUND_SIZE, 1 } }) do
+    game.world:add({ shape = "box", size = { wall[3], 8, wall[4] }, position = { wall[1], 4, wall[2] } })
+  end
+  game.world:add({ shape = "box", size = { 0.8, 6, 0.8 }, position = { 6, 3, 4 } })
+  game.crates = {}
+  for i, p in ipairs(CRATES) do
+    local a = i * 0.35 -- half of the yaw i * 0.7
+    game.crates[i] = game.world:add({ shape = "box", size = { CRATE_SIZE, CRATE_SIZE, CRATE_SIZE }, mass = CRATE_MASS,
+      position = { p[1], CRATE_SIZE / 2, p[2] }, rotation = { 0, fk.math.sin(a), 0, fk.math.cos(a) }, friction = 0.6 })
+  end
+  local body = game.world:character({ radius = SUIT_RADIUS, height = SUIT_HEIGHT, position = { 0, SUIT_HEIGHT / 2, 0 },
+    step = 0.5, slope = 40, push = 800 })
+  sim.attach("physics", { state = function() return game.world:state() end, restore = function(data) game.world:restore(data) end })
+
   game.suit = sim.create()
-  sim.set(game.suit, "suit", { x = 0, z = 0, vx = 0, vz = 0, fx = 0, fz = 1, wx = 0, wz = 0, lx = 0, lz = 1, scan_at = 0 })
+  sim.set(game.suit, "suit", { x = 0, y = 0, z = 0, vx = 0, vy = 0, vz = 0, fx = 0, fz = 1, wx = 0, wz = 0, lx = 0, lz = 1,
+    scan_at = 0, body = body })
   sim.on("move", function(args) -- the wanted velocity and the direction the Commander looks
     local body = sim.get(game.suit, "suit")
     body.wx, body.wz, body.lx, body.lz = args.x, args.z, args.fx, args.fz
@@ -81,7 +106,7 @@ function game.init()
     body.scan_at = sim.tick + SCAN_COOLDOWN
     sim.emit("scan", { position = { body.x, 0, body.z } })
   end)
-  feel.listen(sim, { scan = feedback.scan }, function() return game.listener() end)
+  feel.listen(sim, { scan = feedback.scan, impact = feedback.impact }, function() return game.listener() end)
   sim.listen("scan", function() -- a scan swells the discovery theme for a while
     music.play("discovery", 2)
     game.discovery_until = feel.time + 25
@@ -109,7 +134,7 @@ function game.listener() return { position = game.suit_position(), mass = 1 } en
 
 function game.suit_position()
   local body = sim.get(game.suit, "suit")
-  return { body.x, 0, body.z }
+  return { body.x, body.y, body.z }
 end
 
 -- A short notice at the top of the screen ("Game saved"), fading out.
@@ -182,26 +207,34 @@ function game.input()
   if actions.pressed("scan") and not menu.open and game.view == "helmet" then sim.send("scan", {}) end
 end
 
--- The suit accelerates towards the wanted velocity and turns to face where the Commander looks.
+-- The suit accelerates towards the wanted velocity and turns to face where the Commander looks; the physics
+-- character moves it (sliding along walls, climbing steps, pushing crates), so its velocity is what it really
+-- made. Then the world steps, and new hard touches become impact events.
 function game.tick()
+  local dt = sim.dt
   for _, b in sim.each("suit") do
     local dx, dz = b.wx - b.vx, b.wz - b.vz
     local d = math.sqrt(dx * dx + dz * dz)
-    local step = ACCEL * sim.dt
+    local step = ACCEL * dt
     if d <= step then b.vx, b.vz = b.wx, b.wz
     else b.vx, b.vz = b.vx + dx / d * step, b.vz + dz / d * step end
-    local half = GROUND_SIZE / 2 - 2
-    b.x = math.max(-half, math.min(half, b.x + b.vx * sim.dt))
-    b.z = math.max(-half, math.min(half, b.z + b.vz * sim.dt))
+    b.vy = b.vy + GRAVITY * dt
+    local p, grounded = game.world:move(b.body, { b.vx * dt, b.vy * dt, b.vz * dt }, dt)
+    b.vx, b.vz = (p[1] - b.x) / dt, (p[3] - b.z) / dt
+    if grounded then b.vy = 0 end
+    b.x, b.y, b.z = p[1], p[2] - SUIT_HEIGHT / 2, p[3]
     local fx, fz = b.fx + (b.lx - b.fx) * 0.2, b.fz + (b.lz - b.fz) * 0.2
     local f = math.sqrt(fx * fx + fz * fz)
     if f > 1e-6 then b.fx, b.fz = fx / f, fz / f end
+  end
+  for _, hit in ipairs(game.world:step(dt, 150)) do
+    sim.emit("impact", { position = hit.point, strength = math.min(1, hit.impulse / 1500) })
   end
 end
 
 -- Where the suit is drawn: between the last two ticks (alpha), facing its direction.
 local function suit_matrix(body, alpha)
-  return mat4.multiply(mat4.translation(body.x + body.vx * sim.dt * (alpha - 1), 0, body.z + body.vz * sim.dt * (alpha - 1)),
+  return mat4.multiply(mat4.translation(body.x + body.vx * sim.dt * (alpha - 1), body.y, body.z + body.vz * sim.dt * (alpha - 1)),
     mat4.rotation_y(math.atan(body.fx, body.fz)))
 end
 
@@ -241,8 +274,9 @@ local function draw_stage(dt)
   fk.gfx.grade({ exposure = -0.6, contrast = 1.1, saturation = 1.1 })
   fk.gfx.light({ position = { 6, 5.8, 4 }, color = { 1, 0.62, 0.3 }, intensity = 22, radius = 14 })
   fk.gfx.draw(game.ground, mat4.identity(), { texture = game.deck, roughness = 0.9 })
-  for i, p in ipairs({ { -6, 5 }, { -4.6, 7.2 }, { 9, -4 } }) do
-    fk.gfx.draw(game.crate, mat4.multiply(mat4.translation(p[1], 0.8, p[2]), mat4.rotation_y(i * 0.7)), { roughness = 0.8 })
+  for _, id in ipairs(game.crates) do
+    local c = game.world:get(id)
+    fk.gfx.draw(game.crate, frames.matrix(c.rotation, c.position, 1), { roughness = 0.8 })
   end
   fk.gfx.draw(game.pillar, mat4.translation(6, 3, 4), { roughness = 0.5, metalness = 0.3 })
   fk.gfx.draw(game.beacon, mat4.translation(6, 6.35, 4), { emission = { 8, 4, 1.2 } })
@@ -263,7 +297,7 @@ function game.draw(alpha, dt)
   local w, h = fk.gfx.size()
   local view, projection
   if game.view == "drone" then
-    view, projection = game.drone:matrices({ model[13], 0, model[15] }, w / h)
+    view, projection = game.drone:matrices({ model[13], model[14], model[15] }, w / h)
   else
     game.helmet.fov = comfort.current.fov
     view, projection = game.helmet:matrices(eye_position(model, head), w / h, { feel.shake() })

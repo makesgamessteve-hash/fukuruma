@@ -575,8 +575,12 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 ### M2 — Reference frames and scale (M)
 
-- **OpenSpec:** `add-first-person-view` (first), `add-reference-frames`, `add-orbital-mechanics`,
-  `add-physics`.
+- **OpenSpec:** `add-first-person-view` (first; done), `add-reference-frames` (frame tree in doubles, transitions,
+  camera-relative drawing, depth slices by depth range, scaled space, scale ladder; done), `add-orbital-mechanics`
+  (deterministic trigonometry, Kepler orbits on rails, spinning frames; done), `add-physics` (spheres, capsules,
+  boxes, broadphase grid, sequential impulses with warm starting, sleeping islands, gravity per body, characters with
+  steps and slopes, exact saves; the Exosuit pushes crates; done). Left for later milestones: convex hulls, triangle
+  meshes, heightfield and voxel chunks (with terrain, M5), vehicles (M6), jump jets and climbing.
 - **`add-first-person-view`:** the M1 sandbox becomes first person: the helmet rig in the Exosuit's
   head (mouse, right-stick and touch look; head bob and sway), the visor as a screen-space layer with
   a first HUD (heading, speed, scan pulse), the suit's arms in the near layer (placeholder hands),
