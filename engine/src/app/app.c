@@ -7,16 +7,26 @@
 #include "app/cli.h"
 #include "app/golden.h"
 #include "assets/vfs.h"
+#include "assets/watch.h"
 #include "gfx/frame.h"
 #include "gfx/gfx.h"
 #include "lauxlib.h"
 #include "platform/platform.h"
 #include "script/script.h"
 
+/* Hot reload: desktop debug builds watch data/ while a window is open. */
+#if !defined(NDEBUG) && !defined(__EMSCRIPTEN__)
+#define FK_HOT_RELOAD 1
+#else
+#define FK_HOT_RELOAD 0
+#endif
+
 static struct {
     fk_options opt;
     lua_State *L;
     bool window, interactive, broken, started;
+    bool restart, reconfigure; /* hot reload: a script or a shader changed */
+    uint64_t last_poll_ns;
     int game_ref, step_ref, co_ref;
     double acc; /* real time not yet simulated, in seconds */
     lua_State *co;
@@ -225,6 +235,34 @@ static int scenario_step(void) {
 
 /* --- application ------------------------------------------------------------- */
 
+static fk_status start_game(void);
+
+static void changed(void *flag) { *(bool *)flag = true; }
+
+static void watch_found(const char *path, void *flag) { fk_watch_add(path, changed, flag ? flag : &app.restart); }
+
+/* Applies changed shaders (new pipeline) and scripts (the game starts again from main.lua). */
+static fk_status hot_reload(void) {
+    uint64_t now = fk_platform_ticks_ns();
+    if (now - app.last_poll_ns < 500000000ull) return FK_RUNNING;
+    app.last_poll_ns = now;
+    fk_watch_poll();
+    if (app.reconfigure && !app.restart) {
+        app.reconfigure = false;
+        fk_log("hot reload: shaders %s", fk_gfx_configure() ? "reloaded" : "failed (see above); fix and save again");
+    }
+    if (!app.restart) return FK_RUNNING;
+    app.restart = app.reconfigure = app.broken = false;
+    fk_log("hot reload: restarting the game from data/scripts/main.lua");
+    fk_script_close(app.L);
+    fk_frame_reset();
+    app.L = fk_script_open(true, app.opt.seed, false);
+    app.game_ref = app.step_ref = LUA_NOREF;
+    app.acc = 0;
+    fk_gfx_configure(); /* shaders may have changed too; main.lua applies its settings again */
+    return start_game();
+}
+
 fk_status fk_app_init(int argc, char **argv, const char *base) {
     memset(&app, 0, sizeof app);
     fk_input_reset();
@@ -239,7 +277,6 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
     if (app.opt.scenario && !scenario_load()) return finish(1);
 
     char path[1024];
-    size_t size;
     if (render) {
         if (!fk_platform_open(app.opt.headless)) return finish(1);
         app.window = true;
@@ -247,7 +284,17 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
     }
     app.interactive = app.window && !app.opt.headless && !app.opt.scenario;
     fk_storage_memory(!app.interactive); /* test runs must not read or change the player's settings */
+    if (FK_HOT_RELOAD && app.interactive) {
+        fk_platform_find_files(fk_vfs_path("scripts", path, sizeof path), ".lua", watch_found, NULL);
+        fk_platform_find_files(fk_vfs_path("shaders", path, sizeof path), ".glsl", watch_found, &app.reconfigure);
+    }
+    return start_game();
+}
 
+/* Loads data/scripts/main.lua and the simulation module and calls game.init(). */
+static fk_status start_game(void) {
+    char path[1024];
+    size_t size;
     char *code = fk_vfs_read("scripts/main.lua", &size);
     if (!code) {
         snprintf(path, sizeof path, "cannot find ");
@@ -263,6 +310,10 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
         fk_script_set_error("data/scripts/main.lua must return a table with init, tick and draw functions");
         return fail();
     }
+    lua_getfield(app.L, LUA_REGISTRYINDEX, "fk.loaded"); /* require("game") returns it (scenarios, mods) */
+    lua_pushvalue(app.L, -2);
+    lua_setfield(app.L, -2, "game");
+    lua_pop(app.L, 1);
     app.game_ref = luaL_ref(app.L, LUA_REGISTRYINDEX);
     fk_script_push_env(app.L); /* the simulation module: fk.sim.step(game) runs one tick */
     lua_getfield(app.L, -1, "require");
@@ -279,6 +330,7 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
 fk_status fk_app_iterate(void) {
     int ticks = 1; /* headless runs and scenarios: one tick per frame, so they are reproducible */
     double alpha = 1.0, dt = FK_TICK;
+    if (FK_HOT_RELOAD && app.interactive && hot_reload() != FK_RUNNING) return FK_FAILED;
     if (app.interactive) {
         uint64_t now = fk_platform_ticks_ns();
         dt = (double)(now - app.last_ns) / 1e9;
@@ -311,6 +363,7 @@ fk_status fk_app_iterate(void) {
 
 int fk_app_quit(void) {
     fk_script_close(app.L); /* first: meshes are freed while the GL context still exists */
+    fk_watch_clear();
     if (app.window) {
         fk_gfx_shutdown();
         fk_platform_close();

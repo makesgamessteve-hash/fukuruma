@@ -14,6 +14,7 @@ in vec2 v_uv;
 const float PI = 3.14159265;
 
 vec3 srgb_to_linear(vec3 c) { return pow(max(c, vec3(0.0)), vec3(2.2)); }
+vec3 linear_to_srgb(vec3 c) { return pow(max(c, vec3(0.0)), vec3(1.0 / 2.2)); }
 
 vec3 aces(vec3 x) { // Narkowicz's fit of the ACES filmic tone curve
     return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);

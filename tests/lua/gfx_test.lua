@@ -43,6 +43,43 @@ return {
     fails(function() fk.gfx.draw(mesh, I, { emission = { -1, 0, 0 } }) end, "'emission' values")
     fails(function() fk.gfx.draw({}, I) end, "fk.mesh")
   end,
+  ["planes can be tiled"] = function()
+    local plane = require("shapes").plane(8, { 1, 1, 1 }, 2)
+    assert(#plane.uvs == 8 and plane.uvs[2] == 4, "the texture repeats every 2 m")
+    fk.gfx.mesh(plane)
+  end,
+  ["mesh uvs must match the vertices"] = function()
+    local t = { positions = triangle.positions, colors = triangle.colors, indices = triangle.indices, uvs = { 0, 0, 1, 0, 0, 1 } }
+    fk.gfx.mesh(t)
+    t.uvs = { 0, 0 }
+    fails(function() fk.gfx.mesh(t) end, "uvs must hold u, v for every vertex")
+  end,
+  ["textures are cached and checked"] = function()
+    local font = fk.gfx.texture("fonts/font8x8.png")
+    assert(font == fk.gfx.texture("fonts/font8x8.png"), "the same path gives the same texture")
+    local w, h = font:size()
+    assert(w == 128 and h == 64, w .. "x" .. h)
+    assert(select(1, fk.gfx.texture("textures/test_ground.jpg"):size()) == 256, "JPEG")
+    fails(function() fk.gfx.texture("fonts/none.png") end, "texture: fonts/none.png: cannot find the file")
+    fails(function() fk.gfx.texture("scripts/main.lua") end, "not a PNG or JPEG image")
+    fails(function() fk.gfx.texture("../secret.png") end, "is not a path inside data/")
+    fails(function() fk.gfx.texture("/etc/passwd") end, "is not a path inside data/")
+    fails(function() fk.gfx.texture("a b.png") end, "is not a path inside data/")
+    fk.gfx.draw(fk.gfx.mesh(triangle), I, { texture = font })
+    fails(function() fk.gfx.draw(fk.gfx.mesh(triangle), I, { texture = "font" }) end, "'texture' must be a texture")
+  end,
+  ["models load, list their clips and nodes, and draw"] = function()
+    local suit = fk.gfx.model("models/exosuit.glb")
+    assert(suit == fk.gfx.model("models/exosuit.glb"), "cached")
+    local names = {}
+    for _, clip in ipairs(suit:clips()) do names[#names + 1] = clip.name .. "=" .. clip.duration end
+    assert(table.concat(names, " ") == "idle=4.0 walk=1.2000000476837 run=0.75", table.concat(names, " "))
+    assert(suit:nodes()[1] == "Exosuit" and #suit:nodes() == 16, "nodes")
+    fk.gfx.draw(suit, I)
+    fails(function() fk.gfx.model("models/none.glb") end, "model: cannot find models/none.glb")
+    fails(function() fk.gfx.model("scripts/main.lua") end, "not a valid glTF file")
+    fails(function() fk.gfx.draw(suit, { 1 }) end, "the matrix must have 16 numbers")
+  end,
   ["overlay and camera"] = function()
     local mesh = fk.gfx.mesh(triangle)
     fk.gfx.overlay(mesh, I)

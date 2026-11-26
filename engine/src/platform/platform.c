@@ -69,6 +69,39 @@ void fk_platform_free(void *p) { SDL_free(p); }
 bool fk_platform_write_file(const char *path, const void *data, size_t size) { return SDL_SaveFile(path, data, size); }
 bool fk_platform_make_dir(const char *path) { return SDL_CreateDirectory(path); }
 
+static float *convert(const SDL_AudioSpec *src, const void *data, int len, int rate, int *frames) {
+    SDL_AudioSpec dst = {SDL_AUDIO_F32, src->channels, rate};
+    Uint8 *out = NULL;
+    int out_len = 0;
+    if (!SDL_ConvertAudioSamples(src, data, len, &dst, &out, &out_len)) return NULL;
+    *frames = out_len / (int)(sizeof(float) * (size_t)src->channels);
+    return (float *)out;
+}
+
+float *fk_platform_wav(const void *data, size_t size, int rate, int *channels, int *frames) {
+    SDL_AudioSpec spec;
+    Uint8 *pcm = NULL;
+    Uint32 len = 0;
+    if (!SDL_LoadWAV_IO(SDL_IOFromConstMem(data, size), true, &spec, &pcm, &len)) return NULL;
+    *channels = spec.channels;
+    float *out = convert(&spec, pcm, (int)len, rate, frames);
+    SDL_free(pcm);
+    return out;
+}
+
+float *fk_platform_resample(const float *in, int frames, int channels, int rate_in, int rate_out, int *out_frames) {
+    SDL_AudioSpec src = {SDL_AUDIO_F32, channels, rate_in};
+    return convert(&src, in, frames * channels * (int)sizeof(float), rate_out, out_frames);
+}
+
+bool fk_platform_file_info(const char *path, int64_t *mtime, uint64_t *size) {
+    SDL_PathInfo info;
+    if (!SDL_GetPathInfo(path, &info) || info.type != SDL_PATHTYPE_FILE) return false;
+    *mtime = info.modify_time;
+    *size = info.size;
+    return true;
+}
+
 typedef struct {
     const char *suffix;
     fk_file_fn fn;

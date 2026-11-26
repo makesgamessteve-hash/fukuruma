@@ -24,8 +24,8 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 # --- Vendored third-party code (built without project warnings) ------------
 file(GLOB FK_LUA_SRC ${CMAKE_SOURCE_DIR}/third_party/lua/*.c)
-add_library(fk_third_party STATIC ${FK_LUA_SRC} third_party/stb/stb_impl.c)
-target_include_directories(fk_third_party SYSTEM PUBLIC third_party/lua third_party/stb)
+add_library(fk_third_party STATIC ${FK_LUA_SRC} third_party/stb/stb_impl.c third_party/cgltf/cgltf_impl.c)
+target_include_directories(fk_third_party SYSTEM PUBLIC third_party/lua third_party/stb third_party/cgltf)
 if(UNIX)
   target_compile_definitions(fk_third_party PRIVATE LUA_USE_POSIX)
   target_link_libraries(fk_third_party PUBLIC m)
@@ -135,6 +135,7 @@ add_test(NAME game_input_norender COMMAND fukuruma --no-render --scenario ${FK_S
 add_test(NAME game_input COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/input.lua)
 add_test(NAME game_boot COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/boot.lua)
 add_test(NAME game_showcase_lighting COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/showcase_lighting.lua)
+add_test(NAME game_showcase_materials COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/showcase_materials.lua)
 add_test(NAME game_graphics_menu COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/graphics_menu.lua)
 add_test(NAME game_graphics_menu_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/graphics_menu.lua)
 add_test(NAME game_boot_reproducible COMMAND ${CMAKE_COMMAND} -DEXE=${FK_EXE} -DSRC=${FK_SRC}
@@ -143,7 +144,7 @@ set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_
   game_call_order game_only_tick game_simulation_norender game_input_norender game_graphics_menu_norender
   PROPERTIES LABELS unit)
 set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible game_input
-  game_showcase_lighting game_graphics_menu PROPERTIES LABELS game)
+  game_showcase_lighting game_showcase_materials game_graphics_menu PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
 

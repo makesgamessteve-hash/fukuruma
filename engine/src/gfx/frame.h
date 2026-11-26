@@ -20,8 +20,13 @@ typedef struct {
 } fk_gfx_settings;
 
 typedef struct {
+    float base[4];                           /* linear colour factor; multiplies the vertex colour and texture */
     float roughness, metalness, emission[3]; /* emission: linear radiance added to the surface */
+    float normal_scale;
+    const fk_texture *base_tex, *metal_rough_tex, *normal_tex, *emission_tex; /* NULL: none */
 } fk_material;
+
+void fk_material_default(fk_material *m); /* white, roughness 0.6, not metallic, no emission, no textures */
 
 typedef struct {
     const fk_mesh *mesh;
@@ -97,5 +102,7 @@ void fk_gfx_set_window(int win_w, int win_h, const int rect[4]);
 void fk_gfx_map_point(float *x, float *y);
 void fk_gfx_map_delta(float *dx, float *dy); /* the same for movements */
 
-/* Fills in vertex normals (offset 6 of each 9-float vertex) from the triangles that use each vertex. */
-void fk_mesh_normals(float *vertices, int vertex_count, const uint32_t *indices, int index_count);
+/* Fills in vertex normals from the triangles that use each vertex. */
+void fk_mesh_normals(fk_vertex *vertices, int vertex_count, const uint32_t *indices, int index_count);
+/* Fills in tangents (with the bitangent sign in w) from the UVs; needs the normals. */
+void fk_mesh_tangents(fk_vertex *vertices, int vertex_count, const uint32_t *indices, int index_count);

@@ -53,9 +53,9 @@ SOFTWARE.
 - Modified: `luaconf.h` defines `luai_makeseed` as 0 (fixed string-hash seed, for deterministic table order)
 - Licence: MIT, see `third_party/lua/LICENSE`
 
-## stb_image and stb_image_write
+## stb_image, stb_image_write and stb_vorbis
 
-- Used in: `third_party/stb/` (reading and writing test screenshots)
+- Used in: `third_party/stb/` (PNG and JPEG textures and test screenshots; OGG Vorbis sounds)
 - Source: <https://github.com/nothings/stb> (commit 6b5799bae8a1fe3792691ef4b72ae26434c3e799)
 - Licence: MIT or public domain, see `third_party/stb/LICENSE`
 
@@ -76,3 +76,9 @@ SOFTWARE.
 - Used in: `third_party/font8x8/` and the generated `data/fonts/font8x8.png` (menu and HUD text)
 - Source: <https://github.com/dhepper/font8x8> (commit 8e279d2d864e79128e96188a6b9526cfa3fbfef9), based on the IBM VGA fonts
 - Licence: Public domain
+
+## cgltf 1.15
+
+- Used in: `third_party/cgltf/` (glTF 2.0 models)
+- Source: <https://github.com/jkuhlmann/cgltf> (tag v1.15)
+- Licence: MIT, see `third_party/cgltf/LICENSE`

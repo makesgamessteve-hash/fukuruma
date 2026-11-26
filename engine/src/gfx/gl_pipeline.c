@@ -280,9 +280,16 @@ static void draw_meshes(GLuint program, bool materials) {
         const fk_draw *d = &f->draws[i];
         gl.UniformMatrix4fv(LOC("u_model"), 1, GL_FALSE, d->model);
         if (materials) {
-            gl.Uniform1f(LOC("u_roughness"), d->material.roughness);
-            gl.Uniform1f(LOC("u_metalness"), d->material.metalness);
-            gl.Uniform3fv(LOC("u_emission"), 1, d->material.emission);
+            const fk_material *m = &d->material;
+            gl.Uniform4fv(LOC("u_base"), 1, m->base);
+            gl.Uniform1f(LOC("u_roughness"), m->roughness);
+            gl.Uniform1f(LOC("u_metalness"), m->metalness);
+            gl.Uniform3fv(LOC("u_emission"), 1, m->emission);
+            bool normal_map = m->normal_tex && m->normal_tex->id;
+            gl.Uniform1f(LOC("u_normal_scale"), normal_map ? m->normal_scale : 0.0f); /* 0: no normal map */
+            const fk_texture *textures[4] = {m->base_tex, m->metal_rough_tex, m->normal_tex, m->emission_tex};
+            static const char *names[4] = {"u_base_tex", "u_metal_rough_tex", "u_normal_tex", "u_emission_tex"};
+            for (int t = 0; t < 4; t++) sampler(program, names[t], t, GL_TEXTURE_2D, textures[t] && textures[t]->id ? textures[t]->id : R.white);
         }
         gl.BindVertexArray(d->mesh->vao);
         gl.DrawElements(GL_TRIANGLES, d->mesh->count, GL_UNSIGNED_INT, (const void *)0);

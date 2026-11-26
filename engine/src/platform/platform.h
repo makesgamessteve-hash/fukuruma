@@ -26,6 +26,13 @@ void *fk_platform_read_file(const char *path, size_t *size);
 void fk_platform_free(void *p);
 bool fk_platform_write_file(const char *path, const void *data, size_t size);
 bool fk_platform_make_dir(const char *path);
+/* Decodes a WAV file to interleaved float samples at rate; NULL when it is not a readable WAV file.
+   Free with fk_platform_free. */
+float *fk_platform_wav(const void *data, size_t size, int rate, int *channels, int *frames);
+/* Converts interleaved float audio to another sample rate; NULL on failure. Free with fk_platform_free. */
+float *fk_platform_resample(const float *in, int frames, int channels, int rate_in, int rate_out, int *out_frames);
+/* Modification time (ns) and size of a file; false when it does not exist. */
+bool fk_platform_file_info(const char *path, int64_t *mtime, uint64_t *size);
 
 /* Calls fn for every file below dir (recursively) whose name ends with suffix. */
 typedef void (*fk_file_fn)(const char *path, void *user);

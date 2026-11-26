@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "assets/model.h"
+#include "gfx/gfx.h"
 #include "lua.h"
 
 /* Creates a state. rendering: fk.gfx draws (otherwise it only validates its arguments).
@@ -32,3 +34,9 @@ void fk_script_frame_begin(lua_State *L);
 void fk_lua_storage_open(lua_State *L);
 /* true (the default): stored values live in memory only, as test runs need; false: the user's files. */
 void fk_storage_memory(bool in_memory);
+/* fk.gfx.texture and fk.gfx.model (script/lua_assets.c): adds them to the fk.gfx table on top of the stack. */
+void fk_lua_assets_open(lua_State *L, bool rendering);
+const fk_texture *fk_lua_texture_arg(lua_State *L, int arg); /* NULL when arg is not a texture */
+fk_model *fk_lua_model_arg(lua_State *L, int arg);           /* NULL when arg is not a model */
+/* Records the model's primitives; node_matrices: 16 floats per node in model space, or NULL for the rest pose. */
+void fk_lua_draw_model(const fk_model *m, const float matrix[16], const float *node_matrices);

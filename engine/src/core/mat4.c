@@ -86,3 +86,23 @@ void fk_mat4_point(const float m[16], const float p[3], float out[3]) {
     for (int r = 0; r < 4; r++) v[r] = m[r] * p[0] + m[4 + r] * p[1] + m[8 + r] * p[2] + m[12 + r];
     for (int i = 0; i < 3; i++) out[i] = v[i] / v[3];
 }
+
+void fk_mat4_trs(float out[16], const float t[3], const float q[4], const float s[3]) {
+    float x = q[0], y = q[1], z = q[2], w = q[3];
+    out[0] = (1 - 2 * (y * y + z * z)) * s[0];
+    out[1] = 2 * (x * y + z * w) * s[0];
+    out[2] = 2 * (x * z - y * w) * s[0];
+    out[3] = 0;
+    out[4] = 2 * (x * y - z * w) * s[1];
+    out[5] = (1 - 2 * (x * x + z * z)) * s[1];
+    out[6] = 2 * (y * z + x * w) * s[1];
+    out[7] = 0;
+    out[8] = 2 * (x * z + y * w) * s[2];
+    out[9] = 2 * (y * z - x * w) * s[2];
+    out[10] = (1 - 2 * (x * x + y * y)) * s[2];
+    out[11] = 0;
+    out[12] = t[0];
+    out[13] = t[1];
+    out[14] = t[2];
+    out[15] = 1;
+}

@@ -25,11 +25,15 @@ function shapes.box(w, h, d, color)
   return mesh
 end
 
--- A square in the XZ plane facing up.
-function shapes.plane(size, color)
+-- A square in the XZ plane facing up. tile (optional): a texture repeats every tile metres.
+function shapes.plane(size, color, tile)
   local s = size / 2
   local mesh = { positions = {}, colors = {}, indices = {} }
   add_quad(mesh, { -s, 0, s }, { s, 0, s }, { s, 0, -s }, { -s, 0, -s }, color)
+  if tile then
+    local n = size / tile
+    mesh.uvs = { 0, n, n, n, n, 0, 0, 0 }
+  end
   return mesh
 end
 

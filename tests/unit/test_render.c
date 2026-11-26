@@ -92,7 +92,9 @@ UTEST(frame, recording) {
     fk_mesh mesh = {0};
     float m[16];
     fk_mat4_identity(m);
-    fk_material mat = {0.5f, 1.0f, {1, 2, 3}};
+    fk_material mat;
+    fk_material_default(&mat);
+    mat.emission[2] = 3.0f;
     for (int i = 0; i < 200; i++) fk_frame_draw(&mesh, m, &mat); /* grows past the first allocation */
     fk_frame_overlay(&mesh, m);
     EXPECT_EQ(f->ndraws, 200);
@@ -153,14 +155,34 @@ UTEST(upscale, rectangles_and_mapping) {
 
 UTEST(mesh, normals) {
     /* Two triangles sharing an edge, one flat and one folded up; plus a degenerate triangle. */
-    float v[6 * 9] = {0};
+    fk_vertex v[6];
+    memset(v, 0, sizeof v);
     const float p[6][3] = {{0, 0, 0}, {1, 0, 0}, {0, 0, -1}, {1, 0, -1}, {5, 5, 5}, {5, 5, 5}};
-    for (int i = 0; i < 6; i++) memcpy(&v[i * 9], p[i], sizeof p[i]);
+    for (int i = 0; i < 6; i++) memcpy(v[i].position, p[i], sizeof p[i]);
     const uint32_t idx[9] = {0, 1, 2, 1, 3, 2, 4, 5, 4};
     fk_mesh_normals(v, 6, idx, 9);
-    EXPECT_NEAR(v[0 * 9 + 7], 1.0f, 1e-6); /* both triangles face up */
-    EXPECT_NEAR(v[1 * 9 + 7], 1.0f, 1e-6);
-    EXPECT_NEAR(v[4 * 9 + 7], 1.0f, 1e-6); /* degenerate: up rather than zero */
+    EXPECT_NEAR(v[0].normal[1], 1.0f, 1e-6); /* both triangles face up */
+    EXPECT_NEAR(v[1].normal[1], 1.0f, 1e-6);
+    EXPECT_NEAR(v[4].normal[1], 1.0f, 1e-6); /* degenerate: up rather than zero */
+}
+
+UTEST(mesh, tangents) {
+    /* A quad in the ground plane with u along +x and v along -z; plus a triangle without usable UVs. */
+    fk_vertex v[7];
+    memset(v, 0, sizeof v);
+    const float p[7][3] = {{0, 0, 0}, {1, 0, 0}, {1, 0, -1}, {0, 0, -1}, {0, 0, 0}, {1, 0, 0}, {0, 0, 1}};
+    const float uv[7][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}, {0, 0}, {0, 0}, {0, 0}};
+    for (int i = 0; i < 7; i++) memcpy(v[i].position, p[i], sizeof p[i]), memcpy(v[i].uv, uv[i], sizeof uv[i]);
+    const uint32_t idx[9] = {0, 1, 2, 0, 2, 3, 4, 6, 5};
+    fk_mesh_normals(v, 7, idx, 9);
+    fk_mesh_tangents(v, 7, idx, 9);
+    EXPECT_NEAR(v[0].tangent[0], 1.0f, 1e-6);
+    EXPECT_NEAR(v[0].tangent[3], 1.0f, 1e-6); /* bitangent (n x t) points along +v */
+    EXPECT_NEAR(v[4].tangent[0], 1.0f, 1e-6); /* no UVs: a tangent along x rather than zero */
+    /* mirrored UVs flip the bitangent sign */
+    for (int i = 0; i < 4; i++) v[i].uv[1] = -v[i].uv[1];
+    fk_mesh_tangents(v, 7, idx, 9);
+    EXPECT_NEAR(v[0].tangent[3], -1.0f, 1e-6);
 }
 
 UTEST(frame, text_rects_and_runs) {

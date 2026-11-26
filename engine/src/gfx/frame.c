@@ -41,6 +41,13 @@ static void *grow(void *items, int *cap, size_t size) {
     return grown;
 }
 
+void fk_material_default(fk_material *m) {
+    memset(m, 0, sizeof *m);
+    m->base[0] = m->base[1] = m->base[2] = m->base[3] = 1;
+    m->roughness = 0.6f;
+    m->normal_scale = 1;
+}
+
 void fk_frame_draw(const fk_mesh *mesh, const float model[16], const fk_material *material) {
     if (frame.ndraws == frame.draw_cap) frame.draws = grow(frame.draws, &frame.draw_cap, sizeof *frame.draws);
     fk_draw *d = &frame.draws[frame.ndraws++];
@@ -156,18 +163,47 @@ void fk_gfx_map_delta(float *dx, float *dy) {
     *dy *= (float)window[1] / (float)image[3];
 }
 
-void fk_mesh_normals(float *v, int vertex_count, const uint32_t *idx, int index_count) {
-    for (int i = 0; i < vertex_count; i++) v[i * 9 + 6] = v[i * 9 + 7] = v[i * 9 + 8] = 0;
+void fk_mesh_normals(fk_vertex *v, int vertex_count, const uint32_t *idx, int index_count) {
+    for (int i = 0; i < vertex_count; i++) memset(v[i].normal, 0, sizeof v[i].normal);
     for (int t = 0; t + 2 < index_count; t += 3) {
-        const float *a = &v[idx[t] * 9], *b = &v[idx[t + 1] * 9], *c = &v[idx[t + 2] * 9];
+        const float *a = v[idx[t]].position, *b = v[idx[t + 1]].position, *c = v[idx[t + 2]].position;
         float u[3] = {b[0] - a[0], b[1] - a[1], b[2] - a[2]}, w[3] = {c[0] - a[0], c[1] - a[1], c[2] - a[2]};
         float n[3] = {u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]};
         for (int k = 0; k < 3; k++)
-            for (int j = 0; j < 3; j++) v[idx[t + k] * 9 + 6 + j] += n[j];
+            for (int j = 0; j < 3; j++) v[idx[t + k]].normal[j] += n[j];
     }
     for (int i = 0; i < vertex_count; i++) {
-        float *n = &v[i * 9 + 6], len = sqrtf(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+        float *n = v[i].normal, len = sqrtf(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
         if (len > 0) n[0] /= len, n[1] /= len, n[2] /= len;
         else n[1] = 1; /* degenerate: point up rather than leave a zero normal */
     }
+}
+
+/* shortcut: per-triangle tangents averaged per vertex, not MikkTSpace; bake tangents into models that need exact normal maps */
+void fk_mesh_tangents(fk_vertex *v, int vertex_count, const uint32_t *idx, int index_count) {
+    float *bit = calloc((size_t)vertex_count * 3 + 1, sizeof(float));
+    if (!bit) abort(); /* out of memory while loading: nothing sensible to continue with */
+    for (int i = 0; i < vertex_count; i++) memset(v[i].tangent, 0, sizeof v[i].tangent);
+    for (int t = 0; t + 2 < index_count; t += 3) {
+        const fk_vertex *a = &v[idx[t]], *b = &v[idx[t + 1]], *c = &v[idx[t + 2]];
+        float e1[3], e2[3], du1 = b->uv[0] - a->uv[0], dv1 = b->uv[1] - a->uv[1], du2 = c->uv[0] - a->uv[0], dv2 = c->uv[1] - a->uv[1];
+        float det = du1 * dv2 - du2 * dv1, r = fabsf(det) > 1e-12f ? 1.0f / det : 0.0f;
+        for (int k = 0; k < 3; k++) e1[k] = b->position[k] - a->position[k], e2[k] = c->position[k] - a->position[k];
+        for (int j = 0; j < 3; j++)
+            for (int k = 0; k < 3; k++) {
+                v[idx[t + j]].tangent[k] += (e1[k] * dv2 - e2[k] * dv1) * r;
+                bit[idx[t + j] * 3 + k] += (e2[k] * du1 - e1[k] * du2) * r;
+            }
+    }
+    for (int i = 0; i < vertex_count; i++) {
+        float *t = v[i].tangent, *n = v[i].normal, *b = &bit[i * 3];
+        float d = n[0] * t[0] + n[1] * t[1] + n[2] * t[2];
+        for (int k = 0; k < 3; k++) t[k] -= n[k] * d; /* Gram-Schmidt: perpendicular to the normal */
+        float len = sqrtf(t[0] * t[0] + t[1] * t[1] + t[2] * t[2]);
+        if (len > 1e-12f) t[0] /= len, t[1] /= len, t[2] /= len;
+        else t[0] = 1, t[1] = t[2] = 0; /* no usable UVs */
+        float c[3] = {n[1] * t[2] - n[2] * t[1], n[2] * t[0] - n[0] * t[2], n[0] * t[1] - n[1] * t[0]};
+        t[3] = c[0] * b[0] + c[1] * b[1] + c[2] * b[2] < 0 ? -1.0f : 1.0f;
+    }
+    free(bit);
 }

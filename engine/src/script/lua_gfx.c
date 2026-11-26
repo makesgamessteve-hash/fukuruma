@@ -70,26 +70,33 @@ void fk_script_frame_begin(lua_State *L) {
     fk_frame_begin();
 }
 
+/* fk.gfx.mesh{ positions = {x, y, z, ...}, colors = {r, g, b, ...} (sRGB), indices = {1, 2, 3, ...},
+   normals = {...} (optional: computed from the triangles), uvs = {u, v, ...} (optional) } */
 static int l_mesh(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua_settop(L, 1);
     lua_Integer np = field_table(L, "positions"), nc = field_table(L, "colors"), ni = field_table(L, "indices");
-    int nt = lua_getfield(L, 1, "normals");
+    int nt = lua_getfield(L, 1, "normals"), nu = lua_getfield(L, 1, "uvs");
     if (np == 0 || np % 3) return luaL_error(L, "mesh: positions must hold x, y, z for at least one vertex");
     if (nc != np) return luaL_error(L, "mesh: colors must hold r, g, b for every vertex");
     if (nt != LUA_TNIL && (nt != LUA_TTABLE || luaL_len(L, 5) != np)) return luaL_error(L, "mesh: normals must hold x, y, z for every vertex");
+    if (nu != LUA_TNIL && (nu != LUA_TTABLE || luaL_len(L, 6) != np / 3 * 2)) return luaL_error(L, "mesh: uvs must hold u, v for every vertex");
     if (ni == 0 || ni % 3) return luaL_error(L, "mesh: indices must describe whole triangles");
     lua_Integer nv = np / 3;
     if (nv > FK_MAX_VERTICES || ni > 3 * FK_MAX_VERTICES) return luaL_error(L, "mesh: too large");
     /* Scratch buffers are userdata, so an error in the middle does not leak them. */
-    float *v = lua_newuserdatauv(L, (size_t)nv * 9 * sizeof(float), 0);
+    fk_vertex *v = lua_newuserdatauv(L, (size_t)nv * sizeof *v, 0);
     uint32_t *idx = lua_newuserdatauv(L, (size_t)ni * sizeof(uint32_t), 0);
-    for (lua_Integer i = 0; i < nv; i++)
+    memset(v, 0, (size_t)nv * sizeof *v);
+    for (lua_Integer i = 0; i < nv; i++) {
         for (int k = 0; k < 3; k++) {
-            v[i * 9 + k] = number_at(L, 2, i * 3 + k + 1, "positions");
-            v[i * 9 + 3 + k] = number_at(L, 3, i * 3 + k + 1, "colors");
-            if (nt == LUA_TTABLE) v[i * 9 + 6 + k] = number_at(L, 5, i * 3 + k + 1, "normals");
+            v[i].position[k] = number_at(L, 2, i * 3 + k + 1, "positions");
+            v[i].color[k] = number_at(L, 3, i * 3 + k + 1, "colors");
+            if (nt == LUA_TTABLE) v[i].normal[k] = number_at(L, 5, i * 3 + k + 1, "normals");
         }
+        for (int k = 0; nu == LUA_TTABLE && k < 2; k++) v[i].uv[k] = number_at(L, 6, i * 2 + k + 1, "uvs");
+        v[i].tangent[0] = v[i].tangent[3] = v[i].weights[0] = 1;
+    }
     for (lua_Integer i = 0; i < ni; i++) {
         lua_rawgeti(L, 4, i + 1);
         int ok;
@@ -115,16 +122,31 @@ static int l_mesh_gc(lua_State *L) {
 
 static const float ZERO[3] = {0, 0, 0}, ONE[3] = {1, 1, 1};
 
+/* fk.gfx.draw(mesh, matrix, { roughness, metalness, emission, texture }) or fk.gfx.draw(model, matrix) */
 static int l_draw(lua_State *L) {
-    fk_mesh *m = luaL_checkudata(L, 1, "fk.mesh");
     float model[16];
+    fk_model *mdl = fk_lua_model_arg(L, 1);
+    if (mdl) {
+        matrix_arg(L, 2, model, "draw");
+        keep_alive(L, 1);
+        fk_lua_draw_model(mdl, model, NULL);
+        return 0;
+    }
+    fk_mesh *m = luaL_checkudata(L, 1, "fk.mesh");
     matrix_arg(L, 2, model, "draw");
-    fk_material mat = {0.6f, 0.0f, {0, 0, 0}};
+    fk_material mat;
+    fk_material_default(&mat);
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
         mat.roughness = field_number(L, 3, "roughness", 0.6f, 0, 1, "draw");
         mat.metalness = field_number(L, 3, "metalness", 0, 0, 1, "draw");
         field_vec3(L, 3, "emission", mat.emission, ZERO, 0, 1000, "draw");
+        if (lua_getfield(L, 3, "texture") != LUA_TNIL) {
+            mat.base_tex = fk_lua_texture_arg(L, -1);
+            if (!mat.base_tex) return luaL_error(L, "draw: 'texture' must be a texture from fk.gfx.texture");
+            keep_alive(L, lua_gettop(L));
+        }
+        lua_pop(L, 1);
     }
     keep_alive(L, 1);
     fk_frame_draw(m, model, &mat);
@@ -358,4 +380,5 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
     lua_pop(L, 1);
     fk_script_frame_begin(L);
     luaL_newlib(L, gfx);
+    fk_lua_assets_open(L, render);
 }
