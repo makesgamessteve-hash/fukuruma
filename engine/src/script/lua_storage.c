@@ -58,7 +58,7 @@ static int l_load(lua_State *L) {
     char path[1024];
     const char *dir = fk_platform_pref_path();
     snprintf(path, sizeof path, "%s%s.txt", dir ? dir : "", name);
-    size_t size;
+    size_t size = 0;
     char *text = dir ? fk_platform_read_file(path, &size) : NULL;
     if (text) lua_pushlstring(L, text, size);
     else lua_pushnil(L);
