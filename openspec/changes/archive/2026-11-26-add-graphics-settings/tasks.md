@@ -28,5 +28,5 @@
 ## 4. Verification
 
 - [x] 4.1 Coverage gates, sanitizers, all CTest tests
-- [ ] 4.2 CI green on every target; Pages updated
-- [ ] 4.3 `openspec validate add-graphics-settings --strict`; archive after deployment
+- [x] 4.2 CI green on every target; Pages updated
+- [x] 4.3 `openspec validate add-graphics-settings --strict`; archive after deployment

@@ -520,13 +520,13 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 - **OpenSpec:** `add-simulation-loop` (fixed tick, commands, events, entities, named RNG streams,
   state hash; done), `add-input-actions` (action maps, keyboard, mouse, gamepad, touch detection and a basic
-  virtual stick), `add-render-pipeline` (low-resolution HDR target and integer upscale, deferred PBR,
+  virtual stick; done), `add-render-pipeline` (low-resolution HDR target and integer upscale, deferred PBR,
   star light with cascaded shadows, sky/ground ambient, point lights, ambient occlusion, bloom, auto
   exposure, tone mapping, colour grading, dithering, supersampling, LDR fallback, overlay, runtime
   configuration, screenshots; done), `add-graphics-settings` (detail levels Low, Medium, High,
   Ultra and Custom, bitmap text and immediate UI, the in-game *Settings → Graphics* menu, live
   switching, temporal anti-aliasing, palette mode, an internal resolution that fills the window,
-  device defaults, saved settings), `add-asset-loading` (PNG and JPEG with mipmaps, glTF meshes, materials,
+  device defaults, saved settings; done), `add-asset-loading` (PNG and JPEG with mipmaps, glTF meshes, materials,
   skins and clips, OGG, WAV, hot reload), `add-animation-runtime` (skinning, blend trees, state
   machines, springs), `add-game-feel` (presentation layer: camera rigs, trauma shake, feedback table,
   haptics, tweens, comfort settings), `add-audio` (mixer, 3D, reverb zones, music layers, the
