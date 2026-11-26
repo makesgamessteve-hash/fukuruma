@@ -27,5 +27,5 @@
 ## 5. Verification
 
 - [x] 5.1 Coverage gates, sanitizers, all CTest tests
-- [ ] 5.2 CI green on every target; Pages updated
-- [ ] 5.3 `openspec validate add-input-actions --strict`; archive after `add-simulation-loop`, once deployed
+- [x] 5.2 CI green on every target; Pages updated
+- [x] 5.3 `openspec validate add-input-actions --strict`; archive after `add-simulation-loop`, once deployed

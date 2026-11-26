@@ -9,14 +9,14 @@ errors are reported, so the game logic can be written and modded in Lua.
 
 ### Requirement: Lua entry point
 On start the engine SHALL run `data/scripts/main.lua`. The script returns a table that may define
-`init()`, `tick()` and `draw(alpha)`. The engine SHALL call `init` once, then run the simulation ticks
-due in each frame (see the simulation spec), calling `tick` for each, and then call `draw` once with
-the interpolation factor. Missing functions are skipped.
+`init()`, `input()`, `tick()` and `draw(alpha)`. The engine SHALL call `init` once; then in each frame
+it SHALL call `input` once, run the simulation ticks due in that frame (see the simulation spec),
+calling `tick` for each, and call `draw` once with the interpolation factor. Missing functions are skipped.
 
 #### Scenario: Game table with all functions
-- **GIVEN** `main.lua` returns a table with `init`, `tick` and `draw`
+- **GIVEN** `main.lua` returns a table with `init`, `input`, `tick` and `draw`
 - **WHEN** a scenario runs for three frames
-- **THEN** `init` was called once, and `tick` and `draw` were each called three times, `tick` before `draw` in every frame
+- **THEN** `init` was called once, and `input`, `tick` and `draw` were each called three times, in that order in every frame
 
 #### Scenario: Game table without draw
 - **GIVEN** `main.lua` returns a table with only `tick`
