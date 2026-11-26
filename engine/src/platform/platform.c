@@ -26,6 +26,7 @@ bool fk_platform_open(bool headless) {
         fk_log("cannot start video: %s", SDL_GetError());
         return false;
     }
+    SDL_InitSubSystem(SDL_INIT_GAMEPAD); /* optional: without it there are simply no gamepad events */
 #ifdef __EMSCRIPTEN__
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -54,7 +55,7 @@ void fk_platform_close(void) {
     if (window) SDL_DestroyWindow(window);
     context = NULL;
     window = NULL;
-    SDL_QuitSubSystem(SDL_INIT_VIDEO);
+    SDL_QuitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_VIDEO);
 }
 
 void fk_platform_size(int *w, int *h) { SDL_GetWindowSizeInPixels(window, w, h); }

@@ -22,8 +22,8 @@ const base = `http://127.0.0.1:${server.address().port}/index.html`;
 const browser = await chromium.launch({ args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
 
 let failures = 0;
-async function test(name, fn) {
-  const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
+async function test(name, fn, options = {}) {
+  const page = await browser.newPage({ viewport: { width: 960, height: 540 }, ...options });
   const log = [];
   page.on('console', (m) => log.push(m.text()));
   page.on('pageerror', (e) => log.push(String(e)));
@@ -70,6 +70,18 @@ await test('the game renders the placeholder scene', async (page) => {
   }, png.toString('base64'));
   assert(colours > 16, `the canvas shows only ${colours} colours`);
 });
+
+await test('touch input reaches the game on a phone', async (page) => {
+  await page.goto(`${base}?scenario=touch`);
+  await page.waitForFunction(() => document.getElementById('message').hidden, null, { timeout: 60000 });
+  const box = await page.locator('canvas').boundingBox();
+  for (let i = 0; i < 30 && !(await page.evaluate(() => window.fukurumaResult)); i++) {
+    await page.touchscreen.tap(box.x + box.width * 0.2, box.y + box.height * 0.7);
+    await page.waitForTimeout(300);
+  }
+  const result = await page.evaluate(() => window.fukurumaResult);
+  assert(result && result.status === 'passed', `touch scenario: ${JSON.stringify(result)}`);
+}, { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
 
 await test('browsers without WebGL 2 get a message', async (page) => {
   await page.addInitScript(() => {

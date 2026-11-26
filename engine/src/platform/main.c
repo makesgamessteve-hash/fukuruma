@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "app/app.h"
+#include "platform/platform.h"
 
 static SDL_AppResult result(fk_status s) {
     return s == FK_RUNNING ? SDL_APP_CONTINUE : s == FK_DONE ? SDL_APP_SUCCESS : SDL_APP_FAILURE;
@@ -22,6 +23,7 @@ SDL_AppResult SDL_AppIterate(void *state) {
 
 SDL_AppResult SDL_AppEvent(void *state, SDL_Event *event) {
     (void)state;
+    fk_input_event(event);
     return event->type == SDL_EVENT_QUIT ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 

@@ -169,6 +169,68 @@ static int l_rng_chance(lua_State *L) {
     return 1;
 }
 
+/* --- fk.input ----------------------------------------------------------------- */
+
+/* Looks up a control name with lookup(); raises a script error naming it when unknown. */
+int fk_script_control(lua_State *L, int arg, int (*lookup)(const char *), const char *what) {
+    const char *name = luaL_checkstring(L, arg);
+    int code = lookup(name);
+    if (code < 0) luaL_error(L, "unknown %s '%s'", what, name);
+    return code;
+}
+
+static int l_key(lua_State *L) {
+    lua_pushboolean(L, fk_input_key(fk_script_control(L, 1, fk_input_key_code, "key")));
+    return 1;
+}
+
+static int l_axis(lua_State *L) {
+    lua_pushnumber(L, fk_input_axis(fk_script_control(L, 1, fk_input_axis_code, "gamepad axis")));
+    return 1;
+}
+
+static int l_button(lua_State *L) {
+    lua_pushboolean(L, fk_input_button(fk_script_control(L, 1, fk_input_button_code, "gamepad button")));
+    return 1;
+}
+
+static int l_mouse(lua_State *L) {
+    float x, y, dx, dy;
+    fk_input_mouse(&x, &y, &dx, &dy);
+    lua_pushnumber(L, x);
+    lua_pushnumber(L, y);
+    lua_pushnumber(L, dx);
+    lua_pushnumber(L, dy);
+    return 4;
+}
+
+static int l_mouse_button(lua_State *L) {
+    lua_pushboolean(L, fk_input_mouse_button((int)luaL_checkinteger(L, 1)));
+    return 1;
+}
+
+static int l_touches(lua_State *L) {
+    fk_touch touches[FK_MAX_TOUCHES];
+    int n = fk_input_touches(touches);
+    lua_createtable(L, n, 0);
+    for (int i = 0; i < n; i++) {
+        lua_createtable(L, 0, 3);
+        lua_pushinteger(L, touches[i].id);
+        lua_setfield(L, -2, "id");
+        lua_pushnumber(L, touches[i].x);
+        lua_setfield(L, -2, "x");
+        lua_pushnumber(L, touches[i].y);
+        lua_setfield(L, -2, "y");
+        lua_rawseti(L, -2, i + 1);
+    }
+    return 1;
+}
+
+static int l_device(lua_State *L) {
+    lua_pushstring(L, fk_input_device());
+    return 1;
+}
+
 /* --- sandbox ----------------------------------------------------------------- */
 
 static int l_seed(lua_State *L) {
@@ -293,6 +355,11 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     lua_setfield(L, -2, "hash");
     luaL_newlib(L, gfx);
     lua_setfield(L, -2, "gfx");
+    static const luaL_Reg input[] = {{"key", l_key},       {"axis", l_axis},       {"button", l_button},
+                                     {"mouse", l_mouse},   {"mouse_button", l_mouse_button},
+                                     {"touches", l_touches}, {"device", l_device}, {NULL, NULL}};
+    luaL_newlib(L, input);
+    lua_setfield(L, -2, "input");
     lua_setfield(L, -2, "fk");
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "_G");

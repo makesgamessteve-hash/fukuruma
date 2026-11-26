@@ -99,6 +99,34 @@ static int t_screenshot(lua_State *L) {
     return lua_yield(L, 2);
 }
 
+static int t_key(lua_State *L) {
+    fk_input_emulate_key(fk_script_control(L, 1, fk_input_key_code, "key"), lua_toboolean(L, 2));
+    return 0;
+}
+
+static int t_mouse_button(lua_State *L) {
+    fk_input_emulate_mouse_button((int)luaL_checkinteger(L, 1), lua_toboolean(L, 2));
+    return 0;
+}
+
+static int t_gamepad_axis(lua_State *L) {
+    fk_input_emulate_axis(fk_script_control(L, 1, fk_input_axis_code, "gamepad axis"), (float)luaL_checknumber(L, 2));
+    return 0;
+}
+
+static int t_gamepad_button(lua_State *L) {
+    fk_input_emulate_button(fk_script_control(L, 1, fk_input_button_code, "gamepad button"), lua_toboolean(L, 2));
+    return 0;
+}
+
+/* t.touch(id, x, y) puts a finger down or moves it; t.touch(id) lifts it. */
+static int t_touch(lua_State *L) {
+    lua_Integer id = luaL_checkinteger(L, 1);
+    bool down = !lua_isnoneornil(L, 2);
+    fk_input_emulate_touch(id, down, (float)luaL_optnumber(L, 2, 0), (float)luaL_optnumber(L, 3, 0));
+    return 0;
+}
+
 static int identity(lua_State *L) {
     lua_settop(L, 1);
     return 1;
@@ -125,7 +153,11 @@ static bool scenario_load(void) {
     app.co = lua_newthread(L);
     lua_insert(L, -2);
     lua_xmove(L, app.co, 1); /* run */
-    static const luaL_Reg helpers[] = {{"frames", t_frames}, {"expect", t_expect}, {"screenshot", t_screenshot}, {NULL, NULL}};
+    static const luaL_Reg helpers[] = {{"frames", t_frames},         {"expect", t_expect},
+                                       {"screenshot", t_screenshot}, {"key", t_key},
+                                       {"mouse_button", t_mouse_button}, {"gamepad_axis", t_gamepad_axis},
+                                       {"gamepad_button", t_gamepad_button}, {"touch", t_touch},
+                                       {NULL, NULL}};
     luaL_newlib(L, helpers);
     lua_xmove(L, app.co, 1); /* t */
     app.co_ref = luaL_ref(L, LUA_REGISTRYINDEX);
@@ -195,6 +227,7 @@ static int scenario_step(void) {
 
 fk_status fk_app_init(int argc, char **argv, const char *base) {
     memset(&app, 0, sizeof app);
+    fk_input_reset();
     app.game_ref = app.step_ref = app.co_ref = LUA_NOREF;
     if (!fk_cli_parse(argc, argv, &app.opt)) return finish(1);
     fk_vfs_init(base);
@@ -262,6 +295,7 @@ fk_status fk_app_iterate(void) {
         fk_platform_swap();
         return FK_RUNNING;
     }
+    if (!call_game("input", -1)) return fail();
     for (int i = 0; i < ticks; i++)
         if (!sim_step()) return fail();
     if (!call_game("draw", alpha)) return fail();
@@ -270,6 +304,7 @@ fk_status fk_app_iterate(void) {
         if (code >= 0) return finish(code);
     }
     if (app.window) fk_platform_swap();
+    fk_input_frame_end();
     return FK_RUNNING;
 }
 

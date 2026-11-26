@@ -27,6 +27,13 @@ browser. Next is M1, the engine core (see the plan).
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [OpenSpec changes](openspec/changes/) and [specs](openspec/specs/)
 
+## Controls (placeholder scene)
+
+| | Keyboard | Gamepad | Touch |
+|---|---|---|---|
+| Turn the Jump Ship | A / D or ← / → | left stick | stick on the left half of the screen |
+| Boost | Space | A | button on the right |
+
 ## Technology
 
 - Core engine in **C11** with **SDL3** and **OpenGL** (3.3 core, ES 3.0, WebGL 2)

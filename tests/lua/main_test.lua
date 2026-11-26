@@ -1,5 +1,6 @@
 local game = require("main")
 local sim = require("fk.sim")
+local actions = require("fk.actions")
 
 return {
   ["init creates the ship entity and its mesh"] = function()
@@ -19,6 +20,22 @@ return {
     game.init()
     sim.step(game)
     game.draw(0.5)
+  end,
+  ["input turns into a ship.control command"] = function()
+    sim.reset()
+    actions.reset()
+    game.init()
+    local real = fk.input
+    fk.input = setmetatable({ key = function(k) return k == "D" end, device = function() return "keyboard" end },
+      { __index = real })
+    local ok, err = pcall(function()
+      game.input()
+      game.input() -- unchanged input sends nothing more
+      sim.step(game)
+    end)
+    fk.input = real
+    assert(ok, err)
+    assert(sim.get(game.ship, "spin").speed == 2.0)
   end,
   ["transform is a 4x4 matrix"] = function()
     assert(#game.transform(480, 270, 0) == 16)

@@ -1,0 +1,46 @@
+-- Draws the touch controls from fk.actions.touch_controls() as flat circles on top of the scene.
+-- shortcut: plain meshes at the near plane; replaced by UI widgets in add-render-pipeline.
+local mat4 = require("mat4")
+
+local view = {}
+
+local function circle(color, segments)
+  local mesh = { positions = { 0, 0, 0 }, colors = { color[1], color[2], color[3] }, indices = {} }
+  for i = 0, segments - 1 do
+    local a = i / segments * 2 * math.pi
+    local n = #mesh.positions
+    mesh.positions[n + 1], mesh.positions[n + 2], mesh.positions[n + 3] = math.cos(a), math.sin(a), 0
+    mesh.colors[n + 1], mesh.colors[n + 2], mesh.colors[n + 3] = color[1], color[2], color[3]
+    local v = i + 2
+    mesh.indices[#mesh.indices + 1], mesh.indices[#mesh.indices + 2], mesh.indices[#mesh.indices + 3] =
+      1, v, (i + 1) % segments + 2
+  end
+  return fk.gfx.mesh(mesh)
+end
+
+function view.init()
+  view.base = circle({ 0.18, 0.2, 0.26 }, 32)
+  view.knob = circle({ 0.55, 0.6, 0.7 }, 24)
+  view.button = circle({ 0.55, 0.32, 0.1 }, 32)
+  view.button_held = circle({ 0.95, 0.6, 0.25 }, 32)
+end
+
+-- Maps screen coordinates (0..1, y down) to clip space at depth z (-1 is the near plane).
+local function place(x, y, rx, ry, z)
+  local screen = { 2, 0, 0, 0, 0, -2, 0, 0, 0, 0, 0, 0, -1, 1, z, 1 }
+  return mat4.multiply(screen, { rx, 0, 0, 0, 0, ry, 0, 0, 0, 0, 1, 0, x, y, 0, 1 })
+end
+
+function view.draw(controls)
+  if not controls then return end
+  local w, h = fk.gfx.size()
+  local a = w / h
+  local s = controls.stick
+  fk.gfx.draw(view.base, place(s.x, s.y, s.r / a, s.r, -0.998))
+  fk.gfx.draw(view.knob, place(s.knob_x, s.knob_y, 0.4 * s.r / a, 0.4 * s.r, -0.999))
+  for _, b in ipairs(controls.buttons) do
+    fk.gfx.draw(b.held and view.button_held or view.button, place(b.x, b.y, b.r / a, b.r, -0.998))
+  end
+end
+
+return view
