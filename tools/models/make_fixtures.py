@@ -133,6 +133,8 @@ def sounds():
                          os.path.join(sounds_dir, "tone.ogg")], check=True)
     subprocess.run(ff + ["-i", "anullsrc=r=8000:cl=mono", "-t", "61", "-c:a", "libvorbis", "-q:a", "-1",
                          os.path.join(sounds_dir, "long.ogg")], check=True)
+    subprocess.run(ff + ["-i", "sine=frequency=220:sample_rate=48000:duration=0.2", "-ac", "2", "-c:a", "libvorbis",
+                         os.path.join(sounds_dir, "music48.ogg")], check=True)
     write("sounds/broken.ogg", b"OggS" + bytes(64))
     write("sounds/broken.wav", b"RIFF" + struct.pack("<I", 4) + b"WAVEjunk")
     write("sounds/notes.txt", b"not a sound")

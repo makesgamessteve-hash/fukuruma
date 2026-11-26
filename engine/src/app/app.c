@@ -8,6 +8,7 @@
 #include "app/golden.h"
 #include "assets/vfs.h"
 #include "assets/watch.h"
+#include "audio/mixer.h"
 #include "fx/particles.h"
 #include "gfx/frame.h"
 #include "gfx/gfx.h"
@@ -27,6 +28,8 @@ static struct {
     lua_State *L;
     bool window, interactive, broken, started;
     bool restart, reconfigure; /* hot reload: a script or a shader changed */
+    bool audio;                /* a sound device is open; otherwise the mixer runs on frame time, silently */
+    double audio_carry;        /* fraction of a sample frame not yet mixed (silent runs) */
     uint64_t last_poll_ns;
     int game_ref, step_ref, co_ref;
     double acc; /* real time not yet simulated, in seconds */
@@ -260,6 +263,9 @@ static fk_status hot_reload(void) {
     fk_script_close(app.L);
     fk_frame_reset();
     fk_particles_reset();
+    fk_platform_audio_lock();
+    fk_mixer_reset();
+    fk_platform_audio_unlock();
     app.L = fk_script_open(true, app.opt.seed, false);
     app.game_ref = app.step_ref = LUA_NOREF;
     app.acc = 0;
@@ -273,6 +279,7 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
     fk_gfx_settings_default(fk_gfx_settings_current());
     fk_frame_reset();
     fk_particles_reset();
+    fk_mixer_reset();
     app.game_ref = app.step_ref = app.co_ref = LUA_NOREF;
     if (!fk_cli_parse(argc, argv, &app.opt)) return finish(1);
     fk_vfs_init(base);
@@ -289,6 +296,7 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
     }
     app.interactive = app.window && !app.opt.headless && !app.opt.scenario;
     fk_storage_memory(!app.interactive); /* test runs must not read or change the player's settings */
+    if (app.interactive) app.audio = fk_platform_audio_open(fk_mixer_mix); /* tests stay silent and reproducible */
     if (FK_HOT_RELOAD && app.interactive) {
         fk_platform_find_files(fk_vfs_path("scripts", path, sizeof path), ".lua", watch_found, NULL);
         fk_platform_find_files(fk_vfs_path("shaders", path, sizeof path), ".glsl", watch_found, &app.reconfigure);
@@ -362,6 +370,12 @@ fk_status fk_app_iterate(void) {
         int code = scenario_step();
         if (code >= 0) return finish(code);
     }
+    if (!app.audio) { /* silent runs: voices still start and end on time */
+        float scratch[512 * 2];
+        app.audio_carry += frame_dt * FK_AUDIO_RATE;
+        for (int n = (int)app.audio_carry; n > 0; n -= 512) fk_mixer_mix(scratch, n < 512 ? n : 512);
+        app.audio_carry -= (int)app.audio_carry;
+    }
     if (app.window) fk_platform_swap();
     fk_input_frame_end();
     return FK_RUNNING;
@@ -370,6 +384,8 @@ fk_status fk_app_iterate(void) {
 int fk_app_quit(void) {
     fk_script_close(app.L); /* first: meshes are freed while the GL context still exists */
     fk_watch_clear();
+    fk_platform_audio_close();
+    fk_mixer_reset();
     if (app.window) {
         fk_gfx_shutdown();
         fk_platform_close();

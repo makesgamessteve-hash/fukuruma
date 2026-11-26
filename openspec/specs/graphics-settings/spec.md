@@ -50,3 +50,10 @@ Graphics settings SHALL be saved when changed and restored on the next start.
 #### Scenario: Restart
 - **WHEN** the player chooses Ultra and restarts the game
 - **THEN** the game starts with Ultra
+
+### Requirement: Particle budgets
+The detail levels SHALL set the most particles alive at once: Low 1000, Medium 3000, High 6000 and Ultra 12000.
+
+#### Scenario: Low budget
+- **WHEN** the level is Low and an effect emits more than 1000 particles
+- **THEN** at most 1000 are alive

@@ -31,6 +31,13 @@ bool fk_platform_make_dir(const char *path);
 float *fk_platform_wav(const void *data, size_t size, int rate, int *channels, int *frames);
 /* Converts interleaved float audio to another sample rate; NULL on failure. Free with fk_platform_free. */
 float *fk_platform_resample(const float *in, int frames, int channels, int rate_in, int rate_out, int *out_frames);
+/* Opens the default playback device at 48 kHz stereo float; fn fills frames on the audio thread while the audio
+   lock is held. False (logged) without a device: the game then runs silently. */
+typedef void (*fk_audio_fn)(float *out, int frames);
+bool fk_platform_audio_open(fk_audio_fn fn);
+void fk_platform_audio_close(void);
+void fk_platform_audio_lock(void); /* no-ops without a device */
+void fk_platform_audio_unlock(void);
 /* Modification time (ns) and size of a file; false when it does not exist. */
 bool fk_platform_file_info(const char *path, int64_t *mtime, uint64_t *size);
 

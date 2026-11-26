@@ -1,8 +1,11 @@
--- The in-game Settings menu (graphics and comfort). Changes apply immediately and are saved; the scene keeps running.
+-- The in-game Settings menu (graphics, comfort and audio). Changes apply immediately and are saved; the scene keeps running.
 local ui = require("fk.ui")
 local graphics = require("settings.graphics")
 local comfort = require("settings.comfort")
+local audio = require("settings.audio")
 local tween = require("fk.tween")
+
+ui.sound = function(name) fk.audio.play(name, { bus = "ui", volume = 0.6 }) end
 
 local menu = { open = false }
 
@@ -10,6 +13,7 @@ function menu.toggle()
   menu.open = not menu.open
   if menu.open then
     ui.reset()
+    ui.sound("ui_open")
     menu.slide = tween.new(-24, 0, 0.25, "back_out") -- the panel drops in and settles
   end
 end
@@ -70,6 +74,13 @@ function menu.draw(state, dt)
   comfort_option("Camera shake", "shake", { "100%", "50%", "Off" })
   comfort_option("Light flashes", "flashes", { "100%", "50%", "Off" })
   comfort_option("Rumble", "rumble", { "On", "Off" })
+  local levels = { "100%", "75%", "50%", "25%", "Off" }
+  for _, row in ipairs({ { "Music volume", "music" }, { "Effects volume", "effects" } }) do
+    rows[#rows + 1] = option(audio.current, row[1], row[2], levels, function(value)
+      audio.current[row[2]] = value
+      audio.save()
+    end, audio.CHOICES[row[2]])
+  end
   rows[#rows + 1] = { label = "Close", press = function() menu.open = false end }
   if ui.menu("SETTINGS", rows, menu.slide:update(dt or 0)) == "back" then menu.open = false end
 end

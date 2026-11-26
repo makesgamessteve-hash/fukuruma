@@ -40,7 +40,7 @@ async function test(name, fn, options = {}) {
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 // simulation: the recorded state hash must match in WebAssembly too (determinism across platforms).
-for (const scenario of ['boot', 'simulation', 'showcase_materials', 'showcase_skinning', 'feel']) {
+for (const scenario of ['boot', 'simulation', 'showcase_materials', 'showcase_skinning', 'feel', 'audio']) {
   await test(`${scenario} scenario passes in the browser`, async (page) => {
     await page.goto(`${base}?scenario=${scenario}`);
     await page.waitForFunction(() => window.fukurumaResult, null, { timeout: 60000 });
@@ -69,6 +69,19 @@ await test('the game renders the placeholder scene', async (page) => {
     return seen.size;
   }, png.toString('base64'));
   assert(colours > 16, `the canvas shows only ${colours} colours`);
+});
+
+await test('the game opens a sound device', async (page) => {
+  await page.addInitScript(() => { // counts the audio contexts SDL creates
+    const Real = window.AudioContext;
+    window.fkAudio = [];
+    window.AudioContext = function (...args) { const c = new Real(...args); window.fkAudio.push(c); return c; };
+    window.AudioContext.prototype = Real.prototype;
+  });
+  await page.goto(base);
+  await page.waitForFunction(() => document.getElementById('message').hidden, null, { timeout: 60000 });
+  await page.mouse.click(10, 10); // browsers start sound after a gesture; SDL resumes the context then
+  await page.waitForFunction(() => window.fkAudio.some((c) => c.state === 'running'), null, { timeout: 10000 });
 });
 
 await test('touch input reaches the game on a phone', async (page) => {

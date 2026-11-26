@@ -41,6 +41,7 @@ end
 
 -- Steps an option row by -1 or +1 (wrapping), or presses a button row.
 local function activate(row, step)
+  ui.sound("ui_confirm")
   if row.values then
     row.change((row.index - 1 + step) % #row.values + 1)
   elseif row.press then
@@ -51,6 +52,9 @@ end
 function ui.focus()
   return focus
 end
+
+-- Called with "ui_move" when the focus moves and "ui_confirm" when a row is used; menus set it to play sounds.
+function ui.sound(_) end
 
 -- Where a menu with n rows is drawn: left x, width, the y of the first row (internal-image pixels).
 function ui.layout(n)
@@ -70,6 +74,7 @@ function ui.menu(title, rows, dy)
   local x, width, first_row_y, top = ui.layout(#rows)
   local shift = math.floor((dy or 0) + 0.5)
   focus = math.min(focus, #rows)
+  local was = focus
 
   local function row_at(px, py)
     local r = math.floor((py - first_row_y + 2) / ui.ROW) + 1
@@ -105,6 +110,7 @@ function ui.menu(title, rows, dy)
     end
   end
 
+  if focus ~= was then ui.sound("ui_move") end
   fk.gfx.rect(x - 8, top - 6 + shift, width + 16, (#rows + 2) * ui.ROW + 10, { 0.02, 0.03, 0.07, 0.85 })
   fk.gfx.text(x, top + shift, title, { 1, 0.75, 0.4 })
   for i, r in ipairs(rows) do

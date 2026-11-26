@@ -45,3 +45,5 @@ void fk_lua_anim_open(lua_State *L);
 /* The model-space node matrices of the pose at arg (valid until the next fk.anim call); errors when the pose
    belongs to another model. */
 const float *fk_lua_pose_globals(lua_State *L, int arg, const fk_model *model);
+/* fk.audio (script/lua_audio.c): pushes the table. */
+void fk_lua_audio_open(lua_State *L);

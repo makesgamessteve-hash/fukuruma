@@ -94,6 +94,53 @@ float *fk_platform_resample(const float *in, int frames, int channels, int rate_
     return convert(&src, in, frames * channels * (int)sizeof(float), rate_out, out_frames);
 }
 
+static SDL_AudioStream *audio;
+static fk_audio_fn audio_fn;
+
+static void SDLCALL audio_callback(void *user, SDL_AudioStream *stream, int additional, int total) {
+    (void)user;
+    (void)total;
+    float buf[1024 * 2];
+    for (int frames = additional / 8; frames > 0;) {
+        int n = frames < 1024 ? frames : 1024;
+        audio_fn(buf, n);
+        SDL_PutAudioStreamData(stream, buf, n * 8);
+        frames -= n;
+    }
+}
+
+bool fk_platform_audio_open(fk_audio_fn fn) {
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
+        fk_log("no sound: %s", SDL_GetError());
+        return false;
+    }
+    SDL_AudioSpec spec = {SDL_AUDIO_F32, 2, 48000};
+    audio_fn = fn;
+    audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, audio_callback, NULL);
+    if (!audio) {
+        fk_log("no sound: %s", SDL_GetError());
+        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+        return false;
+    }
+    SDL_ResumeAudioStreamDevice(audio);
+    return true;
+}
+
+void fk_platform_audio_close(void) {
+    if (!audio) return;
+    SDL_DestroyAudioStream(audio);
+    audio = NULL;
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+}
+
+void fk_platform_audio_lock(void) {
+    if (audio) SDL_LockAudioStream(audio); /* SDL holds the same lock while it calls audio_callback */
+}
+
+void fk_platform_audio_unlock(void) {
+    if (audio) SDL_UnlockAudioStream(audio);
+}
+
 bool fk_platform_file_info(const char *path, int64_t *mtime, uint64_t *size) {
     SDL_PathInfo info;
     if (!SDL_GetPathInfo(path, &info) || info.type != SDL_PATHTYPE_FILE) return false;
@@ -140,7 +187,15 @@ const char *fk_platform_pref_path(void) {
 #ifdef __EMSCRIPTEN__
 bool fk_platform_web(void) { return true; }
 EM_JS(bool, fk_platform_phone, (void), { return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); });
-EM_JS(void, fk_platform_storage_sync, (void), { FS.syncfs(false, function(err) { if (err) console.warn('storage sync failed', err); }); });
+/* Several saves in one frame become one write to IndexedDB. */
+EM_JS(void, fk_platform_storage_sync, (void), {
+    if (Module.fkSyncQueued) return;
+    Module.fkSyncQueued = true;
+    setTimeout(function() {
+        Module.fkSyncQueued = false;
+        FS.syncfs(false, function(err) { if (err) console.warn('storage sync failed', err); });
+    }, 0);
+});
 #else
 bool fk_platform_web(void) { return false; }
 bool fk_platform_phone(void) { return false; }

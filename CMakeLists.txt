@@ -139,13 +139,14 @@ add_test(NAME game_showcase_materials COMMAND fukuruma --headless --scenario ${F
 add_test(NAME game_showcase_skinning COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/showcase_skinning.lua)
 add_test(NAME game_feel COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/feel.lua)
 add_test(NAME game_feel_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/feel.lua)
+add_test(NAME game_audio_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/audio.lua)
 add_test(NAME game_graphics_menu COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/graphics_menu.lua)
 add_test(NAME game_graphics_menu_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/graphics_menu.lua)
 add_test(NAME game_boot_reproducible COMMAND ${CMAKE_COMMAND} -DEXE=${FK_EXE} -DSRC=${FK_SRC}
   -P ${FK_SRC}/tests/reproducible.cmake)
 set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_cwd scenario_timeout_exit_code video_unavailable
   game_call_order game_only_tick game_simulation_norender game_input_norender game_graphics_menu_norender
-  game_feel_norender PROPERTIES LABELS unit)
+  game_feel_norender game_audio_norender PROPERTIES LABELS unit)
 set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible game_input
   game_showcase_lighting game_showcase_materials game_showcase_skinning game_feel game_graphics_menu PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)

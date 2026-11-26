@@ -39,7 +39,7 @@ return {
     feel.reset()
     for _ = 1, 61 do fk.gfx.particles(1) end -- let old particles die
     local bundle = { particles = { { count = 10, offset = { 0, 1, 0 } }, { count = 4 } }, trauma = 0.5, hitpause = 0.1,
-      rumble = { 0.5, 0.5, 0.1 }, light = { color = { 1, 1, 1 }, intensity = 10, radius = 5, duration = 0.5 }, sound = "x" }
+      rumble = { 0.5, 0.5, 0.1 }, light = { color = { 1, 1, 1 }, intensity = 10, radius = 5, duration = 0.5 }, sound = "scan" }
     feel.play(bundle, { 1, 0, 1 }, 0.5, { position = { 1, 0, 1 }, mass = 1 })
     assert(fk.gfx.particles(0) == 7, "counts scale with strength: 5 + 2")
     assert(#feel.flashes == 1 and near(feel.trauma, 0.25))

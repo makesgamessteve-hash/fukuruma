@@ -6,7 +6,7 @@ local ui = require("fk.ui")
 local graphics = require("settings.graphics")
 local game -- require("game") works once main.lua has run, inside run()
 
-local ROWS = 14 -- rows of the settings menu; row 10 is Palette mode
+local ROWS = 16 -- rows of the settings menu; row 10 is Palette mode
 
 local function stored()
   return graphics.decode(fk.storage.load("graphics"), {})

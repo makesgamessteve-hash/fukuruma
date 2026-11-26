@@ -1,6 +1,6 @@
 -- Fukuruma game entry point. The engine calls init() once; then every frame input(), the due tick()s
 -- (fixed 60 Hz) and draw(alpha, dt).
--- M1 sandbox: the Exosuit (3.6 m) walks and runs over a lit test range. Move with WASD, the arrow keys, the
+-- M1 sandbox: the Exosuit (3.6 m) walks and runs over a lit test range, with wind, music and sound effects. Move with WASD, the arrow keys, the
 -- left stick or the touch stick; sprint with Shift, the A button or the touch button; scan with E, the X
 -- button or the scan button. Escape, Start or the touch button at the top right opens the settings.
 -- Simulation (sim.*) uses only arithmetic and sqrt, so it is the same on every platform; animation, camera
@@ -17,6 +17,9 @@ local touch_view = require("touch_view")
 local shapes = require("shapes")
 local graphics = require("settings.graphics")
 local comfort = require("settings.comfort")
+local audio = require("settings.audio")
+local music = require("fk.music")
+local reverb = require("fk.reverb")
 local menu = require("menu")
 local feedback = require("feedback")
 
@@ -30,7 +33,13 @@ function game.init()
   game.graphics = graphics.load(fk.gfx.device())
   graphics.apply(game.graphics)
   comfort.load()
+  audio.load()
   feel.reset()
+  music.load({ surface = "music/surface.ogg", discovery = "music/discovery.ogg" })
+  music.play("surface", 4)
+  game.wind = fk.audio.play("wind_loop", { loop = true, bus = "ambient", volume = 0.45 })
+  reverb.clear()
+  reverb.zone({ center = { 6, 3, 4 }, radius = 7, room = 0.85, damping = 0.3, wet = 0.35 }) -- the beacon tower rings
 
   game.suit_model = fk.gfx.model("models/exosuit.glb")
   game.pose = fk.anim.pose(game.suit_model)
@@ -63,6 +72,10 @@ function game.init()
     sim.emit("scan", { position = { body.x, 0, body.z } })
   end)
   feel.listen(sim, { scan = feedback.scan }, function() return game.listener() end)
+  sim.listen("scan", function() -- a scan swells the discovery theme for a while
+    music.play("discovery", 2)
+    game.discovery_until = feel.time + 25
+  end)
 
   actions.define("move_x", { kind = "axis", negative = { "A", "Left" }, positive = { "D", "Right" }, gamepad = "leftx", touch = "stick_x" })
   actions.define("move_y", { kind = "axis", negative = { "W", "Up" }, positive = { "S", "Down" }, gamepad = "lefty", touch = "stick_y" })
@@ -170,6 +183,10 @@ function game.draw(alpha, dt)
   game.rig:update(dt, game.suit_position(), 0, { body.vx, 0, body.vz })
   local view, projection = game.rig:matrices(w / h, { feel.shake() })
   fk.gfx.camera(view, projection)
+  local eye = game.rig:eye()
+  fk.audio.listener({ position = eye, right = { view[1], view[5], view[9] } })
+  reverb.update(game.suit_position())
+  if music.current == "discovery" and feel.time > game.discovery_until then music.play("surface", 6) end
   feel.draw()
   touch_view.draw(actions.touch_controls())
   menu.draw(game.graphics, dt)
