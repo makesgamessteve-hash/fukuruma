@@ -198,8 +198,21 @@ volumes and effects. Geometry LOD is chosen by projected size in **internal** pi
 that would fall below one internal pixel is never drawn.
 
 **Internal resolution presets:** Classic 480×270, Sharp 640×360, Fine 960×540, plus a per-eye VR
-preset. **Quality presets** (Low, Medium, High, plus the fixed `ci` preset used by game tests) scale
-shadow-map sizes, ray-march steps, volume resolution, particle counts and supersampling.
+preset.
+
+**Graphics detail levels** (Low, Medium, High, Ultra, Custom; see `CONCEPT.md` §6.2 for the
+player-facing table) are switched in the in-game menu and apply **live**:
+- A level is a Lua table in `data/scripts/settings/graphics.lua`: shadow cascades and map size,
+  shadowed-light count, local-light limit, AO quality, cloud and fog march steps and volume size,
+  water mode, particle budget, post effects, anti-aliasing, and an LOD bias. Levels vary mostly
+  the lighting, shadow and effect rows; the LOD bias only ranges from 0.8 (Low) to 1.0, so models
+  look the same on every level.
+- Switching a level recompiles only the shader variants whose `#define`s changed (cached per
+  variant) and reallocates only the render targets whose size changed, spread over a few frames so the
+  scene behind the menu keeps running.
+- The default level comes from the device class (the `GL_RENDERER` string, mobile or desktop, XR
+  session) and is saved in the settings file (`SDL_GetPrefPath()`, IndexedDB on the web).
+- The fixed `ci` level is used by game tests, so golden images do not depend on the device.
 
 Frame structure (each pass at the internal resolution unless noted):
 
@@ -511,14 +524,18 @@ and the showcase scenes are reviewed on desktop, phone and VR.
   virtual stick), `add-render-pipeline` (low-resolution HDR target and retro upscale, deferred PBR,
   star light with cascaded shadows, image-based lighting, ambient occlusion, bloom, exposure, tone
   mapping, colour grading, TAA or supersampling, quality presets, LDR fallback, bitmap text,
-  immediate UI, screenshots), `add-asset-loading` (PNG and JPEG with mipmaps, glTF meshes, materials,
+  immediate UI, screenshots), `add-graphics-settings` (detail levels Low, Medium, High,
+  Ultra and Custom, the in-game *Settings → Graphics* menu, live switching, device defaults, saved
+  settings), `add-asset-loading` (PNG and JPEG with mipmaps, glTF meshes, materials,
   skins and clips, OGG, WAV, hot reload), `add-animation-runtime` (skinning, blend trees, state
   machines, springs), `add-game-feel` (presentation layer: camera rigs, trauma shake, feedback table,
   haptics, tweens, comfort settings), `add-audio` (mixer, 3D, reverb zones, music layers, the
   ElevenLabs tool and a first set of sounds), `add-save-system` (snapshot and deltas, IDBFS, versioning).
 - **Game tests:** a sandbox scene: a skinned placeholder Exosuit walks across a lit, shadowed test
   ground with keyboard input and with emulated touch input; a save/load round-trip keeps its
-  position; showcase scenes for shadows, materials and skinning match their golden images.
+  position; showcase scenes for shadows, materials and skinning match their golden images; the
+  graphics menu switches through all four levels while the scene keeps running, with one golden
+  image per level.
 - **Exit:** the sandbox is playable on desktop and phone browsers, with sound, and already looks
   modern at retro resolution.
 

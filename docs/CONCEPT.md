@@ -1,6 +1,6 @@
 # Fukuruma — Game Concept
 
-> Status: **v0.3**. Updated with the answers to the ten clarifying questions and the follow-up on
+> Status: **v0.4**. Updated with the answers to the ten clarifying questions and the follow-up on
 > graphics and game feel (see §10, *Decisions*).
 > The build plan is in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
@@ -379,7 +379,34 @@ reflections, particles) costs a sixteenth. Geometry detail is chosen by how many
 an object covers, so distant detail is dropped early. That budget is what makes realistic effects
 possible on phones and in the browser.
 
-### 6.2 Rendering
+### 6.2 Graphics detail levels
+
+The game has four detail levels, **Low, Medium, High and Ultra**, plus **Custom**. They are chosen in
+the in-game menu (*Settings → Graphics*) and take effect immediately, without a restart, while the
+scene stays visible behind the menu. The first start picks a level for the device (phone, laptop,
+desktop, VR headset); the choice is saved.
+
+The levels differ **mostly in light, shadows and effects, and only a little in models**. Every
+level shows the same detailed models; Low only drops distant detail a bit earlier.
+
+| Setting | Low | Medium | High | Ultra |
+|---------|-----|--------|------|-------|
+| Model detail | slightly earlier LOD switch | almost full | full | full |
+| Shadows | one cascade, hard edges | 3 cascades, soft | 4 cascades + far cascade for dolls, local light shadows | wider soft penumbras, contact shadows, more shadowed lights |
+| Lighting | star + sky light, few local lights | more local lights | many local lights, planetshine | many local lights, planetshine, bounce light approximation |
+| Ambient occlusion | none | basic | full | full, higher quality |
+| Clouds | painted cloud layer | volumetric, few steps | volumetric | volumetric, full resolution, more steps |
+| Fog and light shafts | simple height fog | coarse volumetric fog | volumetric fog with light shafts | finer volumetric fog |
+| Water | normal-mapped surface | waves | waves, foam, reflections | + refraction and caustics |
+| Particles | 25% | 50% | 100% | 100%, lit and casting into the fog |
+| Post-processing | bloom, tone mapping, colour grading | + automatic exposure | + optional motion blur and depth of field | + lens flares, heat haze |
+| Anti-aliasing | none (pure pixels) | temporal | temporal | 2×2 supersampling |
+
+Independent of the level, the menu also offers the internal resolution (Classic, Sharp, Fine), the
+retro options (dithering, palette mode) and the comfort options. *Custom* unlocks every row
+separately.
+
+### 6.3 Rendering
 
 - **3D objects, sprites and voxels, the modern way:** detailed 3D models for everything solid;
   sprites for particles, flipbook effects and distant impostors of trees, rocks and herds; voxels for
@@ -411,7 +438,7 @@ possible on phones and in the browser.
 - **Post-processing:** bloom, lens flares from bright light sources, motion blur and depth of field
   (subtle and optional), heat distortion, damage effects on the Exosuit visor.
 
-### 6.3 Animation
+### 6.4 Animation
 
 - **Skeletal animation** from glTF, with blending, layered state machines and root motion.
 - **Procedural locomotion and IK:** the Walker and Land Explorer plant their feet on real terrain
@@ -424,7 +451,7 @@ possible on phones and in the browser.
   carry their sounds, lights and particles.
 - **The Commander** has first-person arms and hands for tools, climbing and controls.
 
-### 6.4 Game feel ("juice")
+### 6.5 Game feel ("juice")
 
 The aim is a realistic kind of juice: mass and physical response, not cartoon exaggeration.
 
@@ -448,7 +475,7 @@ The aim is a realistic kind of juice: mass and physical response, not cartoon ex
 All of this is **presentation**: it reacts to simulation events but never changes the simulation,
 so the game stays deterministic (§8.4).
 
-### 6.5 Diegetic UI, art and audio
+### 6.6 Diegetic UI, art and audio
 
 - **Diegetic UI:** each doll has a cockpit or bridge, and the Exosuit HUD is drawn on the visor.
 - **Visual art:** procedural generators build detailed content (hull parts and greebles from a
@@ -551,3 +578,4 @@ a story campaign with an ending · VR on native desktop (OpenXR) · console port
 | 8 | Scope | **All of:** research and upgrades, trading and economy, outposts and crafting, terrain deformation. |
 | 9 | Retro look | **Only the resolution is retro** (follow-up, 2026-11-26; replaces the first answer, "late-90s PC"). Modern technology underneath: detailed models, realistic lighting and shadows, realistic fire, water, fog and clouds, good animation and a realistically juicy feel, all shown through a low-resolution filter that also saves rendering time. |
 | 10 | Art and audio | **Audio generated with the ElevenLabs API** (epic sound effects, ambient space music). Visual art was not specified; the default is procedural generators, CC0 material libraries and replaceable placeholder models. |
+| 11 | Detail levels | **Low, Medium, High, Ultra and Custom**, switched live in the in-game menu (follow-up, 2026-11-26). The levels differ mostly in light, shadows and effects, only a little in model detail (§6.2). |
