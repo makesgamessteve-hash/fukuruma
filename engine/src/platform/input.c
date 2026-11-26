@@ -211,6 +211,12 @@ void fk_input_emulate_mouse_button(int button, bool down) {
     fk_input_event(&e);
 }
 
+void fk_input_emulate_mouse_move(float dx, float dy) {
+    SDL_Event e = {.type = SDL_EVENT_MOUSE_MOTION};
+    e.motion.xrel = dx, e.motion.yrel = dy; /* no window: the size counts as 1, so these are fractions */
+    fk_input_event(&e);
+}
+
 void fk_input_emulate_axis(int code, float value) {
     SDL_Event e = {.type = SDL_EVENT_GAMEPAD_AXIS_MOTION};
     e.gaxis.axis = (Uint8)code;

@@ -46,6 +46,8 @@ typedef void (*fk_file_fn)(const char *path, void *user);
 void fk_platform_find_files(const char *dir, const char *suffix, fk_file_fn fn, void *user);
 
 void fk_platform_message(const char *title, const char *text);
+/* Mouse look: hides the cursor and reports movement without limits (pointer lock in browsers). */
+void fk_platform_capture_mouse(bool on);
 bool fk_platform_web(void);   /* running in a browser */
 bool fk_platform_phone(void); /* a browser on a device with a coarse pointer (phone, tablet) */
 /* The folder for stored values (ends with a separator), or NULL when there is none. */
@@ -82,6 +84,7 @@ void fk_input_rumble(float low, float high, int ms);
 /* Scenario emulation: builds SDL events and passes them to fk_input_event. */
 void fk_input_emulate_key(int code, bool down);
 void fk_input_emulate_mouse_button(int button, bool down);
+void fk_input_emulate_mouse_move(float dx, float dy); /* relative motion, in fractions of the window */
 void fk_input_emulate_axis(int code, float value);
 void fk_input_emulate_button(int code, bool down);
 void fk_input_emulate_touch(int64_t id, bool down, float x, float y); /* down = false lifts the touch */

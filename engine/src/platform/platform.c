@@ -178,6 +178,10 @@ void fk_platform_message(const char *title, const char *text) {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, text, window);
 }
 
+void fk_platform_capture_mouse(bool on) {
+    if (window) SDL_SetWindowRelativeMouseMode(window, on);
+}
+
 const char *fk_platform_pref_path(void) {
     static char *path;
     if (!path) path = SDL_GetPrefPath("fukuruma", "fukuruma");

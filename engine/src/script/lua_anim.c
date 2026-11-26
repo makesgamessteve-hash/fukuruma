@@ -179,6 +179,17 @@ static int l_rotate(lua_State *L) {
     return 1;
 }
 
+/* pose:scale(node, s): scales a node and everything below it (0 hides it, e.g. the head seen from inside). */
+static int l_scale(lua_State *L) {
+    fk_model *m = NULL;
+    lua_pose *p = pose_arg(L, 1, &m);
+    int n = node_arg(L, 2, m);
+    float s = finite_arg(L, 3);
+    for (int k = 0; k < 3; k++) p->trs[n].s[k] = s;
+    lua_settop(L, 1);
+    return 1;
+}
+
 /* pose:global(node): the node's model-space matrix (16 numbers), for attaching things to it. */
 static int l_global(lua_State *L) {
     fk_model *m = NULL;
@@ -215,7 +226,7 @@ const float *fk_lua_pose_globals(lua_State *L, int arg, const fk_model *model) {
 
 void fk_lua_anim_open(lua_State *L) {
     static const luaL_Reg methods[] = {{"rest", l_rest},     {"sample", l_sample}, {"add", l_add},
-                                       {"blend", l_blend},   {"copy", l_copy},     {"rotate", l_rotate},
+                                       {"blend", l_blend},   {"copy", l_copy},     {"rotate", l_rotate}, {"scale", l_scale},
                                        {"global", l_global}, {"node", l_node},     {NULL, NULL}};
     luaL_newmetatable(L, "fk.pose");
     lua_pushcfunction(L, l_pose_gc);

@@ -2,7 +2,7 @@
 -- Call ui.reset() when a menu opens and ui.menu(...) once per frame while it is open.
 local ui = {}
 
-ui.ROW = 12 -- row height in internal pixels (8x8 font plus spacing)
+ui.ROW = 11 -- row height in internal pixels (8x8 font plus spacing); 23 rows fit the 270-pixel image
 ui.WIDTH = 300
 
 -- Menus read the devices directly, so they work whatever the game's own bindings are.

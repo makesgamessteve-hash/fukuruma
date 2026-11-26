@@ -80,7 +80,7 @@ local tests = {
     fake.device = "mouse"
     local x, width, first = ui.layout(3)
     local w, h = fk.gfx.size()
-    fake.mouse = { (x + 10) / w, (first + 12 + 4) / h } -- over row 2
+    fake.mouse = { (x + 10) / w, (first + ui.ROW + 4) / h } -- over row 2
     frame(log)
     assert(ui.focus() == 2)
     fake.click = true; frame(log); fake.click = false; frame(log)

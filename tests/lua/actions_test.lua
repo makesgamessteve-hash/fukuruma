@@ -99,6 +99,28 @@ local tests = {
     actions.update()
     assert(not actions.held("boost"))
   end,
+  ["a finger on the right half looks around"] = function()
+    actions.define("boost", { kind = "button", touch = "boost" })
+    actions.touch_button("boost", 0.85, 0.7, 0.1)
+    fake.device = "touch"
+    fake.touches = { { id = 1, x = 0.86, y = 0.71 }, { id = 2, x = 0.2, y = 0.5 } } -- a button and the stick
+    actions.update()
+    assert(select(1, actions.touch_look()) == 0, "no look finger yet")
+    fake.touches = { { id = 1, x = 0.86, y = 0.71 }, { id = 4, x = 0.6, y = 0.4 } }
+    actions.update()
+    fake.touches[2] = { id = 4, x = 0.65, y = 0.3 }
+    actions.update()
+    local dx, dy = actions.touch_look()
+    assert(near(dx, 0.05) and near(dy, -0.1), "its movement since the last frame")
+    actions.update()
+    dx = actions.touch_look()
+    assert(dx == 0, "a resting finger does not turn")
+    fake.touches = {}
+    actions.update()
+    fake.touches = { { id = 5, x = 0.7, y = 0.5 } }
+    actions.update()
+    assert(actions.touch_look() == 0, "a new finger starts without a jump")
+  end,
   ["touch controls only in touch mode"] = function()
     assert(actions.touch_controls() == nil)
   end,

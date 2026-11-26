@@ -27,10 +27,10 @@ return {
   end,
   ["the suit accelerates, moves and turns in the simulation"] = function()
     local s = start()
-    sim.send("move", { x = -2.6, z = 0 })
+    sim.send("move", { x = -2.6, z = 0, fx = -1, fz = 0 })
     for _ = 1, 60 do sim.step(game) end
     assert(s.vx == -2.6 and s.x < -1.5, "reaches walking speed within a second")
-    assert(s.fx < -0.9, "faces where it goes")
+    assert(s.fx < -0.9, "faces where the Commander looks")
     for _ = 1, 3000 do sim.step(game) end
     assert(s.x == -78, "stops at the edge of the ground")
   end,
@@ -48,6 +48,56 @@ return {
     with_keys({ E = true }, function() game.input() end)
     sim.step(game)
     assert(s.wz == 0 and scans == 1, "E alone stops the suit and scans once")
+    with_keys({}, function() game.input() end)
+    with_keys({ E = true }, function() game.input() end)
+    sim.step(game)
+    assert(scans == 1, "the scanner needs time to recharge")
+  end,
+  ["walking goes where the Commander looks"] = function()
+    start()
+    game.helmet:look(math.pi / 2, 0, 0) -- a quarter turn to the right: forward is -x
+    with_keys({ W = true }, function() game.input() end)
+    for _ = 1, 60 do sim.step(game) end
+    local s = sim.get(game.suit, "suit")
+    assert(s.x < -1.5 and math.abs(s.z) < 1e-9 and s.fx < -0.99, "walks and turns towards -x")
+  end,
+  ["the outside view is for looking only"] = function()
+    start()
+    with_keys({ V = true }, function() game.input() end)
+    assert(game.view == "drone" and game.drone.yaw == game.helmet.yaw)
+    local yaw = game.drone.yaw
+    local scans = 0
+    sim.listen("scan", function() scans = scans + 1 end)
+    with_keys({ W = true, E = true }, function() game.input() end)
+    sim.step(game)
+    assert(sim.get(game.suit, "suit").wz == 0 and scans == 0, "the suit holds still and does not scan")
+    local real = actions.touch_look
+    actions.touch_look = function() return 0.1, 0 end
+    with_keys({}, function() game.input() end)
+    actions.touch_look = real
+    assert(game.drone.yaw < yaw and game.helmet.yaw == 0, "looking orbits the drone, not the helmet")
+    game.draw(1, 1 / 60)
+    with_keys({ V = true }, function() game.input() end)
+    assert(game.view == "helmet", "V returns to the Commander's eyes")
+  end,
+  ["the mouse is captured once it is used, until touch or the menu"] = function()
+    start()
+    local captured = {}
+    local real = fk.input
+    local device = "keyboard"
+    fk.input = setmetatable({ device = function() return device end, key = function() return false end,
+      capture = function(on) captured[#captured + 1] = on end }, { __index = real })
+    local ok, err = pcall(function()
+      game.input()
+      assert(#captured == 0, "not before the mouse is used")
+      device = "mouse"; game.input()
+      device = "keyboard"; game.input()
+      assert(#captured == 1 and captured[1] == true, "stays captured for keyboard play")
+      device = "touch"; game.input()
+      assert(captured[2] == false, "touch releases it")
+    end)
+    fk.input = real
+    assert(ok, err)
   end,
   ["the menu holds the suit"] = function()
     start()
@@ -60,24 +110,27 @@ return {
   ["quick save and load with a notice that fades out"] = function()
     local s = start()
     game.save()
-    sim.send("move", { x = 2.6, z = 0 })
+    sim.send("move", { x = 2.6, z = 0, fx = 1, fz = 0 })
     for _ = 1, 30 do sim.step(game) end
     s = sim.get(game.suit, "suit")
     assert(s.x > 0)
     game.load()
     assert(sim.get(game.suit, "suit").x == 0 and game.toast.text == "Game loaded")
+    assert(math.abs(game.helmet.yaw) < 1e-9, "the view turns to where the loaded suit looked")
     for _ = 1, 200 do game.draw(1, 1 / 60) end
     assert(game.toast == nil, "the notice is gone after 2.5 s")
   end,
-  ["draw animates, raises dust at footsteps and follows with the camera"] = function()
+  ["draw animates, raises dust at footsteps and sees through the visor"] = function()
     start()
     feel.reset()
-    sim.send("move", { x = 0, z = 6.3 })
+    require("settings.comfort").current.head_bob = 0.5
+    sim.send("move", { x = 0, z = 6.3, fx = 0, fz = 1 })
     for _ = 1, 90 do
       sim.step(game)
       game.draw(1, 1 / 60)
     end
     assert(fk.gfx.particles(0) > 0, "footsteps raised dust")
     game.draw(0.5) -- without dt: no time passes
+    require("settings.comfort").current.head_bob = 1
   end,
 }

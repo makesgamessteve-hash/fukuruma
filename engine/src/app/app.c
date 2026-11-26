@@ -126,6 +126,11 @@ static int t_mouse_button(lua_State *L) {
     return 0;
 }
 
+static int t_mouse_move(lua_State *L) {
+    fk_input_emulate_mouse_move((float)luaL_checknumber(L, 1), (float)luaL_checknumber(L, 2));
+    return 0;
+}
+
 static int t_gamepad_axis(lua_State *L) {
     fk_input_emulate_axis(fk_script_control(L, 1, fk_input_axis_code, "gamepad axis"), (float)luaL_checknumber(L, 2));
     return 0;
@@ -174,6 +179,7 @@ static bool scenario_load(void) {
                                        {"screenshot", t_screenshot}, {"key", t_key},
                                        {"mouse_button", t_mouse_button}, {"gamepad_axis", t_gamepad_axis},
                                        {"gamepad_button", t_gamepad_button}, {"touch", t_touch},
+                                       {"mouse_move", t_mouse_move},
                                        {NULL, NULL}};
     luaL_newlib(L, helpers);
     lua_xmove(L, app.co, 1); /* t */
@@ -366,6 +372,7 @@ fk_status fk_app_iterate(void) {
         fk_platform_size(&w, &h);
         fk_gfx_render(frame_dt, w, h);
     }
+    fk_input_frame_end(); /* before the scenario, so its emulated input (mouse motion too) reaches the next frame */
     if (app.co) {
         int code = scenario_step();
         if (code >= 0) return finish(code);
@@ -377,7 +384,6 @@ fk_status fk_app_iterate(void) {
         app.audio_carry -= (int)app.audio_carry;
     }
     if (app.window) fk_platform_swap();
-    fk_input_frame_end();
     return FK_RUNNING;
 }
 

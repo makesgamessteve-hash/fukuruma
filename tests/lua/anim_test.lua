@@ -47,6 +47,14 @@ return {
     fails(function() pose:rotate("antenna", { 0, 0, 0 }, 1) end, "the axis must not be zero")
     fails(function() pose:rotate("antenna", { 1, "x", 0 }, 1) end, "the axis must be 3 finite numbers")
   end,
+  ["scale hides a node and its children"] = function()
+    local pose = fk.anim.pose(suit)
+    pose:scale("head", 0)
+    local m = pose:global("antenna")
+    assert(m[1] == 0 and m[6] == 0 and m[11] == 0, "the antenna on the head shrinks with it")
+    pose:scale("head", 1)
+    assert(pose:global("antenna")[6] ~= 0)
+  end,
   ["arguments are checked"] = function()
     local pose = fk.anim.pose(suit)
     fails(function() pose:sample("dance", 0) end, "the model has no clip named 'dance'")

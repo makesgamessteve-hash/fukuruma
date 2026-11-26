@@ -119,6 +119,12 @@ static int l_mouse(lua_State *L) {
     return 4;
 }
 
+/* fk.input.capture(on): mouse look (the cursor is hidden and the mouse moves the view). */
+static int l_capture(lua_State *L) {
+    fk_platform_capture_mouse(lua_toboolean(L, 1));
+    return 0;
+}
+
 static int l_mouse_button(lua_State *L) {
     lua_pushboolean(L, fk_input_mouse_button((int)luaL_checkinteger(L, 1)));
     return 1;
@@ -285,7 +291,7 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     lua_setfield(L, -2, "audio");
     static const luaL_Reg input[] = {{"key", l_key},       {"axis", l_axis},       {"button", l_button},
                                      {"mouse", l_mouse},   {"mouse_button", l_mouse_button},
-                                     {"touches", l_touches}, {"device", l_device}, {"rumble", l_rumble}, {NULL, NULL}};
+                                     {"touches", l_touches}, {"device", l_device}, {"rumble", l_rumble}, {"capture", l_capture}, {NULL, NULL}};
     luaL_newlib(L, input);
     lua_setfield(L, -2, "input");
     lua_setfield(L, -2, "fk");

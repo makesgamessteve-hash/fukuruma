@@ -74,6 +74,9 @@ function menu.draw(state, dt)
   comfort_option("Camera shake", "shake", { "100%", "50%", "Off" })
   comfort_option("Light flashes", "flashes", { "100%", "50%", "Off" })
   comfort_option("Rumble", "rumble", { "On", "Off" })
+  comfort_option("Head bob", "head_bob", { "100%", "50%", "Off" })
+  comfort_option("Field of view", "fov", { "70", "80", "90", "60" })
+  comfort_option("Turning vignette", "vignette", { "On", "Off" })
   local levels = { "100%", "75%", "50%", "25%", "Off" }
   for _, row in ipairs({ { "Music volume", "music" }, { "Effects volume", "effects" } }) do
     rows[#rows + 1] = option(audio.current, row[1], row[2], levels, function(value)

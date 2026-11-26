@@ -5,10 +5,10 @@ local actions = {}
 actions.DEAD_ZONE = 0.2
 actions.STICK_RANGE = 0.12 -- touch-stick travel, in screen heights
 
-local defs, held, was_held, values, stick, buttons
+local defs, held, was_held, values, stick, buttons, look, look_dx, look_dy
 
 function actions.reset()
-  defs, held, was_held, values, stick, buttons = {}, {}, {}, {}, nil, {}
+  defs, held, was_held, values, stick, buttons, look, look_dx, look_dy = {}, {}, {}, {}, nil, {}, nil, 0, 0
 end
 
 -- An axis: { kind = "axis", negative = { keys }, positive = { keys }, gamepad = "leftx", touch = "stick_x" | "stick_y" }
@@ -74,6 +74,40 @@ local function update_stick(touches)
   end
 end
 
+local function on_button(touch)
+  for _, b in pairs(buttons) do
+    if in_button(touch, b) then return true end
+  end
+  return false
+end
+
+-- The look finger: the first one that lands on the right half of the screen and not on a button. Its movement
+-- since the last frame turns the view.
+local function update_look(touches)
+  look_dx, look_dy = 0, 0
+  if look then
+    for _, touch in ipairs(touches) do
+      if touch.id == look.id then
+        look_dx, look_dy = touch.x - look.x, touch.y - look.y
+        look.x, look.y = touch.x, touch.y
+        return
+      end
+    end
+    look = nil
+  end
+  for _, touch in ipairs(touches) do
+    if touch.x >= 0.5 and not on_button(touch) then
+      look = { id = touch.id, x = touch.x, y = touch.y }
+      return
+    end
+  end
+end
+
+-- How far the look finger moved this frame, as fractions of the screen's width and height.
+function actions.touch_look()
+  return look_dx, look_dy
+end
+
 local function clamp(v)
   return math.max(-1, math.min(1, v))
 end
@@ -94,6 +128,7 @@ end
 
 function actions.update()
   update_stick(fk.input.touches())
+  update_look(fk.input.touches())
   was_held, held = held, {}
   for name, def in pairs(defs) do
     if def.kind == "axis" then
