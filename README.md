@@ -19,9 +19,9 @@ explored. Every planet is worth going down to, and any planet can kill you.
 
 ## Status
 
-Milestone M0 (build, test and deployment pipeline) is in progress: the engine opens a window, runs the
-Lua game from `data/` and shows a spinning placeholder Jump Ship. The link above works once GitHub
-Pages is enabled for this repository (see below) and CI has passed.
+Milestone M0 (build, test and deployment pipeline) is done: the engine opens a window, runs the Lua
+game from `data/` and shows a spinning placeholder Jump Ship, on Windows, Linux, macOS and in the
+browser. Next is M1, the engine core (see the plan).
 
 - [Game concept](docs/CONCEPT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
