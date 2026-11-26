@@ -1,6 +1,7 @@
 # Fukuruma — Implementation Plan
 
-> Status: **v1.0**, 2026-11-26. Based on [CONCEPT.md](CONCEPT.md) v0.2.
+> Status: **v1.1**, 2026-11-26. Based on [CONCEPT.md](CONCEPT.md) v0.3 (modern rendering behind a
+> retro-resolution filter, animation and game feel).
 > Each milestone below becomes one or more OpenSpec changes in `openspec/changes/`.
 > The first one, `add-project-foundation`, is already written out in full.
 
@@ -42,14 +43,15 @@
 | Language | C11 (GCC, Clang, MSVC) | — | Requested. Portable to Emscripten. |
 | Build | CMake ≥ 3.24 with `CMakePresets.json`, Ninja | — | One build description for all five targets. |
 | Platform | SDL 3.2.x, pinned tag, built from source (static) | zlib | Window, GL context, input (keyboard, mouse, gamepad, touch), audio, threads, paths. |
-| Graphics | OpenGL 3.3 core / OpenGL ES 3.0 / WebGL 2 common subset | — | Runs on Windows, Linux, macOS (4.1 core) and browsers. |
+| Graphics | OpenGL 3.3 core / OpenGL ES 3.0 / WebGL 2 common subset; deferred, physically based HDR renderer at a low internal resolution | — | Runs on Windows, Linux, macOS (4.1 core) and browsers. The low resolution pays for modern lighting and effects. |
 | GL loading | `SDL_GL_GetProcAddress` + one X-macro list of the functions used | — | No generator, no extra dependency. |
 | Scripting | Lua 5.4.x, vendored source | MIT | Small, portable, works on WebAssembly (LuaJIT does not). |
-| Images | stb_image | PD / MIT | PNG textures, palettes, sprite sheets. |
+| Images | stb_image | PD / MIT | PNG/JPEG textures (PBR material sets, flipbooks, colour-grading tables); mipmaps generated at load. |
 | Audio decode | stb_vorbis (OGG); WAV through SDL | PD / MIT | OGG loops seamlessly (MP3 adds gaps). |
 | Models | cgltf (glTF 2.0 / .glb) | MIT | Blender exports it; good for modders. |
-| Voxels | ogt_vox (MagicaVoxel .vox) | MIT / PD | The standard voxel art tool. |
 | Noise | FastNoiseLite (C99 header) | MIT | Simplex, cellular, fractal and domain warp in one header. |
+| Animation | in-house runtime on glTF skins and clips (loaded by cgltf) | — | Blending, state machines, IK and springs are small; no C library covers them together. |
+| Physics | in-house, deterministic C | — | Characters, vehicles, rigid bodies, ragdolls. The mature 3D engines are C++ (breaks the C requirement) or not deterministic across platforms. |
 | Unit tests | utest.h + CTest | Unlicense | A single header, works with every compiler. |
 | Coverage | gcov + gcovr (C), luacov (Lua) | BSD / MIT | CI and test builds only. |
 | Browser tests | Playwright (Chromium, mobile emulation) | Apache-2.0 | CI only. |
@@ -63,6 +65,14 @@ Every third-party source lives in `third_party/<name>/` with its own licence, an
 **Compiler rules:** `-std=c11 -Wall -Wextra -Werror` in CI (`/W4 /WX` on MSVC), plus
 `-ffp-contract=off` (no fused multiply-add) so that generation is deterministic. One CI job builds
 with AddressSanitizer and UndefinedBehaviorSanitizer.
+
+**GPU feature baseline.** The common subset of GL 3.3, macOS GL 4.1 and WebGL 2 has **no compute
+shaders, no geometry or tessellation shaders and no storage buffers**. It does have multiple render
+targets, instancing, uniform buffers, 3D textures and texture arrays, depth textures with hardware
+comparison, and transform feedback. All GPU simulation (particles, ocean waves, cloud and fog
+volumes) is therefore done with fragment-shader passes into textures and with transform feedback.
+HDR render targets need `EXT_color_buffer_float` (or `EXT_color_buffer_half_float`) on WebGL 2;
+where neither exists, an LDR fallback path encodes HDR into 8-bit targets.
 
 ---
 
@@ -82,18 +92,22 @@ engine/
     app/                   main(), CLI (--headless, --test, --scenario, --seed, --no-render)
     core/                  log, arenas, hash + PRNG, jobs, time, commands, entities
     platform/              SDL3 glue: window, GL context, input events, audio device, paths
-    gfx/                   GL wrapper, retro pipeline, meshes, sprites, text, UI drawing
+    gfx/                   GL wrapper, deferred PBR renderer, shadows, atmosphere, clouds, fog,
+                           water, particles, decals, post-processing, retro filter, text, UI
+    anim/                  skeletons, clips, blending, state machines, IK, springs
+    physics/               deterministic collision and dynamics: characters, vehicles, bodies, ragdolls
+    present/               game feel: camera rigs and shake, hit-pause, haptics, feedback events
     audio/                 mixer, 3D panning, music layers, decoders
     assets/                VFS (data/ + mods/), loaders (png, gltf, vox, ogg, wav), hot reload
     script/                Lua state, fk.* bindings, sandbox, registries
-    world/                 reference frames, orbits, collision, save/load
+    world/                 reference frames, orbits, save/load
     gen/                   noise graphs, galaxy, systems, planet fields, terrain chunks,
                            voxels, interiors, creature voxels
 data/                      shipped beside the binary
   scripts/                 Lua game (MIT): main.lua, dolls/, gen/, marvels/, ecology/,
                            factions/, economy/, research/, story/, ui/, input/
   shaders/                 GLSL (MIT)
-  palettes/ textures/ models/ voxels/ sprites/ fonts/ sounds/ music/   (CC BY 4.0)
+  textures/ materials/ models/ animations/ sprites/ luts/ fonts/ sounds/ music/   (CC BY 4.0)
 mods/                      README.md + example-mod/
 tests/
   unit/                    C unit tests
@@ -104,7 +118,7 @@ tests/
   web/                     Playwright tests
 tools/
   audio/                   generate.py + prompts.json (ElevenLabs)
-third_party/               lua, stb, cgltf, ogt_vox, FastNoiseLite, utest, luacov
+third_party/               lua, stb, cgltf, FastNoiseLite, utest, luacov
 web/                       shell.html, fukuruma_web.js (touch detection, WebXR glue), icons
 docs/                      CONCEPT.md, IMPLEMENTATION_PLAN.md, later STYLE_GUIDE.md, MODDING.md
 openspec/                  config.yaml, specs/, changes/
@@ -124,12 +138,13 @@ openspec/                  config.yaml, specs/, changes/
             └───────────────▲──────────────────────────────────────┘
                             │ fk.* API (script/)
   C engine  ┌───────────────┴──────────────────────────────────────┐
-            │ world/  gen/  gfx/  audio/  assets/  (testable logic) │
-            │ core/   (hash, PRNG, jobs, commands, entities, log)   │
+            │ world/ physics/ anim/ gen/ gfx/ present/ audio/      │
+            │ assets/  (testable; GL only in gfx/gl_*.c)           │
+            │ core/  (hash, PRNG, jobs, commands, entities, log)   │
             └───────────────▲──────────────────────────────────────┘
                             │ the only layer that calls SDL directly
             ┌───────────────┴──────────────────────────────────────┐
-            │ platform/  (SDL3 window, events, audio device, paths) │
+            │ platform/ (SDL3 window, events, audio device, paths) │
             └──────────────────────────────────────────────────────┘
 ```
 
@@ -146,6 +161,11 @@ tests can run without a window. This is what makes 95% coverage reachable.
 - Random numbers come from **named streams** (`hash(world_seed, stream, tick)`), never from a global RNG.
 - Together this gives replays, reproducible game tests and, later, co-op (commands are what travels
   over the network) without any networking code now.
+- **Simulation vs. presentation.** The simulation (commands, gameplay physics, AI, generation)
+  emits **events** (footstep, impact, deploy stage, discovery, damage). The presentation layer
+  (rendering, animation blending, particles, camera rigs, hit-pause, haptics, audio) consumes them and
+  never writes back. Hit-pause slows only presentation time. Presentation randomness comes from its
+  own seeded streams, so game-test screenshots stay reproducible.
 - A **job system** uses worker threads on desktop. On the web it falls back to a time-sliced queue on
   the main thread, because GitHub Pages cannot send the COOP/COEP headers that WebAssembly threads
   need. Generation has a per-frame time budget.
@@ -169,23 +189,101 @@ The same game must be precise for a 1 cm spore and a 144 km Jump Ship in a syste
   entity, keeping its world position and velocity.
 - **Orbits:** Kepler elements on rails, solved with Newton iteration on the eccentric anomaly.
 
-### 3.4 Retro rendering pipeline
+### 3.4 Rendering: modern techniques at retro resolution
 
-1. Skybox cube map, baked once per system: real neighbouring stars, nebulae, the galactic band.
-2. Celestial slice: stars (corona billboards), distant planets in scaled space, the Jump Ship and stations.
-3. Planetary slice: the cube-sphere planet with LOD, the atmosphere shell, clouds, rings, eclipses.
-4. Local slice: terrain chunks, voxel meshes, glTF models, 8-direction sprites, particles.
-5. All slices render into a **low-resolution target** (default 480×270).
-6. Post pass: the per-world **palette lookup + ordered dithering**, fog bands, optional subtle
-   vertex snap, then an integer nearest-neighbour upscale to the window.
-7. UI pass: bitmap-font text and immediate-mode widgets, drawn diegetically where possible (the
-   visor HUD, cockpit screens).
+**Principle:** everything is rendered with modern, physically based techniques into a low-resolution
+HDR target, which is then scaled to the screen with sharp pixels. Per-pixel cost falls with the
+square of the resolution (480×270 is 1/16 of 1080p), so the budget goes into lighting, shadows,
+volumes and effects. Geometry LOD is chosen by projected size in **internal** pixels, so detail
+that would fall below one internal pixel is never drawn.
 
-Shaders live in `data/shaders/*.glsl`. The engine adds the right `#version` line and precision
-qualifiers for desktop GL 3.3 or GLES 3.0. In VR, each eye is rendered into the XR framebuffer with
-the same pipeline, at a higher internal resolution.
+**Internal resolution presets:** Classic 480×270, Sharp 640×360, Fine 960×540, plus a per-eye VR
+preset. **Quality presets** (Low, Medium, High, plus the fixed `ci` preset used by game tests) scale
+shadow-map sizes, ray-march steps, volume resolution, particle counts and supersampling.
 
-### 3.5 Procedural generation
+Frame structure (each pass at the internal resolution unless noted):
+
+1. **Shadow maps:** 3–4 texel-snapped cascades per star (two sets for binary stars) with filtered
+   soft shadows; one far cascade for doll-sized casters; a shadow atlas for a few local spot and point
+   lights. Eclipse, ring and planet shadows are analytic.
+2. **Sky and atmosphere:** precomputed scattering tables (transmittance, multiple scattering, sky
+   view, aerial perspective as a small 3D texture) for the current atmosphere; the system's HDR sky
+   cube map; a prefiltered environment map for image-based lighting, refreshed over several frames.
+3. **G-buffer (deferred):** base colour, normal, roughness / metalness / occlusion, emission and
+   motion vectors, written by opaque geometry (models, terrain chunks, voxel meshes, instanced
+   vegetation with wind animation, skinned characters, decals).
+4. **Screen-space passes:** ambient occlusion, contact shadows, screen-space reflections with
+   environment-map fallback.
+5. **Lighting:** physically based (GGX) shading of the star(s) with shadows and atmospheric
+   transmittance, many local lights in a tiled light list, image-based ambient light and planetshine.
+6. **Volumes:** ray-marched volumetric clouds (half internal resolution, reprojected over frames);
+   a froxel fog volume (for example 160×90×64) holding height fog and local volumes (smoke, dust,
+   steam, spores, toxic gas), lit and shadowed, which also produces light shafts.
+7. **Forward pass for transparent things:** water (wave displacement from fragment-shader FFT
+   textures, reflection, refraction, depth colour, foam, caustics, underwater fog), particles
+   (simulated with transform feedback; soft, lit, sorted per emitter; fire, smoke, sparks, rain, snow,
+   dust, debris), glass, holograms, heat distortion.
+8. **Post-processing:** temporal anti-aliasing or 2×2 supersample resolve, motion blur and depth of
+   field (optional), bloom, lens flares, automatic exposure, filmic tone mapping, per-world colour
+   grading (a 3D lookup table generated from the world's data), optional ordered dither and palette mode.
+9. **Retro upscale:** integer nearest-neighbour scaling to the window (sharp-bilinear for
+   non-integer ratios).
+10. **UI:** pixel fonts and widgets at a multiple of the internal resolution (native-resolution text
+    as an accessibility option); diegetic screens are rendered into textures in the 3D world.
+
+**Pixel stability** (detailed geometry at low resolution shimmers): supersampling or temporal
+anti-aliasing, texel-snapped shadow cascades, mip bias tuned for the internal resolution, and
+specular anti-aliasing (roughness widened by normal variance).
+
+Shaders live in `data/shaders/*.glsl`. The engine prepends the right `#version` line, precision
+qualifiers and quality-preset defines. In VR, each eye goes through the same pipeline into the XR
+framebuffer.
+
+### 3.5 Animation
+
+- **Skeletal:** glTF skins and clips; GPU skinning (bone matrices in a uniform buffer or texture);
+  clip sampling with compressed keys.
+- **Blending:** blend trees (1D and 2D), layered state machines defined in Lua, additive layers
+  (breathing, recoil, flinch), root motion feeding the character controller.
+- **IK:** two-bone and FABRIK solvers; foot placement on terrain for the Walker and the Land
+  Explorer, with body height and tilt from the planted feet; hand IK for Exosuit controls and climbing;
+  look-at for creatures and natives.
+- **Procedural locomotion:** for generated creatures, gait patterns (phase offsets per leg), step
+  targets from velocity and terrain, a spine that follows the path, tails and necks on springs.
+- **Secondary motion:** damped springs and Verlet chains for cables, antennae, tails, fins and
+  cloth-like parts (presentation only); ragdolls from the same Verlet system when a creature dies.
+- **Mechanical sequences:** Lua timelines that drive joints (doors, clamps, ramps, legs folding) and
+  fire events at keyed times (sounds, lights, particles, camera beats).
+
+### 3.6 Physics
+
+- Deterministic C, fixed 60 Hz step inside the simulation, no external engine.
+- **Shapes:** sphere, capsule, box, convex hull, triangle mesh, heightfield chunk, voxel chunk.
+  A broadphase grid per reference frame.
+- **Characters:** kinematic capsule controller with steps, slopes, jump jets and climbing.
+- **Vehicles:** ray-cast suspension for wheeled and tracked machines; legged dolls move by their
+  animation (IK) on a physical body that handles collisions and momentum; flying dolls with simple
+  aerodynamic forces.
+- **Rigid bodies:** sequential-impulse solver for debris, props and cargo, with sleeping; budgets on
+  active bodies per area.
+- Visual-only motion (foliage, cables, sparks) is not in the physics module; it runs in presentation.
+
+### 3.7 Game feel (the presentation layer)
+
+- **Camera rigs per doll:** first person, cockpit and chase cameras with spring-damped follow, mass-
+  dependent lag and a look-ahead.
+- **Trauma-based camera shake:** events add trauma with a source position and strength; the
+  camera's shake falls off with distance and the doll's mass (a Walker's footstep at 50 m shakes the
+  Exosuit, not the Land Explorer).
+- **Feedback table in Lua:** each simulation event maps to a bundle: sound, particles, light flash,
+  camera trauma, hit-pause, rumble, decal. Designers and modders tune the feel without touching C.
+- **Haptics:** SDL gamepad rumble and trigger rumble, `navigator.vibrate` on phones, XR controller
+  haptic actuators.
+- **Tweens and springs** for UI, HUD and diegetic screens.
+- **Comfort settings** scale shake, flashes, motion blur and field-of-view effects; in VR the camera is
+  never moved by effects.
+
+### 3.8 Procedural generation
 
 - **Seeds:** `seed(child) = hash64(seed(parent), kind, index)`. Every object can be regenerated on its
   own, in any order, on any thread.
@@ -200,17 +298,18 @@ the same pipeline, at a higher internal resolution.
 - **Determinism:** generation only uses `+ − × ÷ sqrt` (exact in IEEE 754) and in-house approximations
   for `sin`, `cos`, `exp`, `pow` and `atan2`. CI compares generation hashes on every platform.
 
-### 3.6 Interiors
+### 3.9 Interiors
 
 - Hull: a Lua definition that names a model, a bounding volume and a zone list.
 - Zones are placed in the hull volume by a grammar (Lua). Each zone fills **sectors** (fixed cubes,
   for example 64 m). Each sector is a tile grid (2 m cells, 6 m clear height for the Exosuit) filled
-  with kit pieces: rooms, corridors, shafts, hangar walls.
+  with detailed kit pieces (rooms, corridors, shafts, hangar walls), lit by their own fixtures, with
+  baked-at-generation light probes for ambient light.
 - Sectors are generated by jobs when the Commander comes within N sectors, and unloaded beyond N+2.
 - Hand-authored rooms (bridge, clone bay, research deck) are Lua/voxel files that override the grammar.
 - Transit: lifts, trams on zone spines, teleport pads. Hangars show the docked child dolls at full scale.
 
-### 3.7 The Lua layer
+### 3.10 The Lua layer
 
 - `fk.*` modules: `log`, `time`, `input`, `gfx`, `audio`, `vfs`, `ui`, `ent`, `cmd`, `frame`, `gen`,
   `save`, `rng`.
@@ -253,7 +352,7 @@ fk.register("marvel", {
 })
 ```
 
-### 3.8 Assets, mods and saves
+### 3.11 Assets, mods and saves
 
 - **VFS:** the search order is `mods/<load order>/` → `data/`. Paths are resolved with `SDL_GetBasePath()`.
   On the web, `data/` is packaged by Emscripten as `fukuruma.data` next to `fukuruma.wasm`.
@@ -263,7 +362,7 @@ fk.register("marvel", {
   economy, codex), written as versioned Lua-table text. They are stored in `SDL_GetPrefPath()`, and
   on the web in IndexedDB (IDBFS).
 
-### 3.9 Audio
+### 3.12 Audio
 
 - A mixer on SDL3 audio streams: one-shot and looping sources, 3D panning and attenuation,
   per-category volumes, and music **layers** that crossfade by situation (deep space, orbit,
@@ -275,7 +374,7 @@ fk.register("marvel", {
 - Facts from ElevenLabs' public docs (to be re-checked when the tool is written): sound effects
   are 0.5–30 s, with a `loop` option on the v2 model; music is 3 s to 10 min.
 
-### 3.10 Input and platforms
+### 3.13 Input and platforms
 
 - **Action maps** in Lua (`data/scripts/input/*.lua`): actions such as `move`, `look`, `deploy`,
   `scan`, `board`, bound per device and per doll. Players can remap them.
@@ -298,7 +397,10 @@ fk.register("marvel", {
 | Coverage | C lines (unit + game tests, Linux/GCC) | gcovr `--fail-under-line 95` | ≥ 95% |
 | Coverage | Lua lines | luacov | ≥ 95% |
 | Game tests | scripted scenarios, headless, deterministic | `fukuruma --headless --scenario` | all pass |
-| Visual | golden screenshots (480×270, palette-quantized) | built into the scenario runner | ≤ 0.5% pixels differ |
+| Visual | golden screenshots at the internal resolution with the `ci` quality preset | built into the scenario runner | ≤ 0.5% pixels differ |
+| Effects showcase | one fixed scene per technique: shadows, atmosphere, clouds, fog, water, fire, smoke, particles, skinning, IK | scenarios in `tests/game/showcase/` | golden images + budgets |
+| Animation | IK reach and foot-placement error, blend weights, clip sampling | C unit tests | within tolerances |
+| Physics | stacking, sliding, suspension, determinism of 10,000 steps | C unit tests | identical hashes on all platforms |
 | Determinism | generation hashes | `fukuruma --gen-hash` | identical on all platforms |
 | Web | page loads, scenario passes, touch UI, WebXR start | Playwright | all pass |
 | Safety | ASan + UBSan build of the unit tests | Clang | no reports |
@@ -329,6 +431,11 @@ return scenario {
   and in Chromium (SwiftShader) for the web. Windows and macOS runners have no reliable GPU, so
   there the same scenarios run with `--no-render`, which checks logic and determinism.
 - Golden images are updated with `--update-golden`, and the diff images are uploaded as CI artifacts.
+- Temporal effects (anti-aliasing, cloud reprojection, auto exposure) are reproducible in tests: the
+  time step is fixed, noise is indexed by frame number, and history buffers are reset when a scenario
+  starts. The `ci` quality preset keeps ray-march steps low enough for llvmpipe.
+- The showcase scenes are also selectable from a *Showcase* menu in the web build, so progress on
+  the look can be checked in the browser.
 - Budgets are checked by counters, not frame times (CI machines vary): draw calls, triangles, chunk
   generation milliseconds per frame, memory. Real frame rates are checked by hand on the target
   devices at the end of each milestone.
@@ -380,35 +487,47 @@ Sizes are relative (S < M < L < XL). Each milestone ends with a playable build o
 foundation → engine → scale → universe → planets → **the Fukuruma vertical slice (M6)** →
 platforms → depth.
 
+**Look-and-feel bar (every milestone from M1 on):** new content meets the rendering standard
+(PBR materials, correct shadows, effects for every interaction), and the milestone ends with a
+**juice pass**: every new action has its feedback bundle (sound, particles, light, camera, rumble),
+and the showcase scenes are reviewed on desktop, phone and VR.
+
 ### M0 — Foundation and pipeline (M)
 
 - **OpenSpec:** `add-project-foundation` (written; see `openspec/changes/add-project-foundation/`).
 - **Capabilities:** `asset-layout`, `script-runtime`, `test-harness`, `web-distribution`.
 - **Work:** repository layout, licences, README, AGENTS.md and CLAUDE.md; CMake presets for five
   targets; SDL3 window and GL context; GL loader; Lua VM running `data/scripts/main.lua`, which draws a
-  spinning low-poly placeholder through `fk.gfx`; minimal VFS; CLI (`--headless`, `--test`,
+  spinning placeholder model through `fk.gfx`; minimal VFS; CLI (`--headless`, `--test`,
   `--scenario`, `--seed`, `--no-render`); utest, luacov and gcovr gates; the CI workflow; Pages
   deployment; Playwright smoke test.
 - **Game test:** `boot.lua`: start, render 120 frames, match the golden image, exit 0.
 - **Exit:** Pages shows the placeholder; CI is green on all targets; coverage ≥ 95%.
 
-### M1 — Engine core (L)
+### M1 — Engine core (XL)
 
-- **OpenSpec:** `add-simulation-loop` (fixed tick, commands, entities, named RNG streams, jobs),
-  `add-input-actions` (action maps, keyboard, mouse, gamepad, touch detection and a basic virtual
-  stick), `add-retro-renderer` (shaders, meshes, textures, low-res target, palette and dither,
-  sprites, bitmap text, immediate UI, screenshots), `add-asset-loading` (PNG, glTF, VOX with greedy
-  meshing, OGG, WAV, hot reload), `add-audio` (mixer, 3D, music layers, the ElevenLabs tool and a
-  first set of sounds), `add-save-system` (snapshot and deltas, IDBFS, versioning).
-- **Game test:** a sandbox scene: a placeholder Exosuit walks on a plane with keyboard input and
-  with emulated touch input, and a save/load round-trip keeps its position.
-- **Exit:** the sandbox is playable on desktop and phone browsers, with sound.
+- **OpenSpec:** `add-simulation-loop` (fixed tick, commands, events, entities, named RNG streams,
+  jobs), `add-input-actions` (action maps, keyboard, mouse, gamepad, touch detection and a basic
+  virtual stick), `add-render-pipeline` (low-resolution HDR target and retro upscale, deferred PBR,
+  star light with cascaded shadows, image-based lighting, ambient occlusion, bloom, exposure, tone
+  mapping, colour grading, TAA or supersampling, quality presets, LDR fallback, bitmap text,
+  immediate UI, screenshots), `add-asset-loading` (PNG and JPEG with mipmaps, glTF meshes, materials,
+  skins and clips, OGG, WAV, hot reload), `add-animation-runtime` (skinning, blend trees, state
+  machines, springs), `add-game-feel` (presentation layer: camera rigs, trauma shake, feedback table,
+  haptics, tweens, comfort settings), `add-audio` (mixer, 3D, reverb zones, music layers, the
+  ElevenLabs tool and a first set of sounds), `add-save-system` (snapshot and deltas, IDBFS, versioning).
+- **Game tests:** a sandbox scene: a skinned placeholder Exosuit walks across a lit, shadowed test
+  ground with keyboard input and with emulated touch input; a save/load round-trip keeps its
+  position; showcase scenes for shadows, materials and skinning match their golden images.
+- **Exit:** the sandbox is playable on desktop and phone browsers, with sound, and already looks
+  modern at retro resolution.
 
 ### M2 — Reference frames and scale (M)
 
-- **OpenSpec:** `add-reference-frames`, `add-orbital-mechanics`, `add-collision`.
+- **OpenSpec:** `add-reference-frames`, `add-orbital-mechanics`, `add-physics`.
 - **Work:** the frame tree, double positions, camera-relative transforms, depth slices, scaled space,
-  frame transitions, Kepler orbits, character controller, gravity per body.
+  frame transitions, Kepler orbits; deterministic physics (shapes, broadphase per frame, character
+  controller, rigid bodies), gravity per body.
 - **Game test:** the *scale ladder*: the camera moves from a 1 m cube to a 144 km hull to a planet to
   a star. A golden image at each step; position jitter < 1 mm at 100 AU from the star.
 
@@ -424,30 +543,40 @@ platforms → depth.
 
 ### M4 — Planets from space (L)
 
-- **OpenSpec:** `add-noise-graphs`, `add-planet-descriptors`, `add-planet-rendering`, `add-star-rendering`.
+- **OpenSpec:** `add-noise-graphs`, `add-planet-descriptors`, `add-planet-rendering`,
+  `add-atmospheric-scattering`, `add-star-rendering`.
 - **Work:** the noise-graph DSL and evaluator, global fields (plates, elevation, climate, biomes),
-  baked planet textures, cube-sphere LOD, atmosphere, clouds, night lights, rings with shadows,
-  eclipses, per-world palettes, star coronas, binary lighting, the first marvel visuals (polar ring,
-  black hole lensing, pulsar beam).
+  planet materials from the fields, cube-sphere LOD, physically based atmospheres per composition,
+  cloud layers from orbit, night lights, rings with forward scattering and shadows, eclipses and
+  planetshine, per-world colour grading, HDR stars with convection, corona, bloom and flares, binary
+  lighting, the first marvel visuals (polar ring, black hole lensing, pulsar beam).
 - **Game test:** orbit one planet of each archetype; golden images; draw-call and triangle budgets.
 
 ### M5 — Seamless surfaces (XL)
 
-- **OpenSpec:** `add-terrain-streaming`, `add-biomes-and-scatter`, `add-voxel-terrain`, `add-weather`.
+- **OpenSpec:** `add-terrain-streaming`, `add-terrain-materials`, `add-biomes-and-scatter`,
+  `add-voxel-terrain`, `add-volumetric-clouds-and-fog`, `add-water`, `add-weather`.
 - **Work:** quadtree chunk streaming from orbit to the ground without cracks, regional detail,
-  rivers, lakes and oceans, biome scatter (sprite flora, rocks), voxel near field (surface nets,
-  flat shading), **terrain deformation** with persistent deltas, terrain collision, day and night,
-  weather, time-sliced generation on the web.
+  triplanar terrain materials with wetness, snow and dust layers; biome scatter (instanced detailed
+  flora and rocks with wind animation and impostors); voxel near field (smooth meshing),
+  **terrain deformation** with persistent deltas and debris; terrain collision; volumetric clouds
+  with cloud shadows, the froxel fog volume and light shafts; oceans, lakes, rivers and waterfalls
+  with waves, reflections, refraction, foam, caustics and underwater fog; day and night; rain, snow,
+  sandstorms and lightning; time-sliced generation on the web.
 - **Game tests:** a descent from station orbit to the ground in one continuous flight (no holes, within
-  budget); dig a tunnel, save, reload and walk through it; chunk determinism hashes.
+  budget); dig a tunnel, save, reload and walk through it; chunk determinism hashes; showcase scenes
+  for clouds, fog and light shafts, ocean, river and rain.
 
 ### M6 — The Fukuruma chain: vertical slice (XL)
 
 - **OpenSpec:** `add-doll-chain`, `add-vehicle-controllers`, `add-teleport-network`, `add-autopilot`.
-- **Work:** the doll registry and schema, placeholder hulls for the seven dolls and the Drop Ship,
-  deploy / recall / board / disembark, one controller per doll (jump drive, orbit, flight, crawl,
-  legs with simple IK, first-person Exosuit), the teleport network, cockpits and cameras, autopilot
-  with time compression, ship-AI text lines.
+- **Work:** the doll registry and schema, detailed procedural hulls for the seven dolls and the Drop
+  Ship (part grammar with greebles, PBR materials, lights), deploy / recall / board / disembark as
+  choreographed mechanical sequences, one controller per doll (jump drive, orbit, flight, crawl,
+  legged locomotion with foot IK on terrain, first-person Exosuit with arms), the teleport network,
+  cockpits with diegetic screens, camera rigs, autopilot with time compression, ship-AI text lines,
+  and the feedback bundles that make each doll feel its mass (footstep shake and dust, engine
+  rumble, landing impacts).
 - **Game test:** *the Fukuruma test*: the whole chain down and back up (see §4). It runs on every push
   from now on.
 - **Exit:** the vertical slice is playable on Pages: one system, one planet, every doll.
@@ -455,8 +584,10 @@ platforms → depth.
 ### M7 — Touch and WebXR (L)
 
 - **OpenSpec:** `add-touch-controls`, `add-webxr`.
-- **Work:** a touch layout per doll, UI scaling, the WebXR session, stereo rendering, controller
-  mapping, comfort options, the visor HUD, cockpits in VR, performance tuning for Quest-class devices.
+- **Work:** a touch layout per doll, UI scaling, the WebXR session, stereo rendering with the VR
+  resolution preset, controller mapping and haptics, comfort options, the visor HUD, cockpits in VR,
+  performance tuning for Quest-class devices (quality presets, fixed foveation where the browser
+  offers it).
 - **Tests:** Playwright with phone emulation (touch layout, the stick moves the Commander); a mocked
   `navigator.xr` (button visibility, session start path); a golden image of the side-by-side stereo
   debug view.
@@ -480,11 +611,14 @@ platforms → depth.
 ### M10 — Hazards, survival and life (XL)
 
 - **OpenSpec:** `add-environment-model`, `add-exosuit-survival`, `add-death-modes`, `add-ecology`,
-  `add-creature-generation`, `add-defensive-tools`.
+  `add-creature-generation`, `add-procedural-animation`, `add-fire-and-destruction`,
+  `add-defensive-tools`.
 - **Work:** atmosphere, pressure, temperature, radiation and toxins; terrain hazards; Exosuit systems
-  and doll damage; Clone mode and Legacy mode; procedural flora and fauna (body-plan grammar →
-  voxel model → 8-direction sprite sheet); ecology tables per biome; Lua behaviours at low tick rates;
-  sidearm, stun, flares, decoys, pulses, shields.
+  and doll damage (visible on hulls and the visor); Clone mode and Legacy mode; procedural flora
+  and fauna (body-plan grammar → skinned mesh with PBR materials → procedural gaits, secondary motion
+  and ragdolls); ecology tables per biome; Lua behaviours at low tick rates; sidearm, stun, flares,
+  decoys, pulses, shields; fire that spreads through dry vegetation, smoke, explosions, lava and
+  toxic-gas volumes as visible hazards.
 - **Game tests:** without a filter in a toxic biome the Commander dies and wakes in the clone bay
   (Clone mode), or the run ends and the codex carries over (Legacy mode); a predator pack is avoided
   by passive stealth; decoys draw a predator away.
@@ -493,7 +627,7 @@ platforms → depth.
 
 - **OpenSpec:** `add-factions`, `add-native-settlements`, `add-artifact-sites`,
   `add-thieves-and-boarding`, `add-dialogue`.
-- **Work:** faction model and reputation, settlements (sprite people, voxel buildings), dialogue
+- **Work:** faction model and reputation, settlements (animated natives, procedural buildings), dialogue
   trees in Lua, ruins with puzzles and defences, thieves who steal unattended dolls, boarding parties
   that path through interiors, tyrant story arcs, rival spacefarers.
 - **Game tests:** thieves take an unattended Land Explorer, which can then be tracked and recovered;
@@ -512,7 +646,9 @@ platforms → depth.
 
 - **OpenSpec:** `add-story-threads`, `add-accessibility`, plus content changes.
 - **Work:** the mystery arc framework and its first threads; at least 40 marvels; an audio pass with
-  ElevenLabs (all dolls, hazards, music layers); a style guide; art replacement documentation;
+  ElevenLabs (all dolls, hazards, music layers); a visual pass (materials, lighting and colour grading
+  per archetype, effect polish) and a final juice pass over every interaction; a style guide; art
+  replacement documentation;
   `docs/MODDING.md` and an example mod; balancing; accessibility (remapping, subtitles for the ship AI,
   colour-blind palette option, motion comfort); text kept in string tables for later translation.
 
@@ -533,6 +669,12 @@ platforms → depth.
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Seamless planets with seven scales on mobile WebGL | frame rate, memory | low internal resolution, aggressive LOD, time-sliced generation, per-device quality presets, budgets checked in CI |
+| Modern rendering on WebGL 2 (no compute shaders; float targets not everywhere) | missing effects on some devices | fragment-shader and transform-feedback techniques only; LDR fallback; quality presets tested in the browser job |
+| Detailed geometry shimmers at low resolution | ugly, tiring image | supersampling or TAA, texel-snapped shadows, LOD by internal pixels, specular anti-aliasing |
+| Vertex and draw-call cost does not shrink with resolution | CPU/GPU bound on phones | LOD by internal pixels, instancing, impostors, culling per depth slice |
+| Detailed art for a procedural universe | too much hand work | procedural hulls, creatures and materials; CC0 material and sky libraries; glTF pipeline for hand-made models |
+| In-house physics in C | bugs, instability | narrow scope (characters, vehicles, debris, ragdolls), determinism tests, no general stacking promises |
+| Volumetrics on llvmpipe in CI | slow or flaky tests | fixed `ci` preset, small showcase scenes, reprojection reset per scenario |
 | 95% coverage of graphics and platform code | blocked merges | thin `platform/` layer, rendering logic kept separate from GL calls, game tests counted in coverage, llvmpipe in CI |
 | Floating-point differences between platforms | different universes on web and desktop | `-ffp-contract=off`, in-house transcendentals, integer hashing, a CI determinism matrix |
 | Scope: economy, outposts, deformation, factions, story | never finishing | vertical slice first (M6); each system starts minimal and data-driven; ponytail rules |

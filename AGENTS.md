@@ -59,6 +59,12 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 - **Determinism:** no global RNG (use named streams from the world seed); compile with `-ffp-contract=off`;
   generation uses only the engine's deterministic math helpers.
 - **Platforms:** every change must build and pass on Linux, Windows, macOS and Web; WebXR and touch where relevant.
+- **Rendering:** modern techniques at a low internal resolution; only the resolution is retro. GPU work must fit the
+  WebGL 2 baseline (no compute, geometry or tessellation shaders; use fragment passes and transform feedback) and
+  scale through the quality presets. Content changes keep PBR materials, shadows and effects to the standard.
+- **Simulation vs. presentation:** rendering, animation blending, particles, camera feel, hit-pause and haptics react
+  to simulation events and never change simulation state. Every new player action gets a feedback bundle (sound,
+  particles, light, camera, rumble).
 - **Licences:** code MIT, art CC BY 4.0 (`LICENSE-ASSETS.md`). Record third-party code in
   `THIRD_PARTY_NOTICES.md` and generated or external assets in a `CREDITS.md` next to them.
 - **Secrets:** never commit API keys (for example the ElevenLabs key); tools read them from the environment.

@@ -26,8 +26,8 @@ following change is tested and deployed from its first commit.
 - One CI workflow: build and test on Linux, Windows, macOS and Web; validate OpenSpec; deploy the web
   build to GitHub Pages when everything passes.
 
-**Out of scope:** gameplay, the fixed-tick simulation, input mapping, the retro post-process
-pipeline, asset loaders other than Lua scripts and GLSL shaders, audio, touch controls, WebXR, mods
+**Out of scope:** gameplay, the fixed-tick simulation, input mapping, the render pipeline (PBR
+lighting, shadows, effects, the retro-resolution filter), asset loaders other than Lua scripts and GLSL shaders, audio, touch controls, WebXR, mods
 loading beyond the documented folder. These come in M1 and later.
 
 **Proving game test:** `tests/game/boot.lua`: start headless, render 120 frames of the placeholder,

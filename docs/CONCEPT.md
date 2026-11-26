@@ -1,9 +1,11 @@
 # Fukuruma — Game Concept
 
-> Status: **v0.2**. Updated with the answers to the ten clarifying questions (see §10, *Decisions*).
+> Status: **v0.3**. Updated with the answers to the ten clarifying questions and the follow-up on
+> graphics and game feel (see §10, *Decisions*).
 > The build plan is in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
-Fukuruma is a retro-3D space exploration game about **wonder** and **scale**. You command a
+Fukuruma is a space exploration game about **wonder** and **scale**, built on modern real-time
+rendering and shown through a retro low-resolution filter. You command a
 moon-sized Jump Ship. It carries space stations, which carry mountain-sized explorers, which carry
 walking cities, which carry giant walkers, which carry you: the Commander in an environmental
 exosuit, the last and smallest doll. Every doll can be entered, walked through and deployed.
@@ -24,9 +26,14 @@ Every planet is worth going down to, and any planet can kill you.
    kill people.
 4. **Survive, don't conquer.** Scanning, avoiding, outrunning and outsmarting come first. Weapons are
    few, defensive and costly to use.
-5. **Retro 3D craft.** Late-90s PC look: low resolution, a palette per world, dithering, low-poly
-   models, billboard sprites and voxels.
-6. **Open and moddable.** A C engine with the game itself in Lua. Assets, scripts and shaders live in
+5. **Modern rendering, retro resolution.** Detailed models, physically based lighting and shadows,
+   and realistic fire, water, fog and clouds, rendered at a deliberately low resolution and scaled
+   up with sharp pixels. Only the resolution is retro. It is a style and a budget: rendering a
+   sixteenth of the pixels pays for the expensive effects.
+6. **Weight and juice.** The dolls move with believable mass, animations have weight, and every action
+   is answered with sound, light, particles, camera motion and rumble. A Walker's footstep shakes the
+   ground under the Exosuit.
+7. **Open and moddable.** A C engine with the game itself in Lua. Assets, scripts and shaders live in
    folders beside the binary. Mods are folders you drop in.
 
 ---
@@ -103,7 +110,7 @@ behind stay in the world, where they can be damaged, stranded or stolen.
 
 ### 2.5 Fully explorable interiors
 
-Each doll has a hull (a low-poly/voxel model defined in Lua) and an interior that is generated
+Each doll has a hull (a detailed model assembled from parts by a Lua grammar) and an interior that is generated
 **on demand, sector by sector**, from a deterministic seed:
 
 ```
@@ -197,7 +204,7 @@ red giant swallowing its inner planets · rogue planet with no star.
 lava · iron · barren rock · desert · terran · ocean · ice · glacier world with subsurface ocean ·
 carbon/diamond · super-Earth · mini-Neptune · ice giant · gas giant · hot Jupiter · tidally locked
 "eyeball" · shattered world · plus rare "marvel" classes. Each class is a **Lua archetype** with
-parameter ranges, a noise-graph recipe, palette rules, and biome, hazard and life tables.
+parameter ranges, a noise-graph recipe, material and colour-grading rules, and biome, hazard and life tables.
 
 ### 4.3 The Wonder Director
 
@@ -219,7 +226,7 @@ wreck, nested dolls and all · leviathans drifting in a gas giant · cryovolcano
 orbit · a permanent super-storm · methane lakes · iron rain · a frozen tsunami · a planet-wide
 fungal network · a binary sunset with two shadows · a canyon ten times the size of Valles Marineris.
 
-### 4.4 Rendering a star system (retro, at astronomical scale)
+### 4.4 Rendering a star system at astronomical scale
 
 **Scale handling.** Positions are doubles relative to the current reference frame. Each frame is
 drawn in **depth slices**: celestial (stars, planets, distant dolls), planetary (the nearby planet
@@ -228,25 +235,32 @@ near and far planes, and the depth buffer is cleared between slices. Distant bod
 *scaled space*: shrunk and moved closer by the same factor, so their angular size stays correct.
 This works the same way on desktop OpenGL and WebGL 2.
 
-**Stars:** an emissive sphere, an animated corona billboard and palette-cycled glare, with a minimum
-on-screen size and a colour from temperature. Binary stars orbit their barycentre and cast two
-coloured lights.
+**Stars:** an HDR emissive sphere with animated convection cells, prominences and a corona, with
+bloom and lens flare driven by the star's real brightness and a colour from its temperature.
+Exposure adapts, so a star seen from a planet's night side, from orbit and from deep space each
+looks right. Binary stars orbit their barycentre and cast two coloured lights and two shadows.
 
 **Planets from space:**
 - a cube-sphere mesh with quadtree LOD; the same mesh carries you down to the surface (§4.5);
-- a per-planet albedo and height texture, baked at low resolution when the system is generated;
-- the atmosphere as a rim-lit shell with a palette-banded sunset gradient;
-- clouds as a separate, rotating, dithered shell, and night-side lights on inhabited worlds;
-- rings as an annulus with a generated radial density texture (gaps from moon resonances); ring
-  shadows on the planet and planet shadows on the ring are computed analytically;
-- eclipses from up to four analytic sphere occluders per draw;
-- special effects: aurorae, comet tails, pulsar beams, and accretion disks with screen-space lensing.
+- physically based surface materials (rock, sand, ice, vegetation, ocean) from the planet's
+  generated fields, with specular glints on oceans and ice;
+- **physically based atmospheric scattering** (Rayleigh, Mie and absorption, tuned to each
+  atmosphere's chemistry): blue, orange, green or violet skies and sunsets that follow from the
+  planet's data, the same model seen from orbit and from the ground;
+- **volumetric clouds** driven by the planet's climate fields, casting shadows on the ground; from far
+  away they turn into a cloud layer baked from the same data. City lights on inhabited night sides;
+- rings as an annulus with a generated radial density texture (gaps from moon resonances),
+  forward-scattering sunlight; ring shadows on the planet and planet shadows on the ring;
+- eclipses and planetshine (sunlight reflected from a planet lights the dolls in orbit);
+- special effects: aurorae, comet tails and comas, pulsar beams, and accretion disks with
+  gravitational lensing.
 
-**Maps:** the system map is a vector-CRT style schematic with orbit lines, logarithmic distances,
+**Maps:** the system map is a holographic schematic with orbit lines, logarithmic distances,
 time scrubbing and scan overlays. The galaxy map is a point cloud of the real generated stars.
 
-**The sky** is rendered per system into a low-resolution cube map: the real neighbouring stars,
-nebulae and the galactic band. The Jump Ship and the stations move across it like moons.
+**The sky** is rendered per system into an HDR cube map: the real neighbouring stars, volumetric
+nebulae and the galactic band. It also lights the scene (image-based lighting). The Jump Ship and
+the stations move across it like moons.
 
 ### 4.5 Planet surfaces: seamless from orbit to ground
 
@@ -257,9 +271,12 @@ deterministic, and matches the doll pyramid:
 - **Regional detail** (on demand, per quadtree chunk): the archetype's noise graph (ridged,
   domain-warped, terraced, cratered, dunes, erosion-like noise) on top of the global fields.
 - **Near field** (Exosuit and Walker range): voxel density for caves, arches and overhangs, meshed
-  into flat-shaded low-poly surfaces. This is where terrain deformation lives.
-- **Scatter:** rocks and flora placed by blue noise per chunk; fauna populations placed by region
-  from the planet's generated ecology.
+  into smooth surfaces with triplanar physically based materials (rock strata, soil, sand, ice,
+  crystal), detail normal maps, and wetness, snow and dust layers that follow the weather. This is
+  where terrain deformation lives.
+- **Scatter:** detailed, instanced rocks and flora placed by blue noise per chunk, swaying in the
+  wind, with impostors in the distance; fauna populations placed by region from the planet's
+  generated ecology.
 
 The details of surface generation are the subject of a later design session.
 
@@ -287,6 +304,10 @@ Two rules follow:
 
 **Passive and active scanning:** an active ping sees more and farther, and it tells everything
 nearby that you are there. Scan data **ages**: creatures move, storms drift, patrols change route.
+
+**Seeing danger:** many hazards are visible if you look: spore clouds and toxic gas drift as
+volumetric fog, lava shimmers with heat haze, a dust storm swallows the light. Others are invisible
+(radiation, a camouflaged predator, a thin crust over a sinkhole), and only sensors reveal them.
 
 ### 5.2 Sources of danger
 
@@ -330,28 +351,114 @@ foam). What happens when it finally fails depends on a setting chosen when a gam
 
 ---
 
-## 6. Look and Feel: Late-90s PC Retro 3D
+## 6. Look and Feel: Modern Rendering Behind a Retro Filter
 
-- **Internal resolution** of about 480×270, integer-scaled with nearest filtering. Higher in VR, but
-  still pixelated.
-- **A palette per world** (32–256 colours), derived from the star's colour and the atmosphere, with
-  ordered (Bayer) dithering, so every planet has its own mood.
-- **Low-poly models** (glTF), small nearest-filtered textures, vertex lighting, coloured fog, light
-  coloured by the star. There is no PS1-style vertex jitter by default; an optional setting adds a
-  subtle snap.
-- **Sprites:** 8-direction billboards for creatures, natives and flora. Procedural creatures are built
-  as voxel models and rendered into sprite sheets when they are loaded, which gives classic sprites
-  in endless variety.
-- **Voxels:** MagicaVoxel models for props, artefacts and vehicle details, and voxel terrain around
-  the Exosuit and Walker.
-- **Fog and atmosphere** as banded palette gradients; blob shadows; analytic eclipses.
+Everything in the world is modern: detailed geometry, physically based materials, realistic light,
+shadows, volumes, water, fire and animation. **Only the resolution is retro.** The image is rendered
+at a low internal resolution and scaled up with sharp, square pixels. The pixels are big, and what
+they show is rich.
+
+### 6.1 The retro filter
+
+- **Internal resolution presets:** *Classic* 480×270, *Sharp* 640×360, *Fine* 960×540, scaled to the
+  window by an integer factor with nearest filtering (a sharp-bilinear filter for screens that are
+  not a clean multiple). The whole HDR pipeline runs at the internal resolution.
+- **Stable pixels:** detailed geometry at a low resolution flickers when the camera moves. The
+  renderer prevents that with 2×2 supersampling into the internal resolution on capable hardware,
+  or temporal anti-aliasing on weaker hardware, and with shadow maps snapped to their texel grid.
+- **Optional stylisation:** subtle ordered dithering (on by default, it also hides colour banding)
+  and an optional *palette mode* that quantises each world to its own colour palette, for players
+  who want a stronger retro look.
+- **UI:** pixel fonts and widgets at a multiple of the internal resolution, with an accessibility
+  option to draw text at the native resolution.
+- **VR:** a higher internal resolution per eye (still visibly pixelated) for comfort and readability.
+
+**Why it saves time:** 480×270 is one sixteenth of the pixels of 1080p. Everything that costs per
+pixel (lighting, shadow filtering, ambient occlusion, volumetric fog, ray-marched clouds,
+reflections, particles) costs a sixteenth. Geometry detail is chosen by how many *internal* pixels
+an object covers, so distant detail is dropped early. That budget is what makes realistic effects
+possible on phones and in the browser.
+
+### 6.2 Rendering
+
+- **3D objects, sprites and voxels, the modern way:** detailed 3D models for everything solid;
+  sprites for particles, flipbook effects and distant impostors of trees, rocks and herds; voxels for
+  deformable terrain, caves and destructible props, meshed into smooth surfaces.
+- **Detailed models and materials:** glTF models with physically based materials (base colour,
+  normal, roughness, metalness, occlusion, emission), detail textures, and triplanar materials for
+  terrain. Procedural hulls, creatures and props get the same material system.
+- **Lighting:** HDR, physically based shading, image-based lighting from the real sky, automatic
+  exposure, a filmic tone curve and per-world colour grading (each world has its own mood).
+  Many local lights: cockpit screens, floodlights, bioluminescence, fire, muzzle flashes.
+- **Shadows:** soft, filtered cascaded shadow maps from the star (two sets for binary stars), a
+  far cascade for doll-sized shadows (a 6.7 km Continental Explorer darkens the landscape it flies
+  over), shadows from local lights, contact shadows and ambient occlusion. Eclipses, ring shadows
+  and cloud shadows on the ground.
+- **Atmosphere and sky:** physically based scattering for every atmosphere composition, aerial
+  perspective, sunrises and sunsets, starry night skies, aurorae.
+- **Clouds:** ray-marched volumetric clouds from the planet's weather, with storms, anvils and
+  lightning lit from inside.
+- **Fog and volumes:** volumetric height fog, light shafts through clouds, forests, hangar doors and
+  ruins; local volumes for smoke, dust, steam, spores and toxic gas, lit and shadowed like everything else.
+- **Water:** oceans with wind-driven waves, swell and foam; rivers with flow and waterfalls with mist;
+  reflections and refraction, depth colour, caustics, an underwater mode with its own fog; surfaces
+  that get wet in rain and dry again.
+- **Fire, smoke and explosions:** particle fire with real light emission and flicker, heat haze,
+  smoke that joins the volumetric fog, embers and sparks, scorch decals. Fire can spread through
+  dry vegetation as a hazard.
+- **Weather and particles:** rain, snow, hail, sandstorms, ash fall, meteor streaks, dust kicked up by
+  every step and landing; decals for footprints, tracks and scorch marks.
+- **Post-processing:** bloom, lens flares from bright light sources, motion blur and depth of field
+  (subtle and optional), heat distortion, damage effects on the Exosuit visor.
+
+### 6.3 Animation
+
+- **Skeletal animation** from glTF, with blending, layered state machines and root motion.
+- **Procedural locomotion and IK:** the Walker and Land Explorer plant their feet on real terrain
+  and adjust their bodies over slopes and rubble. Generated creatures get procedural gaits from their
+  body plan (two, four, six or more legs, slithering, flying, drifting).
+- **Secondary motion:** cables, antennae, tails, fins, foliage and cloth react with springs and
+  simple physics; creatures fall as ragdolls; dolls rock on their suspension.
+- **Mechanical sequences:** deploying, docking and boarding play as choreographed machine
+  animations: hangar doors, clamps, ramps, gantries, unfolding legs. They are timed in Lua and
+  carry their sounds, lights and particles.
+- **The Commander** has first-person arms and hands for tools, climbing and controls.
+
+### 6.4 Game feel ("juice")
+
+The aim is a realistic kind of juice: mass and physical response, not cartoon exaggeration.
+
+- **Mass and scale you can feel:** every doll has acceleration, braking and turning curves for its
+  mass; cameras have inertia; a Walker's footstep shakes the Exosuit's view and throws up dust, and a
+  Land Explorer's step can be felt kilometres away; the Continental Explorer's engines rumble in the
+  chest (low-frequency audio and controller rumble).
+- **Every action is answered:** each command is answered within one frame by a sound, a light, a
+  particle effect, a camera response and a haptic pulse, scaled to its importance.
+- **Anticipation and follow-through:** deploy sequences build up (warning lights, alarms, unlocking
+  clamps) before the release, and settle after it (sway, dust, servo whine).
+- **Impacts:** brief hit-pause on heavy impacts, camera kick, debris, sparks and decals; damage you can
+  see on hulls and on the visor.
+- **Discovery moments:** a new marvel or species gets a camera beat, a music swell and a codex chime.
+- **UI with springs and easing**, a visor HUD that glitches when the suit is damaged, and readouts
+  that react to what the sensors see.
+- **Haptics** on gamepads, phones (vibration) and XR controllers.
+- **Comfort first:** camera shake, flashes and motion blur have intensity settings; in VR the camera
+  is never moved by effects, and the world and controllers shake instead.
+
+All of this is **presentation**: it reacts to simulation events but never changes the simulation,
+so the game stays deterministic (§8.4).
+
+### 6.5 Diegetic UI, art and audio
+
 - **Diegetic UI:** each doll has a cockpit or bridge, and the Exosuit HUD is drawn on the visor.
-- **Visual art:** procedural generators (textures, palettes, creatures, voxel props) plus placeholder
-  models that the project owner can replace with hand-made art over time.
+- **Visual art:** procedural generators build detailed content (hull parts and greebles from a
+  grammar, creature bodies from body plans, materials from noise), together with free CC0 material
+  and sky libraries and placeholder models that the project owner can replace with hand-made art.
 - **Audio:** epic sound effects and ambient space music generated with the **ElevenLabs API**
   (sound-effects and music endpoints). The prompts are kept in the repository so every sound can be
-  regenerated. Playback has positional audio and crossfading music layers per situation (deep space,
-  orbit, surface, danger, discovery).
+  regenerated. Playback has positional audio with distance filtering, reverb per space (hangar,
+  cave, open plain, helmet), and crossfading music layers per situation (deep space, orbit, surface,
+  danger, discovery).
 
 ---
 
@@ -375,11 +482,13 @@ station and the Jump Ship cross the sky like moons.
 
 ### 8.1 Engine and game split
 
-- **Core engine (C11):** platform (SDL3), renderer (the shared subset of OpenGL 3.3 core,
-  OpenGL ES 3.0 and WebGL 2), audio, input mapping, virtual file system, asset loaders (glTF,
-  MagicaVoxel, PNG, OGG), reference frames and scale, procedural generation kernels (hashing, noise
-  graphs, terrain meshing, voxels), interior sector streaming, collision, entity storage, job system,
-  save system, Lua bindings.
+- **Core engine (C11):** platform (SDL3); a physically based HDR renderer at low internal resolution
+  (shadows, atmosphere, volumetric clouds and fog, water, particles, post-processing) on the shared
+  subset of OpenGL 3.3 core, OpenGL ES 3.0 and WebGL 2; skeletal and procedural animation; physics
+  (characters, vehicles, rigid bodies, ragdolls); the presentation layer for game feel; audio, input
+  mapping, virtual file system, asset loaders (glTF, PNG/JPEG, OGG); reference frames and scale;
+  procedural generation kernels (hashing, noise graphs, terrain meshing, voxels, hull and creature
+  meshes); interior sector streaming; entity storage; job system; save system; Lua bindings.
 - **Game (Lua 5.4):** doll definitions, generation recipes and archetypes, the Wonder Director,
   marvels, ecology, AI behaviours, factions, economy, research, crafting, missions, story threads,
   UI layout, codex text, mod API.
@@ -389,13 +498,13 @@ station and the Jump Ship cross the sky like moons.
 
 ```
 fukuruma(.exe)
-data/       scripts/ shaders/ textures/ models/ voxels/ sprites/ sounds/ music/ fonts/ palettes/
+data/       scripts/ shaders/ textures/ materials/ models/ animations/ sprites/ luts/ fonts/ sounds/ music/
 mods/       one folder per mod, overlaid on data/ in load order
 ```
 
 On the web, the same `data/` folder is packaged as a separate data file next to the `.wasm` and can
-be swapped without rebuilding. Code (C, Lua, shaders, tools) is MIT. Art (textures, models, voxels,
-sprites, sounds, music) is CC BY 4.0.
+be swapped without rebuilding. Code (C, Lua, shaders, tools) is MIT. Art (textures, materials,
+models, animations, sprites, colour-grading tables, fonts, sounds, music) is CC BY 4.0.
 
 ### 8.3 Quality
 
@@ -414,6 +523,10 @@ sprites, sounds, music) is CC BY 4.0.
 - **Co-op comes later**, so the simulation is built for it now at little cost: state changes go
   through serialisable commands; the simulation runs in fixed, deterministic steps; entities have
   stable IDs; the Commander is an entity, not a global. No networking code until co-op is scheduled.
+- **Presentation is outside the simulation:** rendering, animation blending, particles, camera feel,
+  hit-pause and haptics react to simulation events but never change simulation state. Physics that
+  affects gameplay (characters, vehicles, debris you can collide with) runs in the deterministic
+  simulation; purely visual motion (foliage, cables, sparks) runs in presentation.
 
 ---
 
@@ -424,7 +537,7 @@ a story campaign with an ending · VR on native desktop (OpenXR) · console port
 
 ---
 
-## 10. Decisions (answers to the clarifying questions, 2026-11-26)
+## 10. Decisions (answers to the clarifying questions and follow-ups, 2026-11-26)
 
 | # | Question | Decision |
 |---|----------|----------|
@@ -436,5 +549,5 @@ a story campaign with an ending · VR on native desktop (OpenXR) · console port
 | 6 | Multiplayer | **Co-op later**: single-player first; deterministic, command-based simulation from day one. |
 | 7 | Crew | **The Commander, a ship AI and drones.** No human NPC crew. |
 | 8 | Scope | **All of:** research and upgrades, trading and economy, outposts and crafting, terrain deformation. |
-| 9 | Retro look | **Late-90s PC** (Quake, Daggerfall, Outcast era). |
-| 10 | Art and audio | **Audio generated with the ElevenLabs API** (epic sound effects, ambient space music). Visual art was not specified; the default is procedural generators plus replaceable placeholder art. |
+| 9 | Retro look | **Only the resolution is retro** (follow-up, 2026-11-26; replaces the first answer, "late-90s PC"). Modern technology underneath: detailed models, realistic lighting and shadows, realistic fire, water, fog and clouds, good animation and a realistically juicy feel, all shown through a low-resolution filter that also saves rendering time. |
+| 10 | Art and audio | **Audio generated with the ElevenLabs API** (epic sound effects, ambient space music). Visual art was not specified; the default is procedural generators, CC0 material libraries and replaceable placeholder models. |

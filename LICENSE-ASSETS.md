@@ -7,9 +7,9 @@ All art in this repository is licensed under the
 <https://creativecommons.org/licenses/by/4.0/>
 (full legal code: <https://creativecommons.org/licenses/by/4.0/legalcode>).
 
-"Art" means textures, 3D models, voxel models, sprites, palettes, bitmap fonts, sound effects and
-music, mainly in `data/textures/`, `data/models/`, `data/voxels/`, `data/sprites/`, `data/palettes/`,
-`data/fonts/`, `data/sounds/` and `data/music/`.
+"Art" means textures, materials, 3D models, animations, sprites, colour-grading tables, bitmap fonts,
+sound effects and music, mainly in `data/textures/`, `data/materials/`, `data/models/`,
+`data/animations/`, `data/sprites/`, `data/luts/`, `data/fonts/`, `data/sounds/` and `data/music/`.
 
 Code is not covered by this licence. C, Lua, GLSL, JavaScript and tool sources, including everything
 in `data/scripts/` and `data/shaders/`, are licensed under the [MIT License](LICENSE).

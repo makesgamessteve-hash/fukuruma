@@ -2,10 +2,11 @@
 
 **▶ Play in your browser: <https://makesgamessteve-hash.github.io/fukuruma/>**
 
-A retro-3D space exploration game about wonder and scale. You command a moon-sized Jump Ship that
-carries space stations, which carry flying mountains, which carry walking cities, which carry giant
-walkers, which carry you, in an environmental exosuit. Every doll in the chain can be deployed,
-boarded and explored. Every planet is worth going down to, and any planet can kill you.
+A space exploration game about wonder and scale: modern lighting, effects and animation, seen
+through a retro low-resolution filter. You command a moon-sized Jump Ship that carries space
+stations, which carry flying mountains, which carry walking cities, which carry giant walkers, which
+carry you, in an environmental exosuit. Every doll in the chain can be deployed, boarded and
+explored. Every planet is worth going down to, and any planet can kill you.
 
 | Doll | Size |
 |------|------|

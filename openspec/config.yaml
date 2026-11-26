@@ -1,11 +1,14 @@
 schema: spec-driven
 
 context: |
-  Fukuruma is a retro-3D space exploration game. Design: docs/CONCEPT.md. Roadmap: docs/IMPLEMENTATION_PLAN.md.
+  Fukuruma is a space exploration game: modern rendering (detailed PBR models, realistic lighting, shadows,
+  volumetric effects, water, fire), good animation and a juicy feel, shown through a retro low-resolution filter.
+  Design: docs/CONCEPT.md. Roadmap: docs/IMPLEMENTATION_PLAN.md.
   Core engine in C11 with SDL3 and OpenGL (3.3 core / GLES 3.0 / WebGL 2 subset); game logic in Lua 5.4.
   Targets: Windows, Linux, macOS, Web (Emscripten) and WebXR. Every design and task list must cover all five.
   Assets, scripts and shaders are loaded from data/ and mods/ beside the binary, never compiled into it.
-  Licences: code (C, Lua, GLSL, JS, tools) MIT; art (textures, models, voxels, sprites, sounds, music) CC BY 4.0.
+  Licences: code (C, Lua, GLSL, JS, tools) MIT; art (textures, materials, models, animations, sprites, sounds, music) CC BY 4.0.
+  Presentation (rendering, animation blending, particles, camera feel, haptics) never changes simulation state.
   Work happens on main only. CI must be green on every target; Pages deploys only green builds.
   Every change needs unit tests (C and Lua line coverage each >= 95%) and at least one automated game test.
   The simulation is deterministic and command-based (co-op later); generation must give identical results on every platform.
