@@ -5,4 +5,4 @@
 - [x] 3 `fk.math`, `fk.orbit`; `frames.orbit`, `frames.spin`, `frames.update`
 - [x] 4 Scale ladder on orbits; `orbits` scenario with a recorded hash
 - [x] 5 Tests; coverage gates, sanitizers, all CTest tests, web build and browser tests
-- [ ] 6 CI green on every target; Pages updated; archive
+- [x] 6 CI green on every target; Pages updated; archive
