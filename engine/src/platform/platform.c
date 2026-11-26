@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -10,11 +11,13 @@
 static SDL_Window *window;
 static SDL_GLContext context;
 
+/* stderr rather than SDL_Log: it reaches CTest pipes on every platform and the browser console on the web. */
 void fk_log(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO, fmt, ap);
+    vfprintf(stderr, fmt, ap);
     va_end(ap);
+    fputc('\n', stderr);
 }
 
 bool fk_platform_open(bool headless) {
@@ -56,7 +59,7 @@ void fk_platform_close(void) {
 
 void fk_platform_size(int *w, int *h) { SDL_GetWindowSizeInPixels(window, w, h); }
 void fk_platform_swap(void) { SDL_GL_SwapWindow(window); }
-void *fk_platform_gl_proc(const char *name) { return (void *)SDL_GL_GetProcAddress(name); }
+fk_proc fk_platform_gl_proc(const char *name) { return (fk_proc)SDL_GL_GetProcAddress(name); }
 uint64_t fk_platform_ticks_ns(void) { return SDL_GetTicksNS(); }
 
 void *fk_platform_read_file(const char *path, size_t *size) { return SDL_LoadFile(path, size); }

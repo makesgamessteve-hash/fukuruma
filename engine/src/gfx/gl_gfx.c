@@ -70,7 +70,7 @@ static GLuint compile(GLenum type, const char *define, const char *source) {
     gl.GetShaderiv(shader, GL_COMPILE_STATUS, &ok);
     if (!ok) {
         char log[1024] = "";
-        gl.GetShaderInfoLog(shader, sizeof log, NULL, log);
+        gl.GetShaderInfoLog(shader, (GLsizei)sizeof log, NULL, log);
         fk_log("shader compile error (%s): %s", define, log);
         gl.DeleteShader(shader);
         return 0;
@@ -97,7 +97,7 @@ bool fk_gfx_init(const char *shader_source) {
     gl.GetProgramiv(program, GL_LINK_STATUS, &ok);
     if (!ok) {
         char log[1024] = "";
-        gl.GetProgramInfoLog(program, sizeof log, NULL, log);
+        gl.GetProgramInfoLog(program, (GLsizei)sizeof log, NULL, log);
         fk_log("shader link error: %s", log);
         return false;
     }
@@ -124,11 +124,12 @@ void fk_gfx_mesh_create(fk_mesh *m, const float *vertices, int vertex_count, con
     gl.GenBuffers(1, &m->ibo);
     gl.BindVertexArray(m->vao);
     gl.BindBuffer(GL_ARRAY_BUFFER, m->vbo);
-    gl.BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)vertex_count * 6 * sizeof(float), vertices, GL_STATIC_DRAW);
+    const GLsizei stride = 6 * (GLsizei)sizeof(float);
+    gl.BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)vertex_count * stride, vertices, GL_STATIC_DRAW);
     gl.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->ibo);
-    gl.BufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)index_count * sizeof(uint32_t), indices, GL_STATIC_DRAW);
-    gl.VertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (const void *)0);
-    gl.VertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (const void *)(3 * sizeof(float)));
+    gl.BufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)index_count * (GLsizeiptr)sizeof(uint32_t), indices, GL_STATIC_DRAW);
+    gl.VertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (const void *)0);
+    gl.VertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (const void *)(3 * sizeof(float)));
     gl.EnableVertexAttribArray(0);
     gl.EnableVertexAttribArray(1);
     gl.BindVertexArray(0);

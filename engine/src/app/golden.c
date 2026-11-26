@@ -18,9 +18,9 @@ int fk_image_diff(const uint8_t *a, const uint8_t *b, int w, int h, int toleranc
         bool differs = worst > tolerance;
         count += differs;
         if (diff) { /* differing pixels red, the rest a faded copy of the reference */
-            diff[i * 4 + 0] = differs ? 255 : b[i * 4 + 0] / 4;
-            diff[i * 4 + 1] = differs ? 0 : b[i * 4 + 1] / 4;
-            diff[i * 4 + 2] = differs ? 0 : b[i * 4 + 2] / 4;
+            diff[i * 4 + 0] = (uint8_t)(differs ? 255 : b[i * 4 + 0] / 4);
+            diff[i * 4 + 1] = (uint8_t)(differs ? 0 : b[i * 4 + 1] / 4);
+            diff[i * 4 + 2] = (uint8_t)(differs ? 0 : b[i * 4 + 2] / 4);
             diff[i * 4 + 3] = 255;
         }
     }

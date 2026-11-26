@@ -70,7 +70,7 @@ jobs:
       - run: ctest --preset windows-msvc
 
   macos:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
       - run: cmake --preset macos
