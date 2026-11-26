@@ -39,12 +39,15 @@ async function test(name, fn) {
 
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
-await test('boot scenario passes in the browser', async (page) => {
-  await page.goto(`${base}?scenario=boot`);
-  await page.waitForFunction(() => window.fukurumaResult, null, { timeout: 60000 });
-  const result = await page.evaluate(() => window.fukurumaResult);
-  assert(result.status === 'passed', `scenario ${result.status}: ${result.message}`);
-});
+// simulation: the recorded state hash must match in WebAssembly too (determinism across platforms).
+for (const scenario of ['boot', 'simulation']) {
+  await test(`${scenario} scenario passes in the browser`, async (page) => {
+    await page.goto(`${base}?scenario=${scenario}`);
+    await page.waitForFunction(() => window.fukurumaResult, null, { timeout: 60000 });
+    const result = await page.evaluate(() => window.fukurumaResult);
+    assert(result.status === 'passed', `scenario ${result.status}: ${result.message}`);
+  });
+}
 
 await test('the game renders the placeholder scene', async (page) => {
   await page.goto(base);

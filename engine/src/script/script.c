@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "assets/vfs.h"
+#include "core/rng.h"
 #include "gfx/gfx.h"
 #include "lauxlib.h"
 #include "lualib.h"
@@ -107,6 +108,67 @@ static int l_size(lua_State *L) {
     return 2;
 }
 
+/* --- fk.rng and fk.hash --------------------------------------------------------- */
+
+/* Hashes the arguments from index first on: strings and integers, each with a type tag. */
+static uint64_t hash_keys(lua_State *L, int first, uint64_t h) {
+    for (int i = first, n = lua_gettop(L); i <= n; i++) {
+        if (lua_type(L, i) == LUA_TSTRING) {
+            size_t len;
+            const char *str = lua_tolstring(L, i, &len);
+            h = fk_hash_bytes(fk_hash_u64(fk_hash_bytes(h, "s", 1), len), str, len);
+        } else if (lua_isinteger(L, i)) {
+            h = fk_hash_u64(fk_hash_bytes(h, "i", 1), (uint64_t)lua_tointeger(L, i));
+        } else {
+            luaL_argerror(L, i, "keys must be strings or integers");
+        }
+    }
+    return h;
+}
+
+static int l_hash(lua_State *L) {
+    luaL_checkany(L, 1);
+    lua_pushinteger(L, (lua_Integer)fk_mix64(hash_keys(L, 1, FK_HASH_INIT)));
+    return 1;
+}
+
+static int l_rng(lua_State *L) {
+    luaL_checkany(L, 1);
+    lua_getfield(L, LUA_REGISTRYINDEX, "fk.seed");
+    uint64_t world = (uint64_t)lua_tointeger(L, -1);
+    lua_pop(L, 1);
+    uint64_t seed = fk_mix64(hash_keys(L, 1, fk_hash_u64(FK_HASH_INIT, world)));
+    fk_rng *r = lua_newuserdatauv(L, sizeof *r, 0);
+    fk_rng_seed(r, seed);
+    luaL_setmetatable(L, "fk.rng");
+    return 1;
+}
+
+static int l_rng_int(lua_State *L) {
+    lua_pushinteger(L, (lua_Integer)fk_rng_next(luaL_checkudata(L, 1, "fk.rng")));
+    return 1;
+}
+
+static int l_rng_float(lua_State *L) {
+    lua_pushnumber(L, fk_rng_float(luaL_checkudata(L, 1, "fk.rng")));
+    return 1;
+}
+
+static int l_rng_range(lua_State *L) {
+    fk_rng *r = luaL_checkudata(L, 1, "fk.rng");
+    lua_Integer lo = luaL_checkinteger(L, 2), hi = luaL_checkinteger(L, 3);
+    luaL_argcheck(L, lo <= hi, 3, "must not be smaller than the lower bound");
+    uint64_t span = (uint64_t)hi - (uint64_t)lo + 1; /* 0 means the whole 64-bit range */
+    lua_pushinteger(L, (lua_Integer)((uint64_t)lo + (span ? fk_rng_below(r, span) : fk_rng_next(r))));
+    return 1;
+}
+
+static int l_rng_chance(lua_State *L) {
+    fk_rng *r = luaL_checkudata(L, 1, "fk.rng");
+    lua_pushboolean(L, fk_rng_float(r) < luaL_checknumber(L, 2));
+    return 1;
+}
+
 /* --- sandbox ----------------------------------------------------------------- */
 
 static int l_seed(lua_State *L) {
@@ -115,9 +177,10 @@ static int l_seed(lua_State *L) {
 }
 
 static int l_print(lua_State *L) {
+    int n = lua_gettop(L); /* before luaL_buffinit, which may push a placeholder */
     luaL_Buffer b;
     luaL_buffinit(L, &b);
-    for (int i = 1, n = lua_gettop(L); i <= n; i++) {
+    for (int i = 1; i <= n; i++) {
         if (i > 1) luaL_addchar(&b, '\t');
         luaL_tolstring(L, i, NULL);
         luaL_addvalue(&b);
@@ -198,6 +261,12 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     lua_pushcfunction(L, l_mesh_gc);
     lua_setfield(L, -2, "__gc");
     lua_pop(L, 1);
+    static const luaL_Reg rng_methods[] = {
+        {"int", l_rng_int}, {"float", l_rng_float}, {"range", l_rng_range}, {"chance", l_rng_chance}, {NULL, NULL}};
+    luaL_newmetatable(L, "fk.rng");
+    luaL_newlib(L, rng_methods);
+    lua_setfield(L, -2, "__index");
+    lua_pop(L, 1);
 
     lua_newtable(L); /* the sandbox environment */
     copy_globals(L, safe);
@@ -218,6 +287,10 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     lua_newtable(L); /* fk */
     lua_pushcfunction(L, l_seed);
     lua_setfield(L, -2, "seed");
+    lua_pushcfunction(L, l_rng);
+    lua_setfield(L, -2, "rng");
+    lua_pushcfunction(L, l_hash);
+    lua_setfield(L, -2, "hash");
     luaL_newlib(L, gfx);
     lua_setfield(L, -2, "gfx");
     lua_setfield(L, -2, "fk");

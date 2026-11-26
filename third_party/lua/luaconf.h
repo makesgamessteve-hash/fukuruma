@@ -794,6 +794,10 @@
 ** without modifying the main part of the file.
 */
 
+/* Fukuruma: a fixed string-hash seed instead of time and addresses, so that
+** table iteration order is the same in every run (deterministic simulation). */
+#define luai_makeseed(L)	0u
+
 
 
 

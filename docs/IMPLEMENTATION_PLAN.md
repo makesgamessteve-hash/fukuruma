@@ -519,7 +519,7 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 ### M1 — Engine core (XL)
 
 - **OpenSpec:** `add-simulation-loop` (fixed tick, commands, events, entities, named RNG streams,
-  jobs), `add-input-actions` (action maps, keyboard, mouse, gamepad, touch detection and a basic
+  state hash; done), `add-input-actions` (action maps, keyboard, mouse, gamepad, touch detection and a basic
   virtual stick), `add-render-pipeline` (low-resolution HDR target and retro upscale, deferred PBR,
   star light with cascaded shadows, image-based lighting, ambient occlusion, bloom, exposure, tone
   mapping, colour grading, TAA or supersampling, quality presets, LDR fallback, bitmap text,
@@ -549,7 +549,9 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 ### M3 — Galaxy and star systems (L)
 
-- **OpenSpec:** `add-galaxy-generation`, `add-star-systems`, `add-wonder-director`, `add-navigation-maps`.
+- **OpenSpec:** `add-job-system` (worker threads on desktop, time-sliced on the web; moved here from M1
+  because generation is the first background work), `add-galaxy-generation`, `add-star-systems`,
+  `add-wonder-director`, `add-navigation-maps`.
 - **Work:** hash and PRNG hierarchy, galaxy density and sector stars, star physics, the eleven system
   archetypes, orbits, moons, rings, belts and comets, Lua archetype registry, the Wonder Director
   with at least 10 marvels, galaxy and system maps, skybox baking, the jump sequence.

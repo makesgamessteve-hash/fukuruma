@@ -35,7 +35,6 @@ UTEST(app, lua_tests) {
 
 UTEST(app, game_errors_stop_non_interactive_runs) {
     EXPECT_EQ(RUN(DATA, "--no-render"), 0); /* the real game keeps running until it is stopped */
-    EXPECT_EQ(RUN(FIX "update_error/", "--no-render"), 1);
     EXPECT_EQ(RUN(FIX "not_table/", "--no-render"), 1);
     EXPECT_EQ(RUN(FIX "syntax_error/", "--no-render"), 1);
     EXPECT_EQ(RUN(FIX "nothing/", "--no-render"), 1);

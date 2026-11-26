@@ -50,6 +50,7 @@ SOFTWARE.
 
 - Used in: `third_party/lua/` (the scripting runtime)
 - Source: <https://github.com/lua/lua> (tag v5.4.9; `lua.c`, `onelua.c` and the test files are not included)
+- Modified: `luaconf.h` defines `luai_makeseed` as 0 (fixed string-hash seed, for deterministic table order)
 - Licence: MIT, see `third_party/lua/LICENSE`
 
 ## stb_image and stb_image_write

@@ -107,8 +107,8 @@ add_test(NAME data_missing COMMAND ${FK_RUN} -DNAME=data_missing -DEXPECT=1
   -DMATCH=data/scripts/main.lua -DARGS=--no-render -P ${FK_SRC}/tests/run_exe.cmake)
 add_test(NAME data_other_cwd COMMAND ${FK_RUN} -DNAME=data_other_cwd -DDATA=${FK_SRC}/data -DEXPECT=0
   -DCWD=${CMAKE_BINARY_DIR}/test-run "-DARGS=--no-render|--scenario|${FK_SRC}/tests/game/boot.lua" -P ${FK_SRC}/tests/run_exe.cmake)
-add_test(NAME game_update_error_headless COMMAND ${FK_RUN} -DNAME=update_error
-  "-DDATA=${FK_SRC}/data|${FK_SRC}/tests/fixtures/update_error/data" -DEXPECT=1 -DMATCH=traceback -DARGS=--headless
+add_test(NAME game_tick_error_headless COMMAND ${FK_RUN} -DNAME=tick_error
+  "-DDATA=${FK_SRC}/data|${FK_SRC}/tests/fixtures/tick_error/data" -DEXPECT=1 -DMATCH=traceback -DARGS=--headless
   -P ${FK_SRC}/tests/run_exe.cmake)
 add_test(NAME game_bad_shader COMMAND ${FK_RUN} -DNAME=bad_shader
   "-DDATA=${FK_SRC}/data|${FK_SRC}/tests/fixtures/bad_shader/data" -DEXPECT=1 -DMATCH=shader
@@ -120,16 +120,23 @@ set_tests_properties(video_unavailable PROPERTIES ENVIRONMENT SDL_VIDEO_DRIVER=b
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # A windowed (interactive) run keeps its window open after a script error; SIGTERM ends it cleanly.
   add_test(NAME game_interactive_error COMMAND ${FK_RUN} -DNAME=interactive_error
-    "-DDATA=${FK_SRC}/data|${FK_SRC}/tests/fixtures/update_error/data" -DEXPECT=124 -DMATCH=boom
+    "-DDATA=${FK_SRC}/data|${FK_SRC}/tests/fixtures/tick_error/data" -DEXPECT=124 -DMATCH=boom
     "-DWRAP=timeout|-s|TERM|-k|5|2" -P ${FK_SRC}/tests/run_exe.cmake)
   set_tests_properties(game_interactive_error PROPERTIES ENVIRONMENT SDL_VIDEO_DRIVER=offscreen LABELS game)
 endif()
+add_test(NAME game_call_order COMMAND ${FK_RUN} -DNAME=call_order
+  "-DDATA=${FK_SRC}/data|${FK_SRC}/tests/fixtures/counting/data" -DEXPECT=0
+  "-DARGS=--no-render|--scenario|${FK_SRC}/tests/fixtures/scenarios/call_order.lua" -P ${FK_SRC}/tests/run_exe.cmake)
+add_test(NAME game_only_tick COMMAND ${FK_RUN} -DNAME=only_tick
+  "-DDATA=${FK_SRC}/data|${FK_SRC}/tests/fixtures/only_tick/data" -DEXPECT=0
+  "-DARGS=--no-render|--scenario|${FK_SRC}/tests/fixtures/scenarios/pass.lua" -P ${FK_SRC}/tests/run_exe.cmake)
+add_test(NAME game_simulation_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/simulation.lua)
 add_test(NAME game_boot COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/boot.lua)
 add_test(NAME game_boot_reproducible COMMAND ${CMAKE_COMMAND} -DEXE=${FK_EXE} -DSRC=${FK_SRC}
   -P ${FK_SRC}/tests/reproducible.cmake)
 set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_cwd scenario_timeout_exit_code video_unavailable
-  PROPERTIES LABELS unit)
-set_tests_properties(game_update_error_headless game_bad_shader game_boot game_boot_reproducible PROPERTIES LABELS game)
+  game_call_order game_only_tick game_simulation_norender PROPERTIES LABELS unit)
+set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
 
@@ -145,4 +152,5 @@ if(FK_COVERAGE)
       --print-summary --txt coverage-c.txt --html-details coverage-c.html --fail-under-line 95 ${CMAKE_BINARY_DIR}
     WORKING_DIRECTORY $<TARGET_FILE_DIR:fukuruma>
     VERBATIM)
+  add_dependencies(coverage fukuruma fk_tests fk_data)
 endif()

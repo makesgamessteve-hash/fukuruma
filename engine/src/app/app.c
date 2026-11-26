@@ -16,7 +16,8 @@ static struct {
     fk_options opt;
     lua_State *L;
     bool window, interactive, broken, started;
-    int game_ref, co_ref;
+    int game_ref, step_ref, co_ref;
+    double acc; /* real time not yet simulated, in seconds */
     lua_State *co;
     int frames_left, frame, max_frames;
     char golden_dir[1024];
@@ -38,6 +39,27 @@ static fk_status fail(void) {
     return FK_RUNNING;
 }
 
+int fk_ticks_due(double *acc, double dt, double *alpha) {
+    *acc += dt;
+    int n = (int)(*acc / FK_TICK + 1e-9); /* the epsilon absorbs rounding, e.g. (1/30) / (1/60) */
+    if (n > FK_MAX_TICKS) {
+        n = FK_MAX_TICKS;
+        *acc = 0; /* drop the backlog: slow down rather than spiral */
+    } else {
+        *acc -= n * FK_TICK;
+        if (*acc < 0) *acc = 0;
+    }
+    *alpha = *acc / FK_TICK;
+    return n;
+}
+
+static bool sim_step(void) {
+    lua_rawgeti(app.L, LUA_REGISTRYINDEX, app.step_ref);
+    lua_rawgeti(app.L, LUA_REGISTRYINDEX, app.game_ref);
+    return fk_script_call(app.L, 1, 0);
+}
+
+/* Calls game[name](arg), or game[name]() when arg is negative; a missing function is skipped. */
 static bool call_game(const char *name, double dt) {
     lua_rawgeti(app.L, LUA_REGISTRYINDEX, app.game_ref);
     lua_getfield(app.L, -1, name);
@@ -173,7 +195,7 @@ static int scenario_step(void) {
 
 fk_status fk_app_init(int argc, char **argv, const char *base) {
     memset(&app, 0, sizeof app);
-    app.game_ref = app.co_ref = LUA_NOREF;
+    app.game_ref = app.step_ref = app.co_ref = LUA_NOREF;
     if (!fk_cli_parse(argc, argv, &app.opt)) return finish(1);
     fk_vfs_init(base);
     bool render = !app.opt.no_render && !app.opt.test_dir;
@@ -206,21 +228,29 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
     if (!ok) return fail();
     if (!lua_istable(app.L, -1)) {
         lua_pop(app.L, 1);
-        fk_script_set_error("data/scripts/main.lua must return a table with init, update and draw functions");
+        fk_script_set_error("data/scripts/main.lua must return a table with init, tick and draw functions");
         return fail();
     }
     app.game_ref = luaL_ref(app.L, LUA_REGISTRYINDEX);
+    fk_script_push_env(app.L); /* the simulation module: fk.sim.step(game) runs one tick */
+    lua_getfield(app.L, -1, "require");
+    lua_remove(app.L, -2);
+    lua_pushliteral(app.L, "fk.sim");
+    if (!fk_script_call(app.L, 1, 1)) return fail();
+    lua_getfield(app.L, -1, "step");
+    lua_remove(app.L, -2);
+    app.step_ref = luaL_ref(app.L, LUA_REGISTRYINDEX);
     app.last_ns = fk_platform_ticks_ns();
     return call_game("init", -1) ? FK_RUNNING : fail();
 }
 
 fk_status fk_app_iterate(void) {
-    double dt = 1.0 / 60.0; /* fixed for headless runs and scenarios, so they are reproducible */
+    int ticks = 1; /* headless runs and scenarios: one tick per frame, so they are reproducible */
+    double alpha = 1.0;
     if (app.interactive) {
         uint64_t now = fk_platform_ticks_ns();
-        dt = (double)(now - app.last_ns) / 1e9;
+        ticks = fk_ticks_due(&app.acc, (double)(now - app.last_ns) / 1e9, &alpha);
         app.last_ns = now;
-        if (dt > 0.25) dt = 0.25;
     }
     if (app.window) {
         int w, h;
@@ -232,7 +262,9 @@ fk_status fk_app_iterate(void) {
         fk_platform_swap();
         return FK_RUNNING;
     }
-    if (!call_game("update", dt) || !call_game("draw", -1)) return fail();
+    for (int i = 0; i < ticks; i++)
+        if (!sim_step()) return fail();
+    if (!call_game("draw", alpha)) return fail();
     if (app.co) {
         int code = scenario_step();
         if (code >= 0) return finish(code);

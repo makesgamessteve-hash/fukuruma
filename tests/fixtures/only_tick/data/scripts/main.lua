@@ -1,0 +1,1 @@
+return { tick = function() end }
