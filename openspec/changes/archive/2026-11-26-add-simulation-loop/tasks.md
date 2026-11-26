@@ -28,5 +28,5 @@
 ## 5. Verification
 
 - [x] 5.1 Coverage gates (C and Lua at or above 95%), sanitizer build, all CTest tests
-- [ ] 5.2 CI green on every target; Pages updated
-- [ ] 5.3 `openspec validate add-simulation-loop --strict`; update `docs/IMPLEMENTATION_PLAN.md` (job system moved to M3); archive after deployment
+- [x] 5.2 CI green on every target; Pages updated
+- [x] 5.3 `openspec validate add-simulation-loop --strict`; update `docs/IMPLEMENTATION_PLAN.md` (job system moved to M3); archive after deployment
