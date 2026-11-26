@@ -7,4 +7,4 @@
 - [x] 4 BRDF NaN fix
 - [x] 5 Scale ladder scene and game test with goldens; jitter below 1 mm at 100 AU
 - [x] 6 Lua tests; coverage gates, sanitizers, all CTest tests, web build and browser tests
-- [ ] 7 CI green on every target; Pages updated; archive
+- [x] 7 CI green on every target; Pages updated; archive
