@@ -65,6 +65,7 @@ function menu.draw(state, dt)
     option(state, "Terrain detail", "terrain", { "Coarse", "Medium", "Fine", "Finest" }, level_option("terrain")),
     option(state, "Plants", "plants", { "Sparse", "Some", "Full", "Lush" }, level_option("plants")),
     option(state, "Ground detail", "material", { "Layers", "Detail", "Bumps" }, level_option("material")),
+    option(state, "Clouds", "clouds", { "Off", "Some", "Full", "Finest" }, level_option("clouds")),
     option(state, "Dithering", "dither", { "On", "Off" }, plain("dither")),
     option(state, "Palette mode", "palette", { "Off", "On" }, plain("palette")),
   }

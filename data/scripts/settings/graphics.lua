@@ -8,10 +8,10 @@ graphics.ORDER = { "low", "medium", "high", "ultra" }
 
 -- The rows a level controls. Changing one of them by hand makes the level "custom".
 local PRESETS = {
-  low = { shadows = 1, shadow_size = 1024, ao = 0, lights = 4, aa = "none", particles = 1000, terrain = 24, plants = 0.3, material = 1, reach = 2e4 },
-  medium = { shadows = 2, shadow_size = 1024, ao = 6, lights = 8, aa = "taa", particles = 3000, terrain = 6, plants = 0.6, material = 2, reach = 2e5 },
-  high = { shadows = 3, shadow_size = 2048, ao = 10, lights = 16, aa = "taa", particles = 6000, terrain = 4, plants = 1, material = 3, reach = false },
-  ultra = { shadows = 4, shadow_size = 2048, ao = 16, lights = 32, aa = "ssaa", particles = 12000, terrain = 3, plants = 1.5, material = 3, reach = false },
+  low = { shadows = 1, shadow_size = 1024, ao = 0, lights = 4, aa = "none", particles = 1000, terrain = 24, plants = 0.3, material = 1, reach = 2e4, clouds = 0 },
+  medium = { shadows = 2, shadow_size = 1024, ao = 6, lights = 8, aa = "taa", particles = 3000, terrain = 6, plants = 0.6, material = 2, reach = 2e5, clouds = 16 },
+  high = { shadows = 3, shadow_size = 2048, ao = 10, lights = 16, aa = "taa", particles = 6000, terrain = 4, plants = 1, material = 3, reach = false, clouds = 32 },
+  ultra = { shadows = 4, shadow_size = 2048, ao = 16, lights = 32, aa = "ssaa", particles = 12000, terrain = 3, plants = 1.5, material = 3, reach = false, clouds = 48 },
 }
 
 -- Allowed values of every stored setting.
@@ -28,6 +28,7 @@ graphics.CHOICES = {
   plants = { 0.3, 0.6, 1, 1.5 }, -- the share of the flora and rocks drawn
   material = { 1, 2, 3 }, -- the terrain material: layers only, with detail, with bumps
   reach = { 2e4, 2e5, false }, -- how far the ground is drawn (metres; false: to the horizon)
+  clouds = { 0, 16, 32, 48 }, -- samples through the cloud layer (0: no clouds)
   fill = { true, false },
   dither = { true, false },
   palette = { false, true },
@@ -97,6 +98,7 @@ function graphics.apply(state)
   require("scatter").density = state.plants or 1
   local planet_view = require("planet_view")
   planet_view.MATERIAL = state.material or 3
+  require("universe").CLOUD_STEPS = state.clouds or 24
   planet_view.REACH = state.reach or nil -- false: to the horizon
   planet_view.MAX_LEVEL = state.reach == 2e4 and 14 or state.reach == 2e5 and 19 or 20
 end

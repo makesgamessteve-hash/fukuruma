@@ -364,6 +364,18 @@ static void draw_meshes(GLuint program, bool materials, unsigned slices) {
     }
 }
 
+/* The cloud layer for the passes that see it (the air, and the lighting for the clouds' shadows). */
+static void cloud_uniforms(GLuint program, const fk_atmosphere *a) {
+    int steps = a->on ? a->cloud_steps : 0;
+    gl.Uniform1i(LOC("u_cloud_steps"), steps);
+    if (!steps) return;
+    gl.Uniform3fv(LOC("u_centre"), 1, a->centre);
+    gl.Uniform1f(LOC("u_radius"), a->radius);
+    const float layer[4] = {a->cloud_bottom, a->cloud_top, a->cloud_cover, a->cloud_density};
+    gl.Uniform4fv(LOC("u_cloud_layer"), 1, layer);
+    gl.Uniform3fv(LOC("u_cloud_offset"), 1, a->cloud_offset);
+}
+
 /* The slices' projections (with this frame's TAA jitter) and their inverses. */
 static float slice_proj[FK_SLICE_COUNT][16], slice_inv[FK_SLICE_COUNT][16];
 
@@ -582,6 +594,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         colors[i * 4 + 3] = 0;
     }
     gl.Uniform1i(LOC("u_nlights"), nlights);
+    cloud_uniforms(program, &f->atmosphere); /* the clouds' shadows on the ground */
     if (nlights) {
         gl.Uniform4fv(LOC("u_light_pos"), nlights, positions);
         gl.Uniform4fv(LOC("u_light_color"), nlights, colors);
@@ -613,6 +626,8 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         float ground[3];
         for (int k = 0; k < 3; k++) ground[k] = a->ground[k] * f->sun_color[k] * 0.3183099f; /* albedo / pi */
         gl.Uniform3fv(LOC("u_ground"), 1, ground);
+        cloud_uniforms(program, a);
+        gl.Uniform2f(LOC("u_fog"), a->fog_density, a->fog_height);
         fullscreen();
         scene = R.air;
     }

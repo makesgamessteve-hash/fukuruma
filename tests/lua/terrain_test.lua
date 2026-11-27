@@ -42,6 +42,18 @@ return {
     walk(300, 0, 6.3)
     assert(sim.hash() == first, "the same steps on the same ground")
   end,
+  ["the range's sky has its world's clouds when clouds are on"] = function()
+    start()
+    local old = universe.CLOUD_STEPS
+    universe.CLOUD_STEPS = 24
+    local l = universe.light(100)
+    universe.CLOUD_STEPS = 0
+    local none = universe.light(100)
+    universe.CLOUD_STEPS = old
+    assert(l.atmosphere and l.atmosphere.clouds and l.atmosphere.clouds.steps == 24, "clouds")
+    assert(l.atmosphere.clouds.cover > 0 and l.atmosphere.clouds.offset[1] == 900, "drifting with the wind")
+    assert(not none.atmosphere.clouds, "off")
+  end,
   ["the tile follows in steps and goes with the ground"] = function()
     local w = fk.physics.world({})
     local state = {}

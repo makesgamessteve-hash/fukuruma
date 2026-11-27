@@ -89,6 +89,47 @@ uniform mat4 u_slice_inv_proj[4];
 
 bool is_sky(float d) { return d >= u_slice_hi.w; } // nothing drawn: beyond the last slice
 
+// Clouds (volumetric-clouds-and-fog spec): a layer of the world's air between two heights, whose density is value
+// noise shaped by the cover and by the height within the layer; it drifts with the wind (u_cloud_offset).
+uniform int u_cloud_steps;    // 0: no clouds
+uniform vec3 u_centre;        // the world's centre (camera-relative world space)
+uniform float u_radius;       // its surface
+uniform vec4 u_cloud_layer;        // bottom, top (metres above the surface), cover 0..1, density per metre
+uniform vec3 u_cloud_offset;  // the wind's drift (metres)
+float cloud_lattice(vec3 c) {
+    uvec3 q = uvec3(ivec3(c) + 32768);
+    uint h = q.x * 73856093u ^ q.y * 19349663u ^ q.z * 83492791u;
+    h = (h ^ (h >> 13u)) * 1274126177u;
+    return float(h >> 16u) / 65535.0;
+}
+float cloud_noise(vec3 p) {
+    vec3 i = floor(p), f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(mix(cloud_lattice(i), cloud_lattice(i + vec3(1, 0, 0)), f.x),
+                   mix(cloud_lattice(i + vec3(0, 1, 0)), cloud_lattice(i + vec3(1, 1, 0)), f.x), f.y),
+               mix(mix(cloud_lattice(i + vec3(0, 0, 1)), cloud_lattice(i + vec3(1, 0, 1)), f.x),
+                   mix(cloud_lattice(i + vec3(0, 1, 1)), cloud_lattice(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+// Cloud density (per metre) at p, relative to the world's centre.
+float cloud_density(vec3 p) {
+    float h = length(p) - u_radius, t = (h - u_cloud_layer.x) / (u_cloud_layer.y - u_cloud_layer.x);
+    if (t <= 0.0 || t >= 1.0) return 0.0;
+    vec3 q = (p + u_cloud_offset) / 1400.0;
+    float n = cloud_noise(q) * 0.55 + cloud_noise(q * 2.7) * 0.3 + cloud_noise(q * 7.3) * 0.15;
+    float shape = 4.0 * t * (1.0 - t); // round tops and bottoms
+    return max(0.0, n * shape - (1.0 - u_cloud_layer.z) * 0.75) * 4.0 * u_cloud_layer.w;
+}
+// How much of the star's light gets through the clouds to p (relative to the centre), along sun.
+float cloud_shadow(vec3 p, vec3 sun) {
+    if (u_cloud_steps == 0) return 1.0;
+    float depth = 0.0, ds = (u_cloud_layer.y - u_cloud_layer.x) / 4.0;
+    vec3 up = normalize(p);
+    float h = length(p) - u_radius, along = max(dot(up, sun), 0.05);
+    float start = max(u_cloud_layer.x - h, 0.0) / along; // to the bottom of the layer, along the sun
+    for (int i = 0; i < 4; i++) depth += cloud_density(p + sun * (start + (float(i) + 0.5) * ds / along)) * ds / along;
+    return exp(-depth);
+}
+
 // Dug ground (voxel-terrain spec): terrain pixels inside a dig are left out (its walls are their own mesh).
 uniform int u_ndigs;
 uniform vec4 u_digs[16]; // draw axes: centre and radius

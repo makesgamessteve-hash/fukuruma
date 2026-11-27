@@ -55,6 +55,11 @@ return {
   ["the air and the frame's statistics"] = function()
     fk.gfx.atmosphere({ centre = { 0, -6.4e6, 0 }, radius = 6.4e6, top = 6.46e6, height = 8000, rayleigh = { 5.8e-6, 13.5e-6, 33.1e-6 },
       mie = 4e-6, absorb = { 0, 0, 0 }, ground = { 0.3, 0.4, 0.2 } })
+    fk.gfx.atmosphere({ radius = 6.4e6, top = 6.46e6, clouds = { bottom = 1500, top = 4000, cover = 0.5, density = 0.005,
+      offset = { 1, 2, 3 }, steps = 16 }, fog = { density = 0.001, height = 200 } })
+    fk.gfx.atmosphere({ radius = 6.4e6, clouds = {}, fog = {} })
+    fails(function() fk.gfx.atmosphere({ radius = 6.4e6, clouds = { cover = 2 } }) end, "'cover'")
+    fails(function() fk.gfx.atmosphere({ radius = 6.4e6, fog = { height = 0 } }) end, "'height'")
     fk.gfx.atmosphere(nil)
     local m = fk.gfx.mesh({ positions = { 0, 0, 0, 1, 0, 0, 0, 1, 0 }, colors = { 1, 1, 1, 1, 1, 1, 1, 1, 1 }, indices = { 1, 2, 3 } })
     fk.gfx.draw(m, I, { terrain = { origin = { 1, 2, 3 }, up = { 0, 1, 0 }, wet = 0.5, snow = 0.2, dust = 1 }, clouds = 0.3 })

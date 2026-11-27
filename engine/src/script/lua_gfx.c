@@ -403,6 +403,24 @@ static int l_atmosphere(lua_State *L) {
     static const float GREY[3] = {0.3f, 0.3f, 0.3f};
     field_vec3(L, 1, "ground", g, GREY, 0, 1, "atmosphere"); /* sRGB */
     for (int k = 0; k < 3; k++) a->ground[k] = fk_srgb_to_linear(g[k]);
+    a->cloud_steps = 0;
+    if (lua_getfield(L, 1, "clouds") == LUA_TTABLE) { /* {bottom, top, cover, density, offset = {x, y, z}, steps} */
+        int t = lua_gettop(L);
+        a->cloud_bottom = field_number(L, t, "bottom", 1500, 0, 1e6f, "atmosphere clouds");
+        a->cloud_top = field_number(L, t, "top", a->cloud_bottom + 2000, a->cloud_bottom + 1, 1e6f, "atmosphere clouds");
+        a->cloud_cover = field_number(L, t, "cover", 0.5f, 0, 1, "atmosphere clouds");
+        a->cloud_density = field_number(L, t, "density", 0.004f, 0, 1, "atmosphere clouds");
+        field_vec3(L, t, "offset", a->cloud_offset, ZERO3, -1e9f, 1e9f, "atmosphere clouds");
+        a->cloud_steps = (int)field_number(L, t, "steps", 24, 0, 64, "atmosphere clouds");
+    }
+    lua_pop(L, 1);
+    a->fog_density = a->fog_height = 0;
+    if (lua_getfield(L, 1, "fog") == LUA_TTABLE) { /* {density, height} */
+        int t = lua_gettop(L);
+        a->fog_density = field_number(L, t, "density", 0.0005f, 0, 1, "atmosphere fog");
+        a->fog_height = field_number(L, t, "height", 150, 1, 1e5f, "atmosphere fog");
+    }
+    lua_pop(L, 1);
     a->on = true;
     return 0;
 }

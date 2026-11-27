@@ -82,6 +82,11 @@ typedef struct {
     float radius, top, height; /* surface, top of the air, Rayleigh scale height */
     float rayleigh[3], mie, absorb[3]; /* per metre at the surface */
     float ground[3];                   /* linear albedo of the surface beyond what is drawn */
+    /* clouds (volumetric-clouds-and-fog spec): a layer between bottom and top (metres above the surface), cover 0..1,
+       density per metre inside a cloud, the wind's drift (metres, the same axes as centre); steps 0: none */
+    float cloud_bottom, cloud_top, cloud_cover, cloud_density, cloud_offset[3];
+    int cloud_steps;
+    float fog_density, fog_height; /* ground fog: extinction per metre at the surface, scale height (metres) */
 } fk_atmosphere;
 
 typedef struct {

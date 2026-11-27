@@ -5,8 +5,6 @@
 uniform sampler2D u_scene;
 uniform sampler2D u_depth;
 uniform mat4 u_inv_view;
-uniform vec3 u_centre;       // the world's centre (camera-relative world space)
-uniform float u_radius;      // its surface
 uniform float u_top;         // the top of its air
 uniform float u_height;      // Rayleigh scale height (Mie: a fifth of it)
 uniform vec3 u_rayleigh;     // per metre at the surface
@@ -15,6 +13,7 @@ uniform vec3 u_absorb;
 uniform vec3 u_sun_dir;
 uniform vec3 u_sun_color;
 uniform vec3 u_ground;       // the lit colour of the world's surface where nothing is drawn (beyond the scene)
+uniform vec2 u_fog;          // ground fog: extinction per metre at the surface, scale height (metres)
 out vec4 o_color;
 
 const int STEPS = 16;
@@ -30,6 +29,7 @@ vec2 sphere(vec3 o, vec3 d, float r) { // the ray's distances into and out of a 
 vec3 density(vec3 p) { // Rayleigh, Mie and absorbing densities at a point (relative to the centre)
     float h = max(length(p) - u_radius, 0.0);
     float r = exp(-h / u_height), m = exp(-h / (u_height * 0.2));
+    if (u_fog.x > 0.0) m += u_fog.x / max(u_mie, 1e-12) * exp(-h / u_fog.y); // fog: more of the same haze, low down
     return vec3(r, m, r * max(0.0, 1.0 - abs(h - 25000.0) / 15000.0)); // absorption in a layer, like ozone
 }
 
@@ -69,12 +69,47 @@ void main() {
         vec3 depth_light = vec3(0.0);
         for (int j = 0; j < LIGHT_STEPS; j++) depth_light += density(p + u_sun_dir * ((float(j) + 0.5) * ls)) * ls;
         vec3 tau = extinction(depth_view + depth_light);
-        vec3 att = exp(-tau);
+        vec3 att = exp(-tau) * cloud_shadow(p, u_sun_dir); // under broken cloud: shafts of light through the haze
         light_r += att * d.x;
         light_m += att * d.y;
     }
     vec3 inscatter = (light_r * u_rayleigh * phase_r + light_m * u_mie * phase_m) * u_sun_color;
     vec3 transmit = exp(-extinction(depth_view));
-    o_color = vec4(scene * transmit + inscatter, 1.0);
+    vec3 seen = scene * transmit + inscatter;
+    // Clouds: marched along the ray through their layer, in front of what is drawn; lit by the star through the cloud
+    // above each sample (forward-scattering, with a little light from the sky), seen through half the air's haze.
+    if (u_cloud_steps > 0) {
+        vec2 outer = sphere(cam, dir, u_radius + u_cloud_layer.y), inner = sphere(cam, dir, u_radius + u_cloud_layer.x);
+        float hc = length(cam) - u_radius, a, b;
+        if (hc < u_cloud_layer.x) { // below the layer: from the layer's bottom to its top
+            a = inner.y;
+            b = outer.y;
+        } else { // in it, or above: to where the ray leaves the layer, down or out
+            a = hc < u_cloud_layer.y ? 0.0 : outer.x;
+            b = inner.x > 0.0 ? inner.x : outer.y;
+        }
+        a = max(a, 0.0); // (from above, the layer's far side can lie behind the camera)
+        if (ground.x > 0.0) b = min(b, ground.x);
+        b = min(min(b, scene_dist), a + 30000.0);
+        if (b > a && a < 1e29) {
+            float ds = (b - a) / float(u_cloud_steps), t = 1.0;
+            // a different start in each pixel (interleaved gradient noise): banding becomes fine grain
+            float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            float forward = (1.0 - 0.36) / (4.0 * PI * pow(1.36 - 1.2 * mu, 1.5));
+            vec3 lit = vec3(0.0);
+            for (int i = 0; i < 64; i++) {
+                if (i >= u_cloud_steps || t < 0.02) break;
+                float along = a + (float(i) + jitter) * ds;
+                vec3 p = cam + dir * along;
+                float d = cloud_density(p) * (1.0 - smoothstep(18000.0, 30000.0, along)); // thinning into the distance
+                if (d <= 0.0) continue;
+                vec3 light = u_sun_color * (cloud_shadow(p, u_sun_dir) * (forward + 0.08) + 0.05);
+                lit += t * light * (1.0 - exp(-d * ds));
+                t *= exp(-d * ds);
+            }
+            seen = seen * t + lit * sqrt(transmit);
+        }
+    }
+    o_color = vec4(seen, 1.0);
 }
 #endif

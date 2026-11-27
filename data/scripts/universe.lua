@@ -156,6 +156,7 @@ local function rebuild(u)
 end
 
 universe.SITE = 140 -- metres: the levelled site around the range's pad
+universe.CLOUD_STEPS = 24 -- samples through the cloud layer (graphics levels; 0: no clouds)
 
 -- The ground of the range's world (terrain-streaming spec): its surface (fk.planet) with the range's site levelled,
 -- and the fixed rotation from the world's own axes into the range's local axes. The range turns with its world, so
@@ -252,6 +253,12 @@ function universe.light(t)
     local g = universe.ground()
     out.atmosphere = { centre = g and g.centre or { 0, -R, 0 }, radius = R, top = o.top, height = o.height, rayleigh = o.rayleigh, mie = o.mie,
       absorb = o.absorb, ground = ground }
+    local cover = g and g.desc.cloud_cover
+    if cover and universe.CLOUD_STEPS > 0 then -- the world's clouds, drifting with the wind (presentation time)
+      local bottom = o.height * 0.22
+      out.atmosphere.clouds = { bottom = bottom, top = bottom + o.height * 0.3, cover = math.min(0.75, cover + 0.1),
+        density = 0.006, offset = { t * 9, 0, t * 4 }, steps = universe.CLOUD_STEPS }
+    end
   end
   out.ambient = { sky = { 0.02 + 0.33 * k, 0.02 + 0.43 * k, 0.03 + 0.67 * k }, ground = { 0.02 + 0.26 * day, 0.02 + 0.2 * day, 0.02 + 0.14 * day } }
   out.stars = 1 - k
