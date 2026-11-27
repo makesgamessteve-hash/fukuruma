@@ -57,7 +57,10 @@ typedef GLdouble fk_gl_depth;
     X(void, DeleteBuffers, (GLsizei, const GLuint *))                                                          \
     X(void, VertexAttribPointer, (GLuint, GLint, GLenum, GLboolean, GLsizei, const void *))                    \
     X(void, EnableVertexAttribArray, (GLuint))                                                                 \
+    X(void, DisableVertexAttribArray, (GLuint))                                                                \
     X(void, DrawElements, (GLenum, GLsizei, GLenum, const void *))                                             \
+    X(void, DrawElementsInstanced, (GLenum, GLsizei, GLenum, const void *, GLsizei))                           \
+    X(void, VertexAttribDivisor, (GLuint, GLuint))                                                             \
     X(void, DrawArrays, (GLenum, GLint, GLsizei))                                                              \
     X(void, PixelStorei, (GLenum, GLint))                                                                      \
     X(void, ReadPixels, (GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void *))                              \

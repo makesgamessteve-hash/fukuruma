@@ -8,10 +8,10 @@ graphics.ORDER = { "low", "medium", "high", "ultra" }
 
 -- The rows a level controls. Changing one of them by hand makes the level "custom".
 local PRESETS = {
-  low = { shadows = 1, shadow_size = 1024, ao = 0, lights = 4, aa = "none", particles = 1000, terrain = 24 },
-  medium = { shadows = 2, shadow_size = 1024, ao = 6, lights = 8, aa = "taa", particles = 3000, terrain = 6 },
-  high = { shadows = 3, shadow_size = 2048, ao = 10, lights = 16, aa = "taa", particles = 6000, terrain = 4 },
-  ultra = { shadows = 4, shadow_size = 2048, ao = 16, lights = 32, aa = "ssaa", particles = 12000, terrain = 3 },
+  low = { shadows = 1, shadow_size = 1024, ao = 0, lights = 4, aa = "none", particles = 1000, terrain = 24, plants = 0.3, material = 1 },
+  medium = { shadows = 2, shadow_size = 1024, ao = 6, lights = 8, aa = "taa", particles = 3000, terrain = 6, plants = 0.6, material = 2 },
+  high = { shadows = 3, shadow_size = 2048, ao = 10, lights = 16, aa = "taa", particles = 6000, terrain = 4, plants = 1, material = 3 },
+  ultra = { shadows = 4, shadow_size = 2048, ao = 16, lights = 32, aa = "ssaa", particles = 12000, terrain = 3, plants = 1.5, material = 3 },
 }
 
 -- Allowed values of every stored setting.
@@ -25,6 +25,8 @@ graphics.CHOICES = {
   aa = { "none", "taa", "ssaa" },
   particles = { 1000, 3000, 6000, 12000 },
   terrain = { 24, 6, 4, 3 }, -- the most internal pixels a terrain quad may span before it splits
+  plants = { 0.3, 0.6, 1, 1.5 }, -- the share of the flora and rocks drawn
+  material = { 1, 2, 3 }, -- the terrain material: layers only, with detail, with bumps
   fill = { true, false },
   dither = { true, false },
   palette = { false, true },
@@ -91,6 +93,8 @@ function graphics.apply(state)
   })
   fk.gfx.palette(state.palette and graphics.PALETTE or nil)
   require("planet_view").PIXELS = state.terrain or 4
+  require("scatter").density = state.plants or 1
+  require("planet_view").MATERIAL = state.material or 3
 end
 
 function graphics.encode(state) return store.encode(state, graphics.CHOICES) end

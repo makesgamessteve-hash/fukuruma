@@ -46,7 +46,7 @@ void fk_planet_flatten(fk_planet *p, const double d[3], double radius);
    origin on the surface at up): (n + 1)^2 heights, row by row from (x0, z0), relative to the ground at the origin,
    following the curvature. */
 void fk_planet_grid(const fk_planet *p, const double up[3], const double east[3], const double north[3], double x0,
-                    double z0, double cell, int n, float *heights);
+                    double z0, double cell, int n, float *heights, float *colors /* NULL, or sRGB r, g, b per height */);
 /* The surface layers at a direction: snow cover (cold, polar) and wetness (shores), each 0..1. */
 void fk_planet_layers(const fk_planet *p, const double d[3], double height, double *snow, double *wet);
 double fk_planet_chunk(const fk_planet *p, int face, int level, int x, int y, fk_vertex *vertices, uint32_t *indices,

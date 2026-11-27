@@ -331,7 +331,7 @@ static void draw_meshes(GLuint program, bool materials, unsigned slices) {
             gl.Uniform1f(LOC("u_one_sided"), m->one_sided ? 1.0f : 0.0f);
             gl.Uniform1f(LOC("u_emissive_colors"), m->emissive_colors ? 1.0f : 0.0f);
             gl.Uniform1f(LOC("u_clouds"), m->clouds);
-            gl.Uniform1f(LOC("u_terrain"), m->terrain ? 1.0f : 0.0f);
+            gl.Uniform1f(LOC("u_terrain"), (float)m->terrain);
             if (m->terrain) {
                 gl.Uniform3fv(LOC("u_terrain_origin"), 1, m->terrain_origin);
                 gl.Uniform3fv(LOC("u_terrain_up"), 1, m->terrain_up);
@@ -342,7 +342,23 @@ static void draw_meshes(GLuint program, bool materials, unsigned slices) {
             for (int t = 0; t < 4; t++) sampler(program, names[t], t, GL_TEXTURE_2D, textures[t] && textures[t]->id ? textures[t]->id : R.white);
         }
         gl.BindVertexArray(d->mesh->vao);
-        gl.DrawElements(GL_TRIANGLES, d->mesh->count, GL_UNSIGNED_INT, (const void *)0);
+        const fk_instances *in = d->material.instances;
+        gl.Uniform1i(LOC("u_instanced"), in ? 1 : 0);
+        if (in) { /* per-instance attributes 7 and 8, advancing once per instance */
+            gl.Uniform4fv(LOC("u_wind"), 1, f->wind);
+            gl.BindBuffer(GL_ARRAY_BUFFER, in->vbo);
+            for (GLuint a = 0; a < 2; a++) {
+                gl.VertexAttribPointer(7 + a, 4, GL_FLOAT, GL_FALSE, FK_INSTANCE_FLOATS * (GLsizei)sizeof(float),
+                                       (const void *)(a * 4 * sizeof(float)));
+                gl.VertexAttribDivisor(7 + a, 1);
+                gl.EnableVertexAttribArray(7 + a);
+            }
+            gl.DrawElementsInstanced(GL_TRIANGLES, d->mesh->count, GL_UNSIGNED_INT, (const void *)0, in->count);
+            gl.DisableVertexAttribArray(7);
+            gl.DisableVertexAttribArray(8);
+        } else {
+            gl.DrawElements(GL_TRIANGLES, d->mesh->count, GL_UNSIGNED_INT, (const void *)0);
+        }
     }
 }
 

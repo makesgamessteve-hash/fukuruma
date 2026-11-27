@@ -16,13 +16,13 @@ out vec2 v_layers; // terrain: snow and wetness (planet chunks keep them in the 
 void main() {
     mat4 model = u_model * skin_matrix();
     mat3 m = mat3(model); // shortcut: assumes uniform scale; add a normal matrix for non-uniform scaling
-    v_color = a_color;
-    v_normal = m * a_normal;
+    v_color = a_color * (u_instanced == 1 ? a_inst1.y : 1.0);
+    v_normal = m * instance_turn(a_normal);
     v_uv = a_uv;
     v_tangent = vec4(m * a_tangent.xyz, a_tangent.w);
     v_object = a_position;
     v_layers = a_tangent.xy;
-    gl_Position = u_view_proj * (model * vec4(a_position, 1.0));
+    gl_Position = u_view_proj * (u_model * vec4(instance_point((skin_matrix() * vec4(a_position, 1.0)).xyz), 1.0));
 }
 #endif
 
@@ -46,7 +46,7 @@ uniform sampler2D u_metal_rough_tex; // glTF layout: green roughness, blue metal
 uniform sampler2D u_normal_tex;
 uniform sampler2D u_emission_tex;    // sRGB texture
 uniform mat4 u_model;
-uniform float u_terrain;         // 1: the terrain material (terrain-materials spec)
+uniform float u_terrain;         // > 0: the terrain material (terrain-materials spec), at this quality (1 to 3)
 uniform vec3 u_terrain_origin;   // the chunk's centre (planet axes, metres) wrapped to PERIOD: detail runs on across chunks
 uniform vec3 u_terrain_up;       // the world's up at the chunk (draw axes)
 uniform vec3 u_weather;          // extra wetness, snow and dust from the weather
@@ -78,8 +78,12 @@ float detail(vec3 p, float size, float footprint) {
 float terrain_material(inout vec3 base, inout vec3 n, float roughness) {
     vec3 p = u_terrain_origin + v_object;
     float footprint = length(fwidth(p));
-    float fine = detail(p, 0.4, footprint) + 0.6 * detail(p, 1.6, footprint);
-    float coarse = detail(p, 6.4, footprint) + 0.7 * detail(p, 25.6, footprint);
+    // u_terrain is the material's quality (the graphics level): 1 layers only, 2 with detail, 3 with bumps as well
+    float fine = 0.0, coarse = 0.0;
+    if (u_terrain > 1.5) {
+        fine = detail(p, 0.4, footprint) + 0.6 * detail(p, 1.6, footprint);
+        coarse = detail(p, 6.4, footprint) + 0.7 * detail(p, 25.6, footprint);
+    }
     vec3 up = normalize(u_terrain_up);
     float level = dot(n, up);
     float steep = 1.0 - smoothstep(0.76, 0.92, level + coarse * 0.2); // rock from about 25 degrees
@@ -88,6 +92,7 @@ float terrain_material(inout vec3 base, inout vec3 n, float roughness) {
     // (screen-space derivatives tip single pixels over at triangle edges)
     float amp = 0.25 * (0.4 + steep);
     float h0 = fine * 0.06 + coarse * amp;
+    if (u_terrain > 2.5) {
     const float E = 0.05;
     vec3 grad = vec3(detail(p + vec3(E, 0, 0), 0.4, footprint) + 0.6 * detail(p + vec3(E, 0, 0), 1.6, footprint),
                      detail(p + vec3(0, E, 0), 0.4, footprint) + 0.6 * detail(p + vec3(0, E, 0), 1.6, footprint),
@@ -99,6 +104,7 @@ float terrain_material(inout vec3 base, inout vec3 n, float roughness) {
     grad -= n * dot(n, grad); // along the surface
     float gl = length(grad);
     n = normalize(n - grad * (min(gl, 0.35) / max(gl, 1e-6)) * (1.0 - 0.7 * wet)); // at most about 19 degrees
+    }
     base *= 0.82 + 0.5 * fine + 0.3 * coarse;
     vec3 rock = vec3(dot(base, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.98, 0.9) * (0.8 + 0.6 * coarse) + 0.04;
     base = mix(base, rock, steep);

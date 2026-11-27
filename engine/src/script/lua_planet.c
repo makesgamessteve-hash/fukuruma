@@ -106,7 +106,8 @@ static void unit_field(lua_State *L, int t, const char *name, double d[3]) {
     if (!(fabs(l - 1) < 1e-6)) luaL_error(L, "grid: '%s' must be a unit vector {x, y, z}", name);
 }
 
-/* planet:grid{up, east, north, origin = {x0, z0}, cell, n} -> (n + 1)^2 heights for a terrain (see fk_planet_grid) */
+/* planet:grid{up, east, north, origin = {x0, z0}, cell, n, colors} -> (n + 1)^2 heights for a terrain (see
+   fk_planet_grid), and with colors = true also their sRGB colours (r, g, b per height) */
 static int l_grid(lua_State *L) {
     fk_planet *p = planet_arg(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
@@ -125,14 +126,23 @@ static int l_grid(lua_State *L) {
     int n = (int)field(L, 2, "n", 32);
     luaL_argcheck(L, cell > 0 && n >= 1 && n <= 256, 2, "grid: 'cell' must be above 0 and 'n' from 1 to 256");
     int count = (n + 1) * (n + 1);
-    float *h = lua_newuserdatauv(L, (size_t)count * sizeof *h, 0);
-    fk_planet_grid(p, up, east, north, origin[0], origin[1], cell, n, h);
+    lua_getfield(L, 2, "colors");
+    bool colors = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+    float *h = lua_newuserdatauv(L, (size_t)count * (colors ? 4 : 1) * sizeof *h, 0);
+    fk_planet_grid(p, up, east, north, origin[0], origin[1], cell, n, h, colors ? h + count : NULL);
     lua_createtable(L, count, 0);
     for (int i = 0; i < count; i++) {
         lua_pushnumber(L, h[i]);
         lua_rawseti(L, -2, i + 1);
     }
-    return 1;
+    if (!colors) return 1;
+    lua_createtable(L, 3 * count, 0);
+    for (int i = 0; i < 3 * count; i++) {
+        lua_pushnumber(L, h[count + i]);
+        lua_rawseti(L, -2, i + 1);
+    }
+    return 2;
 }
 
 /* planet:color(x, y, z) -> r, g, b (sRGB) */

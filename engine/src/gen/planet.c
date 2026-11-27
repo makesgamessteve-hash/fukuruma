@@ -53,7 +53,7 @@ void fk_planet_flatten(fk_planet *p, const double d[3], double radius) {
 }
 
 void fk_planet_grid(const fk_planet *p, const double up[3], const double east[3], const double north[3], double x0,
-                    double z0, double cell, int n, float *heights) {
+                    double z0, double cell, int n, float *heights, float *colors) {
     double base = p->radius + fk_planet_height(p, up);
     for (int j = 0; j <= n; j++)
         for (int i = 0; i <= n; i++) {
@@ -61,8 +61,9 @@ void fk_planet_grid(const fk_planet *p, const double up[3], const double east[3]
             for (int k = 0; k < 3; k++) d[k] = up[k] * p->radius + east[k] * x + north[k] * z, l += d[k] * d[k];
             l = sqrt(l);
             for (int k = 0; k < 3; k++) d[k] /= l;
-            double r = p->radius + fk_planet_height(p, d), cosine = d[0] * up[0] + d[1] * up[1] + d[2] * up[2];
+            double h = fk_planet_height(p, d), r = p->radius + h, cosine = d[0] * up[0] + d[1] * up[1] + d[2] * up[2];
             heights[j * (n + 1) + i] = (float)(r * cosine - base);
+            if (colors) fk_planet_color(p, d, h, &colors[3 * (j * (n + 1) + i)]);
         }
 }
 

@@ -59,6 +59,25 @@ mat4 skin_matrix() { // bind pose to model space, blended from up to four bones
     return a_weights.x * bone(a_joints.x) + a_weights.y * bone(a_joints.y) + a_weights.z * bone(a_joints.z) +
            a_weights.w * bone(a_joints.w);
 }
+
+// Instances (gfx.h fk_instances): one mesh drawn many times, each scaled, turned about y, bent by the wind (more the
+// higher a point is) and moved.
+in vec4 a_inst0;      // position (draw axes) and scale
+in vec4 a_inst1;      // yaw, brightness, sway phase, sway amount
+uniform int u_instanced;
+uniform vec4 u_wind;  // x, z: wind direction times strength; w: time (seconds)
+vec3 instance_turn(vec3 v) {
+    if (u_instanced == 0) return v;
+    float c = cos(a_inst1.x), s = sin(a_inst1.x);
+    return vec3(c * v.x + s * v.z, v.y, -s * v.x + c * v.z);
+}
+vec3 instance_point(vec3 p) {
+    if (u_instanced == 0) return p;
+    vec3 q = instance_turn(p) * a_inst0.w;
+    float gust = 0.65 + 0.35 * sin(u_wind.w * 1.9 + a_inst1.z) * sin(u_wind.w * 0.7 + a_inst1.z * 1.3);
+    q.xz += u_wind.xy * (a_inst1.w * q.y * q.y * gust);
+    return q + a_inst0.xyz;
+}
 #endif
 
 #ifdef FRAGMENT

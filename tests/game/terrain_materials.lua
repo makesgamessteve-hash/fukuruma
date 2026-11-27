@@ -43,6 +43,7 @@ return scenario {
     fk.gfx.configure({ width = 480, height = 270, fill = false, supersample = 1, taa = false, shadow_cascades = 2,
       shadow_size = 1024, ao_samples = 0, max_lights = 8, hdr = true, bloom = true, dither = true })
     fk.gfx.palette(nil)
+    require("planet_view").MATERIAL = 3
     require("planet_view").PIXELS = 4
     local worlds = {}
     local g, weather, state

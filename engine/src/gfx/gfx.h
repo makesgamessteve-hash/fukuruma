@@ -19,6 +19,14 @@ typedef struct {
     int width, height;
 } fk_texture;
 
+/* Instances of a mesh drawn in one call: FK_INSTANCE_FLOATS per instance, x, y, z, scale (draw axes) then yaw,
+   brightness, sway phase and sway amount (how far wind bends the mesh, per metre of height squared). */
+#define FK_INSTANCE_FLOATS 8
+typedef struct {
+    uint32_t vbo;
+    int count;
+} fk_instances;
+
 /* Loads the GL functions, compiles the shaders and creates the targets for the current settings.
    Needs a current context. Logs and returns false on failure. */
 bool fk_gfx_init(void);
@@ -35,6 +43,8 @@ void fk_gfx_read_pixels(uint8_t *rgba);
 /* indices: triangles, 0-based. */
 void fk_gfx_mesh_create(fk_mesh *m, const fk_vertex *vertices, int vertex_count, const uint32_t *indices, int index_count);
 void fk_gfx_mesh_destroy(fk_mesh *m);
+void fk_gfx_instances_create(fk_instances *in, const float *data, int count);
+void fk_gfx_instances_destroy(fk_instances *in);
 /* rgba: width x height RGBA8 pixels, top row first. srgb: colour data (base colour, emission) rather than
    linear data (normals, roughness). Creates the mipmaps. Replaces the pixels of an existing texture. */
 void fk_gfx_texture_upload(fk_texture *t, const uint8_t *rgba, int width, int height, bool srgb);

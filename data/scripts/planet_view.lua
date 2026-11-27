@@ -11,6 +11,7 @@ View.__index = View
 planet_view.PIXELS = 3     -- the most a chunk's quad may span on screen before it splits
 planet_view.MAX_LEVEL = 20 -- deepest level: quads of about 0.3 m on an Earth-sized world
 planet_view.NEAR = 2e6     -- metres above the surface below which chunks are placed one by one (see draw)
+planet_view.MATERIAL = 3   -- the terrain material's quality: 1 layers, 2 with detail, 3 with bumps (graphics levels)
 planet_view.KEEP = 300     -- frames an unused chunk stays
 
 local GRID = fk.planet.GRID
@@ -136,7 +137,7 @@ local function draw_near(self, chosen, rel, q, eye, material, weather)
     -- in wrapped (the same point of two chunks then gets the same detail)
     if k == 1 then -- (its detail fades with the size of a pixel, so it can cover every chunk drawn full size)
       local cl = math.sqrt(c.centre[1] * c.centre[1] + c.centre[2] * c.centre[2] + c.centre[3] * c.centre[3])
-      material.terrain = { origin = { c.centre[1] % 256, c.centre[2] % 256, c.centre[3] % 256 },
+      material.terrain = { quality = planet_view.MATERIAL, origin = { c.centre[1] % 256, c.centre[2] % 256, c.centre[3] % 256 },
         up = frames.rotate(q, { c.centre[1] / cl, c.centre[2] / cl, c.centre[3] / cl }),
         wet = weather and weather.wet, snow = weather and weather.snow, dust = weather and weather.dust }
     else

@@ -32,6 +32,7 @@ local frames = require("fk.frames")
 local universe = require("universe")
 local navmap = require("navmap")
 local terrain = require("terrain")
+local scatter = require("scatter")
 
 local game = {}
 
@@ -83,7 +84,7 @@ function game.init()
   -- (terrain.follow).
   game.world = fk.physics.world({ gravity = { 0, -9.81, 0 } })
   game.world:add({ shape = "box", size = { GROUND_SIZE, 1, GROUND_SIZE }, position = { 0, -0.5, 0 }, friction = 0.8 })
-  game.ground_tile, game.ground_view = {}, {}
+  game.ground_tile, game.ground_view, game.plants = {}, {}, {}
   game.world:add({ shape = "box", size = { 0.8, 6, 0.8 }, position = { 6, 3, 4 } })
   game.crates = {}
   for i, p in ipairs(CRATES) do
@@ -336,7 +337,9 @@ function game.draw(alpha, dt)
     -(view[5] * view[13] + view[6] * view[14] + view[7] * view[15]), -(view[9] * view[13] + view[10] * view[14] + view[11] * view[15])
   local half_fov = math.rad(game.view == "drone" and game.drone.fov or comfort.current.fov) / 2
   terrain.draw(game.ground_view, universe.ground(), { inv_x, inv_y, inv_z }, { -view[3], -view[7], -view[11] },
-    math.atan(math.tan(half_fov) * math.sqrt(1 + (w / h) ^ 2)), h / (2 * math.tan(half_fov)))
+    math.atan(math.tan(half_fov) * math.sqrt(1 + (w / h) * (w / h))), h / (2 * math.tan(half_fov)))
+  fk.gfx.wind({ direction = { 0.8, 0.35 }, strength = 1, time = feel.time })
+  scatter.draw(game.plants, universe.ground(), { inv_x, inv_y, inv_z })
   fk.audio.listener({ position = { inv_x, inv_y, inv_z }, right = { view[1], view[5], view[9] } })
   reverb.update(game.suit_position())
   if music.current == "discovery" and feel.time > game.discovery_until then music.play("surface", 6) end

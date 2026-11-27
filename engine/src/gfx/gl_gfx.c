@@ -67,6 +67,8 @@ GLuint fk_gl_program(const char *name, const char *defines) {
     gl.BindAttribLocation(program, 4, "a_tangent");
     gl.BindAttribLocation(program, 5, "a_joints");
     gl.BindAttribLocation(program, 6, "a_weights");
+    gl.BindAttribLocation(program, 7, "a_inst0");
+    gl.BindAttribLocation(program, 8, "a_inst1");
     gl.LinkProgram(program);
     GLint ok = 0;
     gl.GetProgramiv(program, GL_LINK_STATUS, &ok);
@@ -107,6 +109,19 @@ void fk_gfx_mesh_create(fk_mesh *m, const fk_vertex *vertices, int vertex_count,
     }
     gl.BindVertexArray(0);
     m->count = index_count;
+}
+
+void fk_gfx_instances_create(fk_instances *in, const float *data, int count) {
+    gl.GenBuffers(1, &in->vbo);
+    gl.BindBuffer(GL_ARRAY_BUFFER, in->vbo);
+    gl.BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)count * FK_INSTANCE_FLOATS * (GLsizeiptr)sizeof(float), data, GL_STATIC_DRAW);
+    gl.BindBuffer(GL_ARRAY_BUFFER, 0);
+    in->count = count;
+}
+
+void fk_gfx_instances_destroy(fk_instances *in) {
+    gl.DeleteBuffers(1, &in->vbo);
+    memset(in, 0, sizeof *in);
 }
 
 void fk_gfx_mesh_destroy(fk_mesh *m) {

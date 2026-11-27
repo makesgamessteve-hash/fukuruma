@@ -27,10 +27,12 @@ typedef struct {
     bool one_sided; /* closed surfaces seen from outside: back faces keep their normals (no two-sided flip) */
     bool emissive_colors; /* the vertex colours tint the emission (stars) */
     float clouds; /* 0..1: how much of the cloud cover stored in the vertices' u shows (planet chunks) */
-    bool terrain; /* the terrain material (planet chunks near the ground): detail, rock, snow, wetness, dust */
+    int terrain; /* the terrain material's quality (planet chunks near the ground), 0: none; 1 layers (rock, snow,
+                    wetness, dust), 2 with detail, 3 with bumps as well */
     float terrain_origin[3]; /* the chunk's centre (planet axes, metres) wrapped to the detail's period */
     float terrain_up[3];     /* the world's up at the chunk, in draw axes */
     float weather[3];        /* extra wetness, snow and dust from the weather, 0..1 */
+    const fk_instances *instances; /* NULL: one; else the mesh is drawn once per instance */
     const fk_texture *base_tex, *metal_rough_tex, *normal_tex, *emission_tex; /* NULL: none */
 } fk_material;
 
@@ -85,6 +87,7 @@ typedef struct {
     float background[3];            /* linear */
     float sun_dir[3], sun_color[3]; /* towards the star; linear colour times intensity */
     float sun2_dir[3], sun2_color[3]; /* a second star (binaries): no shadows; colour 0 when there is none */
+    float wind[4];                    /* wind for instanced meshes: x, z (draw axes, strength in the length) and time */
     float sky[3], ground[3];        /* ambient, linear colour times intensity */
     float exposure, contrast, saturation, tint[3];
     fk_point_light lights[FK_MAX_LIGHTS];

@@ -16,6 +16,8 @@ dust layers").
   than a pixel. Bumps from the detail's own gradient (differences in the chunk's space; screen-space derivatives tipped
   single pixels over at triangle edges), limited to about 19 degrees. Rock on slopes from about 25 degrees; snow on
   the level with a noisy edge; wetness darkens and glosses; dust settles on up-facing ground.
+- The material scales with the graphics level ("Ground detail": layers only, with detail, with bumps), so software
+  renderers and phones keep their frame rate.
 - `planet_view` gives every full-size chunk the material (the detail fades by pixel size, so there is no seam);
   `terrain.draw` takes the weather (rain, snowfall, dust for M5 `add-weather`).
 

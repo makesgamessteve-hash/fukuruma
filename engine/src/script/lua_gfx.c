@@ -224,6 +224,55 @@ void fk_lua_push_mesh(lua_State *L, const fk_vertex *v, int nv, const uint32_t *
     luaL_setmetatable(L, "fk.mesh");
 }
 
+/* fk.gfx.instances{x, y, z, scale, yaw, brightness, sway phase, sway, ...}: instances for fk.gfx.draw's 'instances'
+   option, eight numbers each (see fk_instances). */
+static int l_instances(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua_Integer n = luaL_len(L, 1);
+    if (n % FK_INSTANCE_FLOATS || n / FK_INSTANCE_FLOATS > 1000000) return luaL_error(L, "instances: eight numbers per instance");
+    float *data = lua_newuserdatauv(L, (size_t)(n ? n : 1) * sizeof *data, 0); /* scratch: freed by the collector */
+    for (lua_Integer i = 0; i < n; i++) {
+        lua_rawgeti(L, 1, i + 1);
+        int ok;
+        data[i] = (float)lua_tonumberx(L, -1, &ok);
+        if (!ok || !isfinite(data[i])) return luaL_error(L, "instances: number %d is not a finite number", (int)i + 1);
+        lua_pop(L, 1);
+    }
+    fk_instances *in = lua_newuserdatauv(L, sizeof *in, 0);
+    memset(in, 0, sizeof *in);
+    luaL_setmetatable(L, "fk.instances");
+    if (rendering && n) fk_gfx_instances_create(in, data, (int)(n / FK_INSTANCE_FLOATS));
+    in->count = (int)(n / FK_INSTANCE_FLOATS);
+    return 1;
+}
+
+static int l_instances_gc(lua_State *L) {
+    fk_instances *in = luaL_checkudata(L, 1, "fk.instances");
+    if (in->vbo) fk_gfx_instances_destroy(in);
+    return 0;
+}
+
+/* fk.gfx.wind{direction = {x, z}, strength, time}: how instanced plants sway (presentation time, seconds). */
+static int l_wind(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    fk_frame *f = fk_frame_get();
+    float dir[2] = {1, 0};
+    if (lua_getfield(L, 1, "direction") == LUA_TTABLE) {
+        for (int i = 0; i < 2; i++) {
+            lua_rawgeti(L, -1, i + 1);
+            dir[i] = (float)luaL_checknumber(L, -1);
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+    float len = sqrtf(dir[0] * dir[0] + dir[1] * dir[1]);
+    if (len < 1e-6f) return luaL_error(L, "wind: 'direction' must not be zero");
+    float strength = field_number(L, 1, "strength", 1, 0, 50, "wind");
+    f->wind[0] = dir[0] / len * strength, f->wind[1] = dir[1] / len * strength;
+    f->wind[2] = 0, f->wind[3] = (float)fmod(field_number(L, 1, "time", 0, 0, 1e9f, "wind"), 3600.0);
+    return 0;
+}
+
 static int l_mesh_gc(lua_State *L) {
     fk_mesh *m = luaL_checkudata(L, 1, "fk.mesh");
     if (m->vao) fk_gfx_mesh_destroy(m);
@@ -287,7 +336,7 @@ static int l_draw(lua_State *L) {
         if (lua_getfield(L, 3, "terrain") == LUA_TTABLE) { /* {origin, up, wet, snow, dust} */
             int t = lua_gettop(L);
             static const float UP[3] = {0, 1, 0};
-            mat.terrain = true;
+            mat.terrain = (int)field_number(L, t, "quality", 3, 1, 3, "draw terrain");
             field_vec3(L, t, "origin", mat.terrain_origin, ZERO, -1e6f, 1e6f, "draw terrain");
             field_vec3(L, t, "up", mat.terrain_up, UP, -1, 1, "draw terrain");
             mat.weather[0] = field_number(L, t, "wet", 0, 0, 1, "draw terrain");
@@ -300,6 +349,17 @@ static int l_draw(lua_State *L) {
         if (lua_getfield(L, 3, "texture") != LUA_TNIL) {
             mat.base_tex = fk_lua_texture_arg(L, -1);
             if (!mat.base_tex) return luaL_error(L, "draw: 'texture' must be a texture from fk.gfx.texture");
+            keep_alive(L, lua_gettop(L));
+        }
+        lua_pop(L, 1);
+        if (lua_getfield(L, 3, "instances") != LUA_TNIL) {
+            fk_instances *in = luaL_testudata(L, -1, "fk.instances");
+            if (!in) return luaL_error(L, "draw: 'instances' must come from fk.gfx.instances");
+            if (in->count == 0) { /* nothing to draw */
+                lua_pop(L, 1);
+                return 0;
+            }
+            mat.instances = in;
             keep_alive(L, lua_gettop(L));
         }
         lua_pop(L, 1);
@@ -647,6 +707,7 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
                                    {"text", l_text},       {"rect", l_rect},         {"palette", l_palette},
                                    {"device", l_device},   {"emit", l_emit},         {"particles", l_particles},
                                    {"slices", l_slices},   {"starfield", l_starfield}, {"sky", l_sky}, {"stats", l_stats}, {"atmosphere", l_atmosphere}, {"sun2", l_sun2},
+                                   {"instances", l_instances}, {"wind", l_wind},
                                    {NULL, NULL}};
     rendering = render;
     static const luaL_Reg sky_methods[] = {{"ready", l_sky_ready}, {"stars", l_sky_stars}, {NULL, NULL}};
@@ -658,6 +719,10 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
     lua_pop(L, 1);
     luaL_newmetatable(L, "fk.mesh");
     lua_pushcfunction(L, l_mesh_gc);
+    lua_setfield(L, -2, "__gc");
+    lua_pop(L, 1);
+    luaL_newmetatable(L, "fk.instances");
+    lua_pushcfunction(L, l_instances_gc);
     lua_setfield(L, -2, "__gc");
     lua_pop(L, 1);
     fk_script_frame_begin(L);
