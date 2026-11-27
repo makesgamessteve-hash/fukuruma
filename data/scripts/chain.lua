@@ -153,6 +153,35 @@ function chain.next_kind()
   return kinds[1]
 end
 
+local function label(kind) return dolls.by_id[kind].name:upper() end
+
+local function metres(m)
+  if m >= 10000 then return string.format("%.0f KM", m / 1000) end
+  if m >= 1000 then return string.format("%.1f KM", m / 1000) end
+  return string.format("%.0f M", m)
+end
+
+-- What the screens of the doll the Commander is in show (presentation): one list of lines per screen.
+function chain.screens()
+  local c, s = chain.current(), chain.state()
+  local hold, out = { "IN THE HOLD" }, { "OUT" }
+  local kinds = {}
+  for k, n in pairs(c.hold) do
+    if n > 0 then kinds[#kinds + 1] = k end
+  end
+  table.sort(kinds)
+  for _, k in ipairs(kinds) do hold[#hold + 1] = label(k) .. " " .. c.hold[k] end
+  if #hold == 1 then hold[2] = "EMPTY" end
+  for _, d in ipairs(s.dolls) do
+    if d.parent == c.id or d.id == c.parent then out[#out + 1] = label(d.kind) .. " " .. metres(distance(c, d)) end
+  end
+  if #out == 1 then out[2] = "NONE" end
+  local list = { { label(c.kind), "AT THE CONTROLS" }, hold, out,
+    { "ALTITUDE", metres(math.max(0, c.y - chain.ground(c.x, c.z))) }, { "B UP  N DOWN", "T DEPLOY  R RECALL" } }
+  for i = #list + 1, 8 do list[i] = { "SYSTEMS", "NOMINAL" } end
+  return list
+end
+
 -- Each tick: the Exosuit's place follows the suit; on another world (world_key), the dolls on the ground stand on its
 -- ground.
 -- shortcut: the whole chain goes along with a jump; stations staying behind in their systems come with the teleport

@@ -3,6 +3,7 @@ local HULL, DARK, GLOW = { 0.72, 0.74, 0.78 }, { 0.36, 0.38, 0.42 }, { 0.4, 0.85
 return {
   id = "space_station", name = "Space Station", size_m = 31000, place = "orbit", offset = { 0, 4.0e5, 0 },
   carries = { continental_explorer = 2, drop_ship = 1 }, seat = { 0, 0.18, 0.3 }, roughness = 0.45, metalness = 0.6,
+  cockpit = { width = 18, height = 6, depth = 14, posts = 4, screens = 6, color = { 0.5, 0.52, 0.56 } },
   hull = {
     { "lathe", axis = "y", at = { 0, 0, 0 }, stations = { { -0.5, 0.02 }, { -0.3, 0.08 }, { 0.3, 0.08 }, { 0.5, 0.02 } }, sides = 12, color = HULL },
     { "lathe", axis = "y", at = { 0, 0, 0 }, stations = { { -0.04, 0.42 }, { 0, 0.46 }, { 0.04, 0.42 }, { 0, 0.38 }, { -0.04, 0.42 } }, sides = 32, color = HULL },

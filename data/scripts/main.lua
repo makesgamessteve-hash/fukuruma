@@ -35,6 +35,8 @@ local terrain = require("terrain")
 local scatter = require("scatter")
 local dig = require("dig")
 local chain = require("chain")
+local cockpit = require("dolls.cockpit")
+local dolls = require("dolls")
 local weather = require("weather")
 
 local game = {}
@@ -197,6 +199,10 @@ local function look()
   local tdx, tdy = actions.touch_look()
   right, up = right + tdx * 4.0, up - tdy * 4.0 * h / w
   if game.view == "drone" then game.drone:look(right, up) else game.helmet:look(right, up, dt) end
+  if not chain.on_foot() and game.view ~= "drone" then -- in a seat: the head turns only so far from the doll's front
+    local yaw = (game.helmet.yaw + math.pi) % (2 * math.pi) - math.pi
+    game.helmet.yaw = math.max(-cockpit.LOOK, math.min(cockpit.LOOK, yaw))
+  end
 end
 
 -- Input becomes commands, only when something changes. Walking goes towards where the Commander looks.
@@ -373,6 +379,7 @@ function game.draw(alpha, dt)
   else
     game.helmet.fov = comfort.current.fov
     local eye = chain.on_foot() and eye_position(model, head) or chain.seat(chain.current()) -- at a doll's controls
+    game.eye = eye
     view, projection = game.helmet:matrices(eye, w / h, { feel.shake() })
   end
   fk.gfx.camera(view, projection)
@@ -387,6 +394,9 @@ function game.draw(alpha, dt)
   dig.lamp(game.world, { inv_x, inv_y, inv_z })
   game.chain_view = game.chain_view or {}
   chain.draw(game.chain_view, { inv_x, inv_y, inv_z })
+  game.cockpits = game.cockpits or {}
+  game.cockpit_now = game.view == "helmet" and not chain.on_foot()
+    and cockpit.draw(game.cockpits, dolls.by_id[chain.current().kind], game.eye) or nil
   local g0 = universe.ground() -- rivers and lakes (rivers-and-lakes spec): meshed once per world
   if game.waters_for ~= g0 then game.waters_for, game.water_mesh = g0, g0 and g0.waters and g0.surface:water_mesh() end
   if game.water_mesh then
@@ -401,6 +411,8 @@ function game.draw(alpha, dt)
   if music.current == "discovery" and feel.time > game.discovery_until then music.play("surface", 6) end
   feel.draw()
   if game.view == "drone" then hud.drone(feel.time)
+  elseif game.cockpit_now then -- at a doll's controls: its screens instead of the visor
+    cockpit.text(game.cockpit_now, game.eye, chain.screens(), view, projection, w, h, { 1, 0.75, 0.3 })
   else
     hud.visor({ yaw = game.helmet.yaw, speed = speed, turn_rate = game.helmet.turn_rate, vignette = comfort.current.vignette,
       scan = math.max(0, math.min(1, 1 - (body.scan_at - sim.tick) / SCAN_COOLDOWN)) })

@@ -3,6 +3,7 @@ local HULL, DARK, LIGHT = { 0.55, 0.5, 0.42 }, { 0.3, 0.28, 0.26 }, { 1, 0.85, 0
 return {
   id = "land_explorer", name = "Land Explorer", size_m = 1440, place = "ground", offset = { 900, 0, 4200 },
   carries = { walker = 2 }, seat = { 0, 0.93, 0.34 }, roughness = 0.7, metalness = 0.35,
+  cockpit = { width = 16, height = 6, depth = 12, posts = 4, screens = 5, color = { 0.42, 0.38, 0.32 } },
   hull = {
     { "legs", count = 6, at = { 0, 0.5, 0 }, spread = { 0.42, 0.3 }, length = 0.5, thick = 0.07, color = DARK },
     { "box", at = { 0, 0.6, 0 }, size = { 0.55, 0.2, 0.85 }, color = HULL },

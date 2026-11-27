@@ -13,7 +13,7 @@ return scenario {
     game.helmet.yaw, game.helmet.pitch = math.pi, 0.12 -- south, a little up
     t.frames(30)
     t.screenshot("chain_from_range")
-    local seats = { { "walker", -0.35 }, { "land_explorer", -0.3 }, { "continental_explorer", -0.25 } }
+    local seats = { { "walker", -0.12 }, { "land_explorer", -0.12 }, { "continental_explorer", -0.12 } }
     for _, s in ipairs(seats) do
       sim.send("board", { id = chain.up() })
       t.frames(30)
