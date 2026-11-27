@@ -130,7 +130,7 @@ function game.init()
     teleport = feedback.teleport, autopilot = feedback.autopilot, arrived = feedback.arrived },
     function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
-  game.ai = {}
+  game.ai, game.sway = {}, {}
   ship_ai.listen(sim, game.ai, function() return feel.time end, function(id)
     local d = chain.find(id)
     return d and d.kind
@@ -413,8 +413,19 @@ function game.draw(alpha, dt)
     game.eye = eye
     local look = game.helmet.yaw -- in a seat, the head turns from the doll's front
     if seated then game.helmet.yaw = look + (seated.yaw or 0) end
-    view, projection = game.helmet:matrices(eye, w / h, { feel.shake() })
+    local shake = { feel.shake() }
+    if seated then -- the cabin sways with the doll (comfort: head bob)
+      local roll, pitch = chain.sway(game.sway, seated, dt)
+      shake[3], shake[2] = shake[3] + roll * comfort.current.head_bob, shake[2] + pitch * comfort.current.head_bob
+    end
+    view, projection = game.helmet:matrices(eye, w / h, shake)
     game.helmet.yaw = look
+    local loud = seated and chain.engine(seated) or 0 -- the engines heard from the seat
+    if loud > 0 and not game.engine then game.engine = fk.audio.play("engine_loop", { loop = true, bus = "ambient", volume = 0 }) end
+    if game.engine then
+      if loud > 0 then fk.audio.set(game.engine, { volume = 0.6 * loud })
+      else fk.audio.stop(game.engine) game.engine = nil end
+    end
   end
   fk.gfx.camera(view, projection)
   local inv_x, inv_y, inv_z = -(view[1] * view[13] + view[2] * view[14] + view[3] * view[15]),

@@ -113,5 +113,13 @@
   "seconds": 60,
   "path": "music/discovery.ogg",
   "prompt": "Uplifting cinematic space exploration theme, shimmering arpeggiated synths over warm strings with soft timpani swells, a sense of discovery and awe, epic but calm, instrumental"
+ },
+ {
+  "id": "engine_loop",
+  "kind": "sfx",
+  "seconds": 10,
+  "loop": true,
+  "path": "sounds/engine_loop.ogg",
+  "prompt": "Huge flying ship engines heard from inside its bridge, a deep steady turbine drone with a low rumble and faint metallic vibration, continuous loop"
  }
 ]

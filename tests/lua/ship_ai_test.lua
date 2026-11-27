@@ -19,6 +19,19 @@ return {
     local state = { text = "HELLO", ["until"] = 5 }
     assert(ship_ai.draw(state, 4, 480, 270) and not ship_ai.draw(state, 6, 480, 270) and not ship_ai.draw({}, 0, 480, 270))
   end,
+  ["the cabin sways with the doll, and flying dolls' engines are heard"] = function()
+    local state, d = {}, { id = 1, kind = "continental_explorer", yaw = 0, speed = 0 }
+    assert(chain.sway(state, d, 1 / 60) == 0, "the first frame: still")
+    d.yaw, d.speed = 0.01, 2
+    local roll, pitch
+    for _ = 1, 60 do roll, pitch = chain.sway(state, d, 1 / 60) d.yaw = d.yaw + 0.01 end
+    assert(roll > 0.1 and pitch < 0, "banks into the turn, leans back as it speeds up: " .. roll .. ", " .. pitch)
+    assert(chain.engine(d) > 0.25 and chain.engine({ kind = "walker" }) == 0 and chain.engine({ kind = "jump_ship" }) == 0)
+    local station = { id = 2, kind = "space_station", yaw = 0, speed = 0 }
+    chain.sway(state, station, 1 / 60)
+    station.yaw = 1
+    assert(math.abs(select(1, chain.sway(state, station, 1 / 60))) < roll, "a station does not sway")
+  end,
   ["a deployed doll eases out of its parent"] = function()
     sim.reset()
     actions.reset()

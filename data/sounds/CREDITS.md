@@ -1,8 +1,8 @@
 # Sound credits
 
 Generated for this project with the ElevenLabs API by `tools/audio/generate.py` from the prompts in
-`tools/audio/prompts.json`, on the project owner's paid ElevenLabs plan. Not CC BY 4.0: used under ElevenLabs' terms,
-only as part of Fukuruma, never as standalone files or in a sound library (see the exception in `LICENSE-ASSETS.md`).
+`tools/audio/prompts.json`, on the project owner's ElevenLabs account. Licence: CC BY 4.0 (see
+`LICENSE-ASSETS.md`), as far as the owner's ElevenLabs plan allows publishing generated audio.
 
 - `footstep_1.ogg` (eleven_text_to_sound_v2, 2026-11-26): Heavy armored mech exosuit footstep on a concrete deck, deep metallic thud with a short hydraulic hiss, close, punchy
 - `footstep_2.ogg` (eleven_text_to_sound_v2, 2026-11-26): Heavy robotic exosuit foot stomping on concrete, low metal impact with a servo whine and a little grit crunch, close
@@ -18,3 +18,4 @@ only as part of Fukuruma, never as standalone files or in a sound library (see t
 - `rain_loop.ogg` (eleven_text_to_sound_v2, 2026-11-27): Steady heavy rain falling on open grassland and rocks, soft hiss with patters and drips, continuous ambience, no thunder
 - `thunder.ogg` (eleven_text_to_sound_v2, 2026-11-27): Close lightning strike with a sharp crack splitting into a huge rolling thunder rumble that echoes across a wide valley and fades
 - `sandstorm_loop.ogg` (eleven_text_to_sound_v2, 2026-11-27): Fierce desert sandstorm, howling gusting wind with hissing blown sand and grit rattling against metal armor, continuous ambience
+- `engine_loop.ogg` (eleven_text_to_sound_v2, 2026-11-27): Huge flying ship engines heard from inside its bridge, a deep steady turbine drone with a low rumble and faint metallic vibration, continuous loop

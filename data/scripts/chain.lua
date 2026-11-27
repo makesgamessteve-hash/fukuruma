@@ -334,6 +334,30 @@ function chain.bob(d)
   return math.min(1.2, dolls.by_id[d.kind].size_m * 0.004) * math.abs(fk.math.sin((d.stride or 0) / ctl.stride * math.pi))
 end
 
+-- The seat's sway (presentation): the cabin rolls into turns (flying dolls bank harder) and pitches as the doll speeds
+-- up or brakes, eased so it lags the doll a little. state: kept between frames. Returns roll, pitch (radians).
+function chain.sway(state, d, dt)
+  local ctl = dolls.by_id[d.kind].controller
+  local yaw_rate, accel = 0, 0
+  if state.id == d.id and dt > 0 then yaw_rate, accel = (d.yaw - state.yaw) / dt, (d.speed - state.speed) / dt end
+  state.id, state.yaw, state.speed = d.id, d.yaw or 0, d.speed or 0
+  if not ctl or ctl.kind == "fixed" then yaw_rate, accel = 0, 0 end
+  local bank = ctl and ctl.kind == "flight" and 2.5 or 0.6
+  local roll = math.max(-0.35, math.min(0.35, yaw_rate * bank))
+  local pitch = ctl and ctl.speed and math.max(-0.12, math.min(0.12, -accel / ctl.speed * 4)) or 0
+  local k = math.min(1, dt * 3)
+  state.roll = (state.roll or 0) + (roll - (state.roll or 0)) * k
+  state.pitch = (state.pitch or 0) + (pitch - (state.pitch or 0)) * k
+  return state.roll, state.pitch
+end
+
+-- How loud a doll's engines run (presentation, 0..1): flying dolls by their speed, others none.
+function chain.engine(d)
+  local ctl = dolls.by_id[d.kind].controller
+  if not ctl or ctl.kind ~= "flight" then return 0 end
+  return math.min(1, 0.25 + 0.75 * math.abs(d.speed or 0) / ctl.speed)
+end
+
 -- Where the Commander's eye is when seated in doll d (its seat; the Exosuit's is drawn by main.lua).
 function chain.seat(d)
   local def = dolls.by_id[d.kind]
