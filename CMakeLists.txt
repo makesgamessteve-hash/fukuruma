@@ -191,8 +191,9 @@ set_tests_properties(game_boot game_boot_reproducible game_input game_feel game_
 if(FK_COVERAGE)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   find_program(FK_GCOVR gcovr REQUIRED)
-  add_custom_target(coverage
-    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+  cmake_host_system_information(RESULT FK_CORES QUERY NUMBER_OF_LOGICAL_CORES)
+  add_custom_target(coverage # the tests in parallel: gcov merges each process's counts under a file lock
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${FK_CORES}
     COMMAND ${CMAKE_COMMAND} -E env LUA_PATH=${FK_SRC}/third_party/luacov/?.lua
       $<TARGET_FILE:fukuruma> --test ${FK_SRC}/tests/lua --coverage
     COMMAND ${Python3_EXECUTABLE} ${FK_SRC}/tools/coverage/lua_gate.py luacov.report.out 95
