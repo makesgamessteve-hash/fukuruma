@@ -15,3 +15,6 @@ Generated for this project with the ElevenLabs API by `tools/audio/generate.py` 
 - `ui_confirm.ogg` (eleven_text_to_sound_v2, 2026-11-26): Bright short sci-fi interface confirm chime, clean and pleasant, spaceship computer
 - `ui_open.ogg` (eleven_text_to_sound_v2, 2026-11-26): Holographic menu opening, a soft airy whoosh with a gentle digital shimmer
 - `wind_loop.ogg` (eleven_text_to_sound_v2, 2026-11-26): Gentle alien wind over a vast empty plain at dusk with a distant low rumble, calm continuous ambience
+- `rain_loop.ogg` (eleven_text_to_sound_v2, 2026-11-27): Steady heavy rain falling on open grassland and rocks, soft hiss with patters and drips, continuous ambience, no thunder
+- `thunder.ogg` (eleven_text_to_sound_v2, 2026-11-27): Close lightning strike with a sharp crack splitting into a huge rolling thunder rumble that echoes across a wide valley and fades
+- `sandstorm_loop.ogg` (eleven_text_to_sound_v2, 2026-11-27): Fierce desert sandstorm, howling gusting wind with hissing blown sand and grit rattling against metal armor, continuous ambience

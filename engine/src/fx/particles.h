@@ -9,6 +9,7 @@ typedef struct {
     float size, size_end;         /* diameter in metres */
     float life, age;              /* seconds */
     float gravity, drag;          /* m/s^2 downwards; velocity loss per second */
+    float stretch;                /* seconds of motion drawn: a streak along the velocity (rain) */
     bool glow;                    /* added light, unlit (sparks, scans); otherwise lit and alpha-blended (dust) */
 } fk_particle;
 
@@ -18,7 +19,7 @@ typedef struct {
     float direction[3], spread;   /* velocity within this cone (half angle, radians) around direction */
     bool ring;                    /* velocities in the plane across direction instead (rings, shockwaves) */
     float speed_min, speed_max, life_min, life_max;
-    float size, size_end, gravity, drag;
+    float size, size_end, gravity, drag, stretch;
     float color[4], color_end[4];
     bool glow;
 } fk_emitter;

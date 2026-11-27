@@ -78,6 +78,29 @@
   "prompt": "Gentle alien wind over a vast empty plain at dusk with a distant low rumble, calm continuous ambience"
  },
  {
+  "id": "rain_loop",
+  "kind": "sfx",
+  "seconds": 12,
+  "loop": true,
+  "path": "sounds/rain_loop.ogg",
+  "prompt": "Steady heavy rain falling on open grassland and rocks, soft hiss with patters and drips, continuous ambience, no thunder"
+ },
+ {
+  "id": "thunder",
+  "kind": "sfx",
+  "seconds": 5,
+  "path": "sounds/thunder.ogg",
+  "prompt": "Close lightning strike with a sharp crack splitting into a huge rolling thunder rumble that echoes across a wide valley and fades"
+ },
+ {
+  "id": "sandstorm_loop",
+  "kind": "sfx",
+  "seconds": 12,
+  "loop": true,
+  "path": "sounds/sandstorm_loop.ogg",
+  "prompt": "Fierce desert sandstorm, howling gusting wind with hissing blown sand and grit rattling against metal armor, continuous ambience"
+ },
+ {
   "id": "music_surface",
   "kind": "music",
   "seconds": 90,

@@ -34,6 +34,7 @@ local navmap = require("navmap")
 local terrain = require("terrain")
 local scatter = require("scatter")
 local dig = require("dig")
+local weather = require("weather")
 
 local game = {}
 
@@ -85,7 +86,7 @@ function game.init()
   -- (terrain.follow).
   game.world = fk.physics.world({ gravity = { 0, -9.81, 0 } })
   game.world:add({ shape = "box", size = { GROUND_SIZE, 1, GROUND_SIZE }, position = { 0, -0.5, 0 }, friction = 0.8 })
-  game.ground_tile, game.ground_view, game.plants, game.dug = {}, {}, {}, {}
+  game.ground_tile, game.ground_view, game.plants, game.dug, game.weather = {}, {}, {}, {}, {}
   game.world:add({ shape = "box", size = { 0.8, 6, 0.8 }, position = { 6, 3, 4 } })
   game.crates = {}
   for i, p in ipairs(CRATES) do
@@ -296,11 +297,18 @@ end
 local function draw_sky()
   local t = sim.tick * sim.dt
   local light = universe.light(t)
+  local w = game.now -- this frame's weather (game.draw)
+  if w and light.atmosphere then
+    local a = light.atmosphere
+    if a.clouds then a.clouds.cover = math.min(0.85, a.clouds.cover + w.look.cover) end
+    a.fog = w.look.fog
+  end
   local b = light.background
   fk.gfx.clear(b[1], b[2], b[3])
   if light.atmosphere then fk.gfx.atmosphere(light.atmosphere) end
+  local flash = w and w.flash or 0 -- lightning: the sky and the land light up
   if light.sun.intensity > 0 then fk.gfx.sun(light.sun) else fk.gfx.sun({ direction = { 0, 1, 0 }, intensity = 0 }) end
-  fk.gfx.ambient({ sky = light.ambient.sky, ground = light.ambient.ground, intensity = 1 })
+  fk.gfx.ambient({ sky = light.ambient.sky, ground = light.ambient.ground, intensity = 1 + 6 * flash })
   fk.gfx.sky(universe.view().map, { strength = light.stars, rotation = light.galaxy_rotation })
   if light.sun2 then fk.gfx.sun2(light.sun2) end
   local _, h = fk.gfx.size()
@@ -330,6 +338,11 @@ function game.draw(alpha, dt)
   local pdt = feel.update(dt) -- presentation time: 0 during hit-pause
   fk.gfx.particles(pdt)
   local body = sim.get(game.suit, "suit")
+  local g, v = universe.ground(), universe.view()
+  local site = v.place and v.sys.bodies[v.place]
+  game.now = g and weather.present(game.weather, { seed = v.seed, desc = g.desc, air = v.air, t = sim.tick * sim.dt,
+    cold = site and (site.temperature or 288) < 268, dt = pdt, eye = { body.x, body.y + 3, body.z }, wind = { 0.8, 0.35 },
+    share = fk.gfx.settings().max_particles / 12000 }) or nil
   draw_stage(pdt)
   local model, speed, head = draw_suit(body, alpha, pdt)
   local w, h = fk.gfx.size()
@@ -346,7 +359,8 @@ function game.draw(alpha, dt)
   local half_fov = math.rad(game.view == "drone" and game.drone.fov or comfort.current.fov) / 2
   terrain.draw(game.ground_view, universe.ground(), { inv_x, inv_y, inv_z }, { -view[3], -view[7], -view[11] },
     math.atan(math.tan(half_fov) * math.sqrt(1 + (w / h) * (w / h))), h / (2 * math.tan(half_fov)), false,
-    { digs = dig.nearest({ inv_x, inv_y, inv_z }) })
+    { digs = dig.nearest({ inv_x, inv_y, inv_z }), wet = game.now and game.now.look.wet, snow = game.now and game.now.look.snow,
+      dust = game.now and game.now.look.dust })
   dig.draw(game.dug, universe.ground())
   fk.gfx.wind({ direction = { 0.8, 0.35 }, strength = 1, time = feel.time })
   local g = universe.ground()

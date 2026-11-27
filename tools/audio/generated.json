@@ -31,9 +31,21 @@
   "date": "2026-11-26",
   "hash": "f8bd3dca6a2c646f"
  },
+ "rain_loop": {
+  "date": "2026-11-27",
+  "hash": "2960656509b9297d"
+ },
+ "sandstorm_loop": {
+  "date": "2026-11-27",
+  "hash": "7c996efcd0abe75a"
+ },
  "scan": {
   "date": "2026-11-26",
   "hash": "c127a5f76962fa36"
+ },
+ "thunder": {
+  "date": "2026-11-27",
+  "hash": "f2dbf27df8b48324"
  },
  "ui_confirm": {
   "date": "2026-11-26",

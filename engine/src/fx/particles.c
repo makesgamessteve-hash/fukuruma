@@ -55,7 +55,7 @@ void fk_particles_emit(const fk_emitter *e) {
         memcpy(p->color_end, e->color_end, sizeof p->color_end);
         p->size = e->size, p->size_end = e->size_end;
         p->life = uniform(e->life_min, e->life_max), p->age = 0;
-        p->gravity = e->gravity, p->drag = e->drag;
+        p->gravity = e->gravity, p->drag = e->drag, p->stretch = e->stretch;
         p->glow = e->glow;
     }
 }

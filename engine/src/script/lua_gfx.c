@@ -729,6 +729,7 @@ static int l_emit(lua_State *L) {
     e.size_end = field_number(L, 1, "size_end", e.size, 0, 100, "emit");
     e.gravity = field_number(L, 1, "gravity", 0, -100, 100, "emit");
     e.drag = field_number(L, 1, "drag", 0, 0, 100, "emit");
+    e.stretch = field_number(L, 1, "stretch", 0, 0, 1, "emit");
     float color[3], color_end[3], intensity = field_number(L, 1, "intensity", 1, 0, 1000, "emit");
     field_vec3(L, 1, "color", color, WHITE, 0, 1, "emit");
     field_vec3(L, 1, "color_end", color_end, color, 0, 1, "emit");

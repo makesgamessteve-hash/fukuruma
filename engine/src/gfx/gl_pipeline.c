@@ -439,9 +439,18 @@ static void draw_particles(const float view_proj[16], const fk_frame *f) {
         const fk_particle *p = &list[order[q]];
         float t = p->age / p->life, half = 0.5f * (p->size + (p->size_end - p->size) * t), color[4];
         for (int k = 0; k < 4; k++) color[k] = p->color[k] + (p->color_end[k] - p->color[k]) * t;
+        float across[3], along[3], length = half; /* a streak: the quad's long side follows the velocity on screen */
+        float vr = p->velocity[0] * right[0] + p->velocity[1] * right[1] + p->velocity[2] * right[2];
+        float vu = p->velocity[0] * up[0] + p->velocity[1] * up[1] + p->velocity[2] * up[2], vl = sqrtf(vr * vr + vu * vu);
+        if (p->stretch > 0 && vl > 1e-4f) {
+            for (int k = 0; k < 3; k++) along[k] = (right[k] * vr + up[k] * vu) / vl, across[k] = (up[k] * vr - right[k] * vu) / vl;
+            length += 0.5f * vl * p->stretch;
+        } else {
+            memcpy(across, right, sizeof across), memcpy(along, up, sizeof along);
+        }
         for (int c = 0; c < 6; c++) {
             float *v = &vertices[(q * 6 + c) * 9];
-            for (int k = 0; k < 3; k++) v[k] = p->position[k] + (right[k] * corners[c][0] + up[k] * corners[c][1]) * half;
+            for (int k = 0; k < 3; k++) v[k] = p->position[k] + across[k] * corners[c][0] * half + along[k] * corners[c][1] * length;
             v[3] = corners[c][0] * 0.5f + 0.5f, v[4] = corners[c][1] * 0.5f + 0.5f;
             memcpy(&v[5], color, sizeof color);
         }
