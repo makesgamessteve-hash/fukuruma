@@ -624,7 +624,8 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 ### M5 — Seamless surfaces (XL)
 
-- **OpenSpec:** `add-terrain-streaming`, `add-terrain-materials`, `add-biomes-and-scatter`,
+- **OpenSpec:** `add-terrain-streaming` (done: chunks to 0.3 m quads, terrain collision, the range on land),
+  `add-terrain-materials`, `add-biomes-and-scatter`,
   `add-voxel-terrain`, `add-volumetric-clouds-and-fog`, `add-water`, `add-weather`.
 - **Work:** quadtree chunk streaming from orbit to the ground without cracks, regional detail,
   triplanar terrain materials with wetness, snow and dust layers; biome scatter (instanced detailed

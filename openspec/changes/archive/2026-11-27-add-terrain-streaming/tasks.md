@@ -6,4 +6,4 @@
 - [x] 4 Near-ground drawing: deep levels, per-chunk slices, view cone, adaptive planetary slice, cloud fade
 - [x] 5 The range on land; walls removed; terrain detail in the graphics levels
 - [x] 6 Descent scenario from orbit to the ground with goldens and budgets; goldens and hashes regenerated on purpose
-- [ ] 7 CI green on every target; archive
+- [x] 7 CI green on every target; archive
