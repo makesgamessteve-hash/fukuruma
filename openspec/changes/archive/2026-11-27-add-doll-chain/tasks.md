@@ -5,4 +5,4 @@
 - [x] 3 The chain component: a new game's chain, saved; ground dolls on each world's ground
 - [x] 4 Deploy, recall and board commands, their rules and feedback bundles; seat views; controls
 - [x] 5 Lua tests; chain scenario with goldens; hashes re-recorded on purpose
-- [ ] 6 CI green on every target; archive
+- [x] 6 CI green on every target; archive
