@@ -1,26 +1,94 @@
 [
- {"id": "footstep_1", "kind": "sfx", "seconds": 0.9, "path": "sounds/footstep_1.ogg",
-  "prompt": "Heavy armored mech exosuit footstep on a concrete deck, deep metallic thud with a short hydraulic hiss, close, punchy"},
- {"id": "footstep_2", "kind": "sfx", "seconds": 0.9, "path": "sounds/footstep_2.ogg",
-  "prompt": "Heavy robotic exosuit foot stomping on concrete, low metal impact with a servo whine and a little grit crunch, close"},
- {"id": "footstep_3", "kind": "sfx", "seconds": 0.9, "path": "sounds/footstep_3.ogg",
-  "prompt": "Giant mech suit step on a steel and concrete floor, weighty thump with rattling armor plates and a hydraulic release"},
- {"id": "scan", "kind": "sfx", "seconds": 2.0, "path": "sounds/scan.ogg",
-  "prompt": "Epic futuristic sensor scan pulse, a deep sonar ping that blooms into a shimmering energy sweep racing outwards, sci-fi"},
- {"id": "impact", "kind": "sfx", "seconds": 0.8, "path": "sounds/impact.ogg",
-  "prompt": "Heavy metal cargo crate slamming onto a concrete deck, deep hollow boom with a short scrape and rattle, close, punchy"},
- {"id": "jump", "kind": "sfx", "seconds": 2.5, "path": "sounds/jump.ogg",
-  "prompt": "Starship jump drive engaging, a deep rising hum that tears into a huge whooshing warp boom and fades into a shimmering echo, sci-fi"},
- {"id": "ui_move", "kind": "sfx", "seconds": 0.5, "path": "sounds/ui_move.ogg",
-  "prompt": "Soft short sci-fi interface tick, a subtle clean digital click for moving through a menu"},
- {"id": "ui_confirm", "kind": "sfx", "seconds": 0.6, "path": "sounds/ui_confirm.ogg",
-  "prompt": "Bright short sci-fi interface confirm chime, clean and pleasant, spaceship computer"},
- {"id": "ui_open", "kind": "sfx", "seconds": 0.8, "path": "sounds/ui_open.ogg",
-  "prompt": "Holographic menu opening, a soft airy whoosh with a gentle digital shimmer"},
- {"id": "wind_loop", "kind": "sfx", "seconds": 12, "loop": true, "path": "sounds/wind_loop.ogg",
-  "prompt": "Gentle alien wind over a vast empty plain at dusk with a distant low rumble, calm continuous ambience"},
- {"id": "music_surface", "kind": "music", "seconds": 90, "path": "music/surface.ogg",
-  "prompt": "Epic ambient space music, slow evolving warm synth pads, distant wordless choir and deep sub bass, a sense of wonder and vastness on an alien world at dusk, cinematic, no drums, loopable"},
- {"id": "music_discovery", "kind": "music", "seconds": 60, "path": "music/discovery.ogg",
-  "prompt": "Uplifting cinematic space exploration theme, shimmering arpeggiated synths over warm strings with soft timpani swells, a sense of discovery and awe, epic but calm, instrumental"}
+ {
+  "id": "footstep_1",
+  "kind": "sfx",
+  "seconds": 0.9,
+  "path": "sounds/footstep_1.ogg",
+  "prompt": "Heavy armored mech exosuit footstep on a concrete deck, deep metallic thud with a short hydraulic hiss, close, punchy"
+ },
+ {
+  "id": "footstep_2",
+  "kind": "sfx",
+  "seconds": 0.9,
+  "path": "sounds/footstep_2.ogg",
+  "prompt": "Heavy robotic exosuit foot stomping on concrete, low metal impact with a servo whine and a little grit crunch, close"
+ },
+ {
+  "id": "footstep_3",
+  "kind": "sfx",
+  "seconds": 0.9,
+  "path": "sounds/footstep_3.ogg",
+  "prompt": "Giant mech suit step on a steel and concrete floor, weighty thump with rattling armor plates and a hydraulic release"
+ },
+ {
+  "id": "scan",
+  "kind": "sfx",
+  "seconds": 2.0,
+  "path": "sounds/scan.ogg",
+  "prompt": "Epic futuristic sensor scan pulse, a deep sonar ping that blooms into a shimmering energy sweep racing outwards, sci-fi"
+ },
+ {
+  "id": "impact",
+  "kind": "sfx",
+  "seconds": 0.8,
+  "path": "sounds/impact.ogg",
+  "prompt": "Heavy metal cargo crate slamming onto a concrete deck, deep hollow boom with a short scrape and rattle, close, punchy"
+ },
+ {
+  "id": "dig",
+  "kind": "sfx",
+  "seconds": 1.6,
+  "path": "sounds/dig.ogg",
+  "prompt": "Heavy mech exosuit plasma excavator blasting a hole into rocky ground, a deep thumping burst of earth and gravel spraying out, hissing energy and falling pebbles, close, punchy"
+ },
+ {
+  "id": "jump",
+  "kind": "sfx",
+  "seconds": 2.5,
+  "path": "sounds/jump.ogg",
+  "prompt": "Starship jump drive engaging, a deep rising hum that tears into a huge whooshing warp boom and fades into a shimmering echo, sci-fi"
+ },
+ {
+  "id": "ui_move",
+  "kind": "sfx",
+  "seconds": 0.5,
+  "path": "sounds/ui_move.ogg",
+  "prompt": "Soft short sci-fi interface tick, a subtle clean digital click for moving through a menu"
+ },
+ {
+  "id": "ui_confirm",
+  "kind": "sfx",
+  "seconds": 0.6,
+  "path": "sounds/ui_confirm.ogg",
+  "prompt": "Bright short sci-fi interface confirm chime, clean and pleasant, spaceship computer"
+ },
+ {
+  "id": "ui_open",
+  "kind": "sfx",
+  "seconds": 0.8,
+  "path": "sounds/ui_open.ogg",
+  "prompt": "Holographic menu opening, a soft airy whoosh with a gentle digital shimmer"
+ },
+ {
+  "id": "wind_loop",
+  "kind": "sfx",
+  "seconds": 12,
+  "loop": true,
+  "path": "sounds/wind_loop.ogg",
+  "prompt": "Gentle alien wind over a vast empty plain at dusk with a distant low rumble, calm continuous ambience"
+ },
+ {
+  "id": "music_surface",
+  "kind": "music",
+  "seconds": 90,
+  "path": "music/surface.ogg",
+  "prompt": "Epic ambient space music, slow evolving warm synth pads, distant wordless choir and deep sub bass, a sense of wonder and vastness on an alien world at dusk, cinematic, no drums, loopable"
+ },
+ {
+  "id": "music_discovery",
+  "kind": "music",
+  "seconds": 60,
+  "path": "music/discovery.ogg",
+  "prompt": "Uplifting cinematic space exploration theme, shimmering arpeggiated synths over warm strings with soft timpani swells, a sense of discovery and awe, epic but calm, instrumental"
+ }
 ]
