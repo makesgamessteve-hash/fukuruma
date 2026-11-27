@@ -37,6 +37,57 @@ static void matrix_arg(lua_State *L, int arg, float m[16], const char *what) {
     for (int i = 0; i < 16; i++) m[i] = number_at(L, arg, i + 1, "matrix");
 }
 
+static double lua_Number_at(lua_State *L, int t, int i) {
+    lua_rawgeti(L, t, i);
+    double v = lua_tonumber(L, -1);
+    lua_pop(L, 1);
+    return v;
+}
+
+/* The frame's floating origin (draw axes, metres): every world position coming in has it subtracted in double before
+   it becomes a float, and the camera adds it back, so the picture is the same but far from the origin of the draw
+   axes (a Jump Ship 30,000 km up) its geometry keeps centimetre precision. */
+static double origin[3];
+
+static double world_at(lua_State *L, int t, int i, int axis) {
+    lua_rawgeti(L, t, i);
+    int ok;
+    lua_Number v = lua_tonumberx(L, -1, &ok);
+    lua_pop(L, 1);
+    if (!ok || !isfinite(v)) luaL_error(L, "the position's number %d is not a finite number", i);
+    return v - origin[axis];
+}
+
+/* A model matrix with the origin taken out of its translation. */
+static void model_arg(lua_State *L, int arg, float m[16], const char *what) {
+    matrix_arg(L, arg, m, what);
+    for (int k = 0; k < 3; k++) m[12 + k] = (float)world_at(L, arg, 13 + k, k);
+}
+
+/* t[name] = {x, y, z}, a place in the draw axes, with the origin taken out (def when absent). */
+static void field_world(lua_State *L, int t, const char *name, float out[3], const float def[3], const char *what) {
+    int type = lua_getfield(L, t, name);
+    if (type == LUA_TNIL) {
+        for (int k = 0; k < 3; k++) out[k] = (float)(def[k] - origin[k]);
+    } else {
+        if (type != LUA_TTABLE || luaL_len(L, -1) != 3) luaL_error(L, "%s: '%s' must be a table of 3 numbers", what, name);
+        for (int k = 0; k < 3; k++) out[k] = (float)world_at(L, lua_gettop(L), k + 1, k);
+    }
+    lua_pop(L, 1);
+}
+
+/* fk.gfx.origin(x, y, z): the frame's floating origin (see above); live particles move with it. */
+static int l_origin(lua_State *L) {
+    double o[3];
+    for (int k = 0; k < 3; k++) {
+        o[k] = luaL_checknumber(L, k + 1);
+        luaL_argcheck(L, isfinite(o[k]), k + 1, "origin: a finite number");
+    }
+    fk_particles_shift((float)(origin[0] - o[0]), (float)(origin[1] - o[1]), (float)(origin[2] - o[2]));
+    memcpy(origin, o, sizeof origin);
+    return 0;
+}
+
 /* Reads t[name] as a number in [lo, hi], or def when absent. */
 static float field_number(lua_State *L, int t, const char *name, float def, float lo, float hi, const char *what) {
     lua_getfield(L, t, name);
@@ -234,7 +285,9 @@ static int l_instances(lua_State *L) {
     for (lua_Integer i = 0; i < n; i++) {
         lua_rawgeti(L, 1, i + 1);
         int ok;
-        data[i] = (float)lua_tonumberx(L, -1, &ok);
+        lua_Number v = lua_tonumberx(L, -1, &ok);
+        if (i % FK_INSTANCE_FLOATS < 3) v -= origin[i % FK_INSTANCE_FLOATS]; /* the place, with the origin out */
+        data[i] = (float)v;
         if (!ok || !isfinite(data[i])) return luaL_error(L, "instances: number %d is not a finite number", (int)i + 1);
         lua_pop(L, 1);
     }
@@ -305,7 +358,7 @@ static int l_draw(lua_State *L) {
     fk_frame_get()->slice = slice_option(L, 3);
     fk_model *mdl = fk_lua_model_arg(L, 1);
     if (mdl) {
-        matrix_arg(L, 2, model, "draw");
+        model_arg(L, 2, model, "draw");
         const float *globals = NULL;
         if (!lua_isnoneornil(L, 3)) {
             luaL_checktype(L, 3, LUA_TTABLE);
@@ -318,7 +371,7 @@ static int l_draw(lua_State *L) {
         return 0;
     }
     fk_mesh *m = luaL_checkudata(L, 1, "fk.mesh");
-    matrix_arg(L, 2, model, "draw");
+    model_arg(L, 2, model, "draw");
     fk_material mat;
     fk_material_default(&mat);
     if (!lua_isnoneornil(L, 3)) {
@@ -347,7 +400,7 @@ static int l_draw(lua_State *L) {
                 mat.ndigs = n > 16 ? 16 : n;
                 for (int i = 0; i < 4 * mat.ndigs; i++) {
                     lua_rawgeti(L, -1, i + 1);
-                    mat.digs[i / 4][i % 4] = (float)luaL_checknumber(L, -1);
+                    mat.digs[i / 4][i % 4] = (float)(luaL_checknumber(L, -1) - (i % 4 < 3 ? origin[i % 4] : 0));
                     lua_pop(L, 1);
                 }
             }
@@ -392,7 +445,7 @@ static int l_atmosphere(lua_State *L) {
     }
     luaL_checktype(L, 1, LUA_TTABLE);
     static const float ZERO3[3] = {0, 0, 0};
-    field_vec3(L, 1, "centre", a->centre, ZERO3, -1e30f, 1e30f, "atmosphere");
+    field_world(L, 1, "centre", a->centre, ZERO3, "atmosphere");
     a->radius = field_number(L, 1, "radius", 1, 1e-6f, 1e30f, "atmosphere");
     a->top = field_number(L, 1, "top", a->radius * 1.01f, a->radius, 1e30f, "atmosphere");
     a->height = field_number(L, 1, "height", 8000, 1e-6f, 1e30f, "atmosphere");
@@ -435,7 +488,7 @@ static int l_water(lua_State *L) {
     }
     luaL_checktype(L, 1, LUA_TTABLE);
     static const float ZERO3[3] = {0, 0, 0}, DEEP[3] = {0.02f, 0.1f, 0.16f}, SHALLOW[3] = {0.1f, 0.42f, 0.42f};
-    field_vec3(L, 1, "centre", w->centre, ZERO3, -1e30f, 1e30f, "water");
+    field_world(L, 1, "centre", w->centre, ZERO3, "water");
     w->radius = field_number(L, 1, "radius", 1, 1e-6f, 1e30f, "water");
     float deep[3], shallow[3];
     field_vec3(L, 1, "deep", deep, DEEP, 0, 1, "water");
@@ -482,6 +535,11 @@ static int l_overlay(lua_State *L) {
 static int l_camera(lua_State *L) {
     fk_frame *f = fk_frame_get();
     matrix_arg(L, 1, f->view, "camera");
+    for (int k = 0; k < 3; k++) { /* the origin back in: view * translation(origin), in double */
+        double t = lua_Number_at(L, 1, 13 + k);
+        for (int c = 0; c < 3; c++) t += lua_Number_at(L, 1, 1 + 4 * c + k) * origin[c];
+        f->view[12 + k] = (float)t;
+    }
     matrix_arg(L, 2, f->projection, "camera");
     return 0;
 }
@@ -541,7 +599,7 @@ static int l_light(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     fk_point_light light;
     float color[3];
-    field_vec3(L, 1, "position", light.position, ZERO, -1e9f, 1e9f, "light");
+    field_world(L, 1, "position", light.position, ZERO, "light");
     field_vec3(L, 1, "color", color, ONE, 0, 1, "light");
     float intensity = field_number(L, 1, "intensity", 10, 0, 1e6f, "light");
     light.radius = field_number(L, 1, "radius", 10, 0.01f, 1e6f, "light");
@@ -715,7 +773,7 @@ static int l_emit(lua_State *L) {
     fk_emitter e;
     memset(&e, 0, sizeof e);
     e.count = (int)field_number(L, 1, "count", 1, 0, 4096, "emit");
-    field_vec3(L, 1, "position", e.position, ZERO, -1e7f, 1e7f, "emit");
+    field_world(L, 1, "position", e.position, ZERO, "emit");
     e.radius = field_number(L, 1, "radius", 0, 0, 1000, "emit");
     field_vec3(L, 1, "direction", e.direction, UP, -1, 1, "emit");
     e.spread = field_number(L, 1, "spread", 3.1415927f, 0, 3.1415927f, "emit");
@@ -758,7 +816,7 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
                                    {"camera", l_camera},   {"sun", l_sun},           {"ambient", l_ambient},
                                    {"light", l_light},     {"clear", l_clear},       {"grade", l_grade},
                                    {"configure", l_configure}, {"settings", l_settings}, {"size", l_size},
-                                   {"text", l_text},       {"rect", l_rect},         {"palette", l_palette},
+                                   {"text", l_text},       {"rect", l_rect},         {"origin", l_origin},         {"palette", l_palette},
                                    {"device", l_device},   {"emit", l_emit},         {"particles", l_particles},
                                    {"slices", l_slices},   {"starfield", l_starfield}, {"sky", l_sky}, {"stats", l_stats}, {"atmosphere", l_atmosphere}, {"sun2", l_sun2},
                                    {"instances", l_instances}, {"wind", l_wind}, {"water", l_water},

@@ -29,4 +29,5 @@ void fk_particles_budget(int max);   /* the most particles alive at once; older 
 void fk_particles_emit(const fk_emitter *e);
 void fk_particles_update(float dt);
 int fk_particles_count(void);
+void fk_particles_shift(float dx, float dy, float dz); /* every live particle moved (the floating origin moved) */
 const fk_particle *fk_particles_list(void);

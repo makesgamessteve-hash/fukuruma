@@ -78,4 +78,8 @@ void fk_particles_update(float dt) {
 }
 
 int fk_particles_count(void) { return count; }
+
+void fk_particles_shift(float dx, float dy, float dz) {
+    for (int i = 0; i < count; i++) list[i].position[0] += dx, list[i].position[1] += dy, list[i].position[2] += dz;
+}
 const fk_particle *fk_particles_list(void) { return list; }

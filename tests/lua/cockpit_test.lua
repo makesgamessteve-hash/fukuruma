@@ -19,6 +19,16 @@ return {
       end
     end
   end,
+  ["far from the range, positions are drawn about a floating origin"] = function()
+    assert(not pcall(fk.gfx.origin, 0 / 0, 0, 0) and not pcall(fk.gfx.origin, 1, math.huge, 0))
+    fk.gfx.origin(4096, 3.0e7, 0)
+    local c = cockpit.build({}, dolls.by_id.jump_ship)
+    fk.gfx.draw(c.shell, { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 4100, 3.0e7, 2, 1 })
+    fk.gfx.light({ position = { 4100, 3.0e7, 0 }, color = { 1, 1, 1 }, intensity = 1, radius = 5 })
+    fk.gfx.camera(mat4.identity(), mat4.perspective(1, 1, 0.1, 100))
+    assert(not pcall(fk.gfx.draw, c.shell, { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0 / 0, 0, 0, 1 }), "not finite")
+    fk.gfx.origin(0, 0, 0)
+  end,
   ["screens show what the doll knows, where they appear and as much as fits"] = function()
     sim.reset()
     actions.reset()

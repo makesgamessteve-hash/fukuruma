@@ -78,3 +78,14 @@ UTEST(particles, budget_and_determinism) {
     fk_particles_budget(4096);
     fk_input_rumble(0.5f, 0.5f, 10); /* no gamepads in tests: nothing happens */
 }
+
+UTEST(particles, move_with_the_floating_origin) {
+    fk_particles_reset();
+    fk_particles_budget(64);
+    fk_emitter e = burst(3);
+    fk_particles_emit(&e);
+    float x = fk_particles_list()[0].position[0], y = fk_particles_list()[0].position[1];
+    fk_particles_shift(-4096, 10, 0);
+    EXPECT_NEAR(fk_particles_list()[0].position[0], x - 4096, 1e-3f);
+    EXPECT_NEAR(fk_particles_list()[0].position[1], y + 10, 1e-3f);
+}

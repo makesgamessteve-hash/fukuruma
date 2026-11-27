@@ -387,6 +387,13 @@ end
 
 function game.draw(alpha, dt)
   dt = dt or 0
+  -- the floating origin (fk.gfx.origin): far from the range, positions are drawn relative to a point near the eye
+  -- (last frame's, on a 4 km grid), so a bridge 30,000 km up keeps its precision
+  local e, o = game.eye or { 0, 0, 0 }, { 0, 0, 0 }
+  if e[1] * e[1] + e[2] * e[2] + e[3] * e[3] > 16000 * 16000 then
+    for k = 1, 3 do o[k] = math.floor(e[k] / 4096 + 0.5) * 4096 end
+  end
+  fk.gfx.origin(o[1], o[2], o[3])
   game.frame_dt = dt > 0 and dt or game.frame_dt
   local pdt = feel.update(dt) -- presentation time: 0 during hit-pause
   fk.gfx.particles(pdt)

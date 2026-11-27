@@ -15,9 +15,7 @@ chain.REACH = 2.5 -- a doll deploys and boards only what stands within this many
 -- sky to the south, the Land Explorer and the Walker on the ground south of the range, the Commander in the
 -- Exosuit on the range (the suit of main.lua). {kind, x, y (ground: above the ground; else above the range), z}
 chain.START = {
-  -- shortcut: the Jump Ship parks 1,200 km up, where 32-bit positions still hold its bridge to centimetres; park it
-  -- in a truly high orbit once dolls are drawn relative to the camera.
-  { "jump_ship", 0, 1.2e6, 0 },
+  { "jump_ship", 0, 3.0e7, 0 }, -- high orbit (drawn with the floating origin: fk.gfx.origin)
   { "space_station", 0, 4.0e5, 0 },
   { "continental_explorer", 0, 3500, -14000 },
   { "land_explorer", 0, 0, -3500 },
