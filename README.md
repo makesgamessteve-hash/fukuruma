@@ -19,8 +19,8 @@ explored. Every planet is worth going down to, and any planet can kill you.
 
 ## Status
 
-Milestones M0 (build, test and deployment pipeline), M1 (engine core), M2 (reference frames and scale) and M3 (galaxy
-and star systems) are done. The
+Milestones M0 (build, test and deployment pipeline), M1 (engine core), M2 (reference frames and scale), M3 (galaxy
+and star systems) and M4 (planets from space) are done. The
 sandbox: the Exosuit, a 3.6 m skinned mech, walks and runs over a test range at dusk and sends out sensor scans. Under the hood: a
 deterministic 60 Hz simulation, input for keyboard, gamepad and touch, a deferred PBR renderer at a low internal
 resolution (cascaded shadows, ambient occlusion, bloom, eye adaptation, temporal anti-aliasing), four graphics detail
@@ -30,8 +30,10 @@ for orientation; a frame tree in double precision, depth slices and scaled space
 planet and a star in one scene; bodies move on Kepler orbits; and deterministic physics lets the suit climb low
 steps, stop at walls and shove the crates. Since M3 the range stands on a world of a generated star system in a
 generated galaxy: the real star lights it and sets, the sky shows the real neighbouring stars and the galactic band,
-and the galaxy and system maps let you jump to other stars, each system with its own worlds and marvels. M4 (planets
-from space) is in progress.
+and the galaxy and system maps let you jump to other stars, each system with its own worlds and marvels. Since M4 every world has a
+surface from noise graphs (continents, ridges, dunes, craters, ice, banded giants, rings, clouds) streamed as
+cube-sphere chunks, air that scatters its star's light into its own skies and sunsets, and stars that glow in their
+own colours; binaries light worlds twice and pulsars sweep their beams. M5 (seamless surfaces) is in progress.
 
 - [Game concept](docs/CONCEPT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)

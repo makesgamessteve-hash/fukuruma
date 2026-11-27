@@ -613,7 +613,7 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 ### M4 — Planets from space (L)
 
 - **OpenSpec:** `add-noise-graphs`, `add-planet-descriptors`, `add-planet-rendering`,
-  `add-atmospheric-scattering`, `add-star-rendering`.
+  `add-atmospheric-scattering`, `add-star-rendering` (all done).
 - **Work:** the noise-graph DSL and evaluator, global fields (plates, elevation, climate, biomes),
   planet materials from the fields, cube-sphere LOD, physically based atmospheres per composition,
   image-based lighting from the real sky (replacing M1's sky/ground ambient gradient),
