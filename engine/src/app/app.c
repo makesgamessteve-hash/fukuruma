@@ -146,6 +146,22 @@ static int t_gamepad_button(lua_State *L) {
 }
 
 /* t.touch(id, x, y) puts a finger down or moves it; t.touch(id) lifts it. */
+/* t.xr_pad(lx, ly, rx, ry, buttons): a VR headset's controllers, as web/xr.js reports them. */
+static int t_xr_pad(lua_State *L) {
+    fk_web_xr_pad((float)luaL_checknumber(L, 1), (float)luaL_checknumber(L, 2), (float)luaL_checknumber(L, 3),
+                  (float)luaL_checknumber(L, 4), (int)luaL_checkinteger(L, 5));
+    return 0;
+}
+
+/* t.xr(ipd, qx, qy, qz, qw): a VR headset's frame, as web/xr.js reports it; t.xr() ends the session. */
+static int t_xr(lua_State *L) {
+    if (lua_isnoneornil(L, 1)) fk_web_xr(0, 0, 0, 0, 0, 1);
+    else
+        fk_web_xr(1, (float)luaL_checknumber(L, 1), (float)luaL_optnumber(L, 2, 0), (float)luaL_optnumber(L, 3, 0),
+                  (float)luaL_optnumber(L, 4, 0), (float)luaL_optnumber(L, 5, 1));
+    return 0;
+}
+
 static int t_touch(lua_State *L) {
     lua_Integer id = luaL_checkinteger(L, 1);
     bool down = !lua_isnoneornil(L, 2);
@@ -182,7 +198,7 @@ static bool scenario_load(void) {
     static const luaL_Reg helpers[] = {{"frames", t_frames},         {"expect", t_expect},
                                        {"screenshot", t_screenshot}, {"key", t_key},
                                        {"mouse_button", t_mouse_button}, {"gamepad_axis", t_gamepad_axis},
-                                       {"gamepad_button", t_gamepad_button}, {"touch", t_touch},
+                                       {"gamepad_button", t_gamepad_button}, {"touch", t_touch}, {"xr", t_xr}, {"xr_pad", t_xr_pad},
                                        {"mouse_move", t_mouse_move},
                                        {NULL, NULL}};
     luaL_newlib(L, helpers);

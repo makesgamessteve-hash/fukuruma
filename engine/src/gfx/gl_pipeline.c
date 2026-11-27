@@ -69,7 +69,7 @@ static struct {
     GLuint exposure[2], fb_exposure[2];
     int exposure_index;
     bool exposure_valid;
-    GLuint final_ss, fb_final_ss, final, fb_final;
+    GLuint final_ss, fb_final_ss, final, fb_final, stereo, fb_stereo; /* stereo: both eyes side by side */
     fk_gfx_settings s; /* applied settings; s.hdr is what is actually used */
     int sw, sh;        /* supersampled size */
 } R;
@@ -108,10 +108,11 @@ static void release(void) {
         if (R.programs[i]) gl.DeleteProgram(R.programs[i]);
     GLuint textures[] = {R.g_base,      R.g_normal, R.g_emission,  R.g_depth,     R.shadow,   R.ao[0],    R.ao[1],
                          R.light,       R.bloom[0], R.bloom[1],    R.bloom[2],    R.bloom[3], R.lum,      R.exposure[0],
-                         R.exposure[1], R.final_ss, R.final, R.history[0], R.history[1], R.air, R.water};
+                         R.exposure[1], R.final_ss, R.final, R.history[0], R.history[1], R.air, R.water, R.stereo};
     GLuint fbs[] = {R.fb_gbuffer, R.fb_shadow,   R.fb_ao[0],       R.fb_ao[1],       R.fb_light,    R.fb_bloom[0],
                     R.fb_bloom[1], R.fb_bloom[2], R.fb_bloom[3],    R.fb_lum,         R.fb_exposure[0],
-                    R.fb_exposure[1], R.fb_final_ss, R.fb_final, R.fb_history[0], R.fb_history[1], R.fb_air, R.fb_water};
+                    R.fb_exposure[1], R.fb_final_ss, R.fb_final, R.fb_history[0], R.fb_history[1], R.fb_air, R.fb_water,
+                    R.fb_stereo};
     gl.DeleteTextures((GLsizei)(sizeof textures / sizeof *textures), textures);
     gl.DeleteFramebuffers((GLsizei)(sizeof fbs / sizeof *fbs), fbs);
     bool hdr_supported = R.hdr_supported;
@@ -214,6 +215,8 @@ bool fk_gfx_configure(void) {
     }
     R.final = texture(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, w, h, GL_NEAREST);
     R.fb_final = framebuffer(1, &R.final, 0);
+    R.stereo = texture(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, w, h, GL_NEAREST);
+    R.fb_stereo = framebuffer(1, &R.stereo, 0);
     if (!complete) fk_log("a render target could not be created");
     return complete;
 }
@@ -492,7 +495,7 @@ static void draw_particles(const float view_proj[16], const fk_frame *f) {
     gl.BindVertexArray(R.vao);
 }
 
-void fk_gfx_render(double dt, int window_w, int window_h) {
+static void render_once(double dt, int window_w, int window_h, bool to_window) {
     int want_w, want_h;
     fk_gfx_internal_size(fk_gfx_settings_current(), window_w, window_h, &want_w, &want_h);
     if (want_w != R.w || want_h != R.h) { /* the window changed shape: new targets */
@@ -810,6 +813,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         }
     }
 
+    if (!to_window) return;
     /* 9. The window: black bars around the integer-scaled image. */
     int rect[4];
     fk_gfx_upscale_rect(window_w, window_h, w, h, rect);
@@ -819,6 +823,46 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     gl.BlitFramebuffer(0, 0, w, h, rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3], GL_COLOR_BUFFER_BIT, GL_NEAREST);
     /* Leave nothing of ours bound: Chrome stops showing a WebGL canvas once a texture of the bound read
        framebuffer is deleted, which is what reconfiguring does. */
+    gl.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    gl.BindVertexArray(0);
+}
+
+static bool stereo_last; /* the last frame was rendered in stereo: screenshots read both eyes */
+
+/* Stereo (webxr spec): the frame once per eye, the camera moved half the distance between the eyes to each side and
+   seeing half the window's width; each eye's finished image squeezed into its half of one side-by-side image, which
+   goes to the window (and to screenshots). TAA is off in stereo: one eye's history would smear into the other's. */
+void fk_gfx_render(double dt, int window_w, int window_h) {
+    fk_frame *f = fk_frame_get();
+    stereo_last = f->stereo_ipd > 0;
+    if (!stereo_last) {
+        render_once(dt, window_w, window_h, true);
+        return;
+    }
+    float view[16], projection[16];
+    memcpy(view, f->view, sizeof view);
+    memcpy(projection, f->projection, sizeof projection);
+    bool taa = R.s.taa;
+    R.s.taa = false;
+    for (int eye = 0; eye < 2; eye++) {
+        memcpy(f->view, view, sizeof view);
+        f->view[12] += (eye == 0 ? 0.5f : -0.5f) * f->stereo_ipd; /* left eye: the world a little to the right */
+        memcpy(f->projection, projection, sizeof projection);
+        f->projection[0] *= 2; /* each eye sees half the width: the same height, half the aspect */
+        render_once(dt, window_w, window_h, false);
+        gl.BindFramebuffer(GL_READ_FRAMEBUFFER, R.fb_final);
+        gl.BindFramebuffer(GL_DRAW_FRAMEBUFFER, R.fb_stereo);
+        gl.BlitFramebuffer(0, 0, R.w, R.h, eye * R.w / 2, 0, (eye + 1) * R.w / 2, R.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
+    R.s.taa = taa;
+    memcpy(f->view, view, sizeof view);
+    memcpy(f->projection, projection, sizeof projection);
+    int rect[4];
+    fk_gfx_upscale_rect(window_w, window_h, R.w, R.h, rect);
+    fk_gfx_set_window(window_w, window_h, rect);
+    fk_gfx_clear_window(0, 0, 0);
+    gl.BindFramebuffer(GL_READ_FRAMEBUFFER, R.fb_stereo);
+    gl.BlitFramebuffer(0, 0, R.w, R.h, rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3], GL_COLOR_BUFFER_BIT, GL_NEAREST);
     gl.BindFramebuffer(GL_FRAMEBUFFER, 0);
     gl.BindVertexArray(0);
 }
@@ -834,7 +878,7 @@ void fk_gfx_clear_window(float r, float g, float b) {
 
 void fk_gfx_read_pixels(uint8_t *rgba) {
     int w = R.w, h = R.h;
-    gl.BindFramebuffer(GL_READ_FRAMEBUFFER, R.fb_final);
+    gl.BindFramebuffer(GL_READ_FRAMEBUFFER, stereo_last ? R.fb_stereo : R.fb_final);
     gl.PixelStorei(GL_PACK_ALIGNMENT, 1);
     gl.ReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
     size_t row = (size_t)w * 4;

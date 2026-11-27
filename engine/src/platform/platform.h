@@ -102,3 +102,8 @@ void fk_input_emulate_mouse_move(float dx, float dy); /* relative motion, in fra
 void fk_input_emulate_axis(int code, float value);
 void fk_input_emulate_button(int code, bool down);
 void fk_input_emulate_touch(int64_t id, bool down, float x, float y); /* down = false lifts the touch */
+/* A VR headset (webxr spec): web/xr.js calls fk_web_xr every frame of an immersive session with the distance between
+   the eyes (metres) and the head's rotation (a quaternion, WebXR axes), and once with on = 0 when it ends. */
+void fk_web_xr(int on, float ipd, float qx, float qy, float qz, float qw);
+bool fk_input_xr(float *ipd, float q[4]); /* false: no headset */
+void fk_web_xr_pad(float lx, float ly, float rx, float ry, int buttons); /* the controllers, as a gamepad */

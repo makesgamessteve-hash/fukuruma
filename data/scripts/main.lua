@@ -430,6 +430,18 @@ function game.draw(alpha, dt)
     for k = 1, 3 do o[k] = math.floor(e[k] / 4096 + 0.5) * 4096 end
   end
   fk.gfx.origin(o[1], o[2], o[3])
+  local xr = fk.input.xr() -- a VR headset (webxr spec): both eyes, and the player's head is the Commander's head
+  if xr then
+    local q = xr.rotation -- the head's forward (WebXR's -z), turned half round about y into these axes (+z forward)
+    local fx = -2 * (q.x * q.z + q.w * q.y)
+    local fy = -2 * (q.y * q.z - q.w * q.x)
+    local fz = -(1 - 2 * (q.x * q.x + q.y * q.y))
+    game.helmet.yaw, game.helmet.pitch = math.atan(-fx, -fz), math.asin(math.max(-1, math.min(1, fy)))
+    fk.gfx.stereo(xr.ipd)
+  elseif game.xr then
+    fk.gfx.stereo()
+  end
+  game.xr = xr ~= nil
   game.frame_dt = dt > 0 and dt or game.frame_dt
   local pdt = feel.update(dt) -- presentation time: 0 during hit-pause
   fk.gfx.particles(pdt)

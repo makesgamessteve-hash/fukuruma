@@ -130,6 +130,23 @@ static int l_mouse_button(lua_State *L) {
     return 1;
 }
 
+/* fk.input.xr() -> nil, or {ipd, rotation = {x, y, z, w}} while a VR headset's session runs (webxr spec) */
+static int l_xr(lua_State *L) {
+    float ipd, q[4];
+    if (!fk_input_xr(&ipd, q)) return 0;
+    lua_createtable(L, 0, 2);
+    lua_pushnumber(L, ipd);
+    lua_setfield(L, -2, "ipd");
+    lua_createtable(L, 0, 4);
+    static const char *const names[4] = {"x", "y", "z", "w"};
+    for (int i = 0; i < 4; i++) {
+        lua_pushnumber(L, q[i]);
+        lua_setfield(L, -2, names[i]);
+    }
+    lua_setfield(L, -2, "rotation");
+    return 1;
+}
+
 static int l_touches(lua_State *L) {
     fk_touch touches[FK_MAX_TOUCHES];
     int n = fk_input_touches(touches);
@@ -300,7 +317,7 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     lua_setfield(L, -2, "planet");
     static const luaL_Reg input[] = {{"key", l_key},       {"axis", l_axis},       {"button", l_button},
                                      {"mouse", l_mouse},   {"mouse_button", l_mouse_button},
-                                     {"touches", l_touches}, {"device", l_device}, {"rumble", l_rumble}, {"capture", l_capture}, {NULL, NULL}};
+                                     {"touches", l_touches}, {"xr", l_xr}, {"device", l_device}, {"rumble", l_rumble}, {"capture", l_capture}, {NULL, NULL}};
     luaL_newlib(L, input);
     lua_setfield(L, -2, "input");
     lua_setfield(L, -2, "fk");

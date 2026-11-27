@@ -76,6 +76,14 @@ static void field_world(lua_State *L, int t, const char *name, float out[3], con
     lua_pop(L, 1);
 }
 
+/* fk.gfx.stereo(ipd): both eyes side by side, ipd metres apart (0 or nil: one view). */
+static int l_stereo(lua_State *L) {
+    float ipd = (float)luaL_optnumber(L, 1, 0);
+    luaL_argcheck(L, ipd >= 0 && ipd <= 1, 1, "stereo: the distance between the eyes from 0 to 1 m");
+    fk_frame_get()->stereo_ipd = ipd;
+    return 0;
+}
+
 /* fk.gfx.origin(x, y, z): the frame's floating origin (see above); live particles move with it. */
 static int l_origin(lua_State *L) {
     double o[3];
@@ -816,7 +824,7 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
                                    {"camera", l_camera},   {"sun", l_sun},           {"ambient", l_ambient},
                                    {"light", l_light},     {"clear", l_clear},       {"grade", l_grade},
                                    {"configure", l_configure}, {"settings", l_settings}, {"size", l_size},
-                                   {"text", l_text},       {"rect", l_rect},         {"origin", l_origin},         {"palette", l_palette},
+                                   {"text", l_text},       {"rect", l_rect},         {"origin", l_origin},         {"stereo", l_stereo},         {"palette", l_palette},
                                    {"device", l_device},   {"emit", l_emit},         {"particles", l_particles},
                                    {"slices", l_slices},   {"starfield", l_starfield}, {"sky", l_sky}, {"stats", l_stats}, {"atmosphere", l_atmosphere}, {"sun2", l_sun2},
                                    {"instances", l_instances}, {"wind", l_wind}, {"water", l_water},

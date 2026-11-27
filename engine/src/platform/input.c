@@ -6,7 +6,41 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 EM_JS(void, vibrate, (int ms), { if (navigator.vibrate) navigator.vibrate(ms); });
+EM_JS(void, xr_pulse, (float strength, int ms), { if (window.fukurumaXRPulse) window.fukurumaXRPulse(strength, ms); });
 #endif
+
+static struct {
+    bool on;
+    float ipd, q[4];
+} xr;
+
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+void fk_web_xr(int on, float ipd, float qx, float qy, float qz, float qw) {
+    xr.on = on != 0, xr.ipd = ipd, xr.q[0] = qx, xr.q[1] = qy, xr.q[2] = qz, xr.q[3] = qw;
+}
+
+/* A VR headset's controllers (webxr spec), as a gamepad: the left stick moves, the right stick looks; the bits of
+   buttons are the right trigger (dig), right A (scan), left trigger (run), left X (the outside view), right B (up the
+   chain) and left Y (down the chain). */
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+void fk_web_xr_pad(float lx, float ly, float rx, float ry, int buttons) {
+    static const char *const AXES[4] = {"leftx", "lefty", "rightx", "righty"};
+    static const char *const BUTTONS[6] = {"rightshoulder", "x", "a", "back", "dpup", "dpdown"};
+    float axes[4] = {lx, ly, rx, ry};
+    for (int k = 0; k < 4; k++) fk_input_emulate_axis(fk_input_axis_code(AXES[k]), axes[k]);
+    for (int k = 0; k < 6; k++) fk_input_emulate_button(fk_input_button_code(BUTTONS[k]), (buttons >> k & 1) != 0);
+}
+
+bool fk_input_xr(float *ipd, float q[4]) {
+    if (!xr.on) return false;
+    *ipd = xr.ipd;
+    memcpy(q, xr.q, sizeof xr.q);
+    return true;
+}
 
 #define SYNTH_WINDOW_NS 500000000ull /* mouse events this soon after a touch come from the touch */
 #define MAX_FRESH 32
@@ -249,5 +283,6 @@ void fk_input_rumble(float low, float high, int ms) {
     SDL_free(ids);
 #ifdef __EMSCRIPTEN__
     if (strcmp(in.device, "touch") == 0 && (low > 0.2f || high > 0.2f)) vibrate(ms); /* phones have one motor: strong rumbles only */
+    if (xr.on) xr_pulse(low > high ? low : high, ms); /* the headset's controllers */
 #endif
 }

@@ -174,6 +174,43 @@ await test('a saved game survives a reload', async (page) => {
   assert(dialogs.length === 0, `errors: ${dialogs.join(' | ')}`);
 });
 
+await test('a VR headset: ENTER VR starts the session, the game renders its frames, ending restores the page', async (page) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.addInitScript(() => { // a mocked headset (navigator.xr): two eyes 64 mm apart, looking straight ahead
+    let ended;
+    window.XRWebGLLayer = class { constructor() { this.framebuffer = null; } };
+    const session = {
+      inputSources: [{ handedness: 'right', gamepad: { axes: [0, 0, 0.3, 0], buttons: [{ pressed: false }],
+        hapticActuators: [{ pulse: () => {} }] } }],
+      updateRenderState() {},
+      requestReferenceSpace: async () => ({}),
+      requestAnimationFrame: (cb) => setTimeout(() => cb(performance.now(), {
+        getViewerPose: () => ({ transform: { orientation: { x: 0, y: 0, z: 0, w: 1 } },
+          views: [{ transform: { position: { x: -0.032, y: 0, z: 0 } } }, { transform: { position: { x: 0.032, y: 0, z: 0 } } }] }),
+      }), 16),
+      addEventListener: (name, fn) => { if (name === 'end') ended = fn; },
+      end: async () => ended && ended(),
+    };
+    window.fakeXRSession = session;
+    Object.defineProperty(navigator, 'xr', { value: {
+      isSessionSupported: async (mode) => mode === 'immersive-vr',
+      requestSession: async () => session,
+    } });
+  });
+  await page.goto(base);
+  await page.waitForFunction(() => document.getElementById('message').hidden, null, { timeout: 60000 });
+  const button = page.locator('#enter-vr');
+  await button.waitFor({ state: 'visible', timeout: 20000 });
+  await button.click();
+  await page.waitForFunction(() => document.body.dataset.xr === 'on', null, { timeout: 20000 });
+  await page.waitForTimeout(1500); // session frames: stereo, the head pose
+  await page.evaluate(() => window.fakeXRSession.end());
+  await page.waitForFunction(() => document.body.dataset.xr === 'off', null, { timeout: 20000 });
+  assert(await button.isVisible(), 'ENTER VR is offered again');
+  assert(errors.length === 0, 'no page errors: ' + errors.join('; '));
+});
+
 await test('browsers without WebGL 2 get a message', async (page) => {
   await page.addInitScript(() => {
     const getContext = HTMLCanvasElement.prototype.getContext;

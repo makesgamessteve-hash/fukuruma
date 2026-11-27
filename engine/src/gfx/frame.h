@@ -126,6 +126,7 @@ typedef struct {
     float sky_rotation[9];  /* turns world directions into the sky's (column-major) */
     fk_atmosphere atmosphere;
     fk_water water;
+    float stereo_ipd; /* metres between the eyes: > 0 renders both eyes side by side (webxr spec); kept across frames */
 } fk_frame;
 
 fk_frame *fk_frame_get(void);

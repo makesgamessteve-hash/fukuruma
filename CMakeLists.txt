@@ -78,13 +78,14 @@ if(EMSCRIPTEN)
   set_target_properties(fukuruma PROPERTIES SUFFIX ".html")
   target_link_options(fukuruma PRIVATE
     -sMIN_WEBGL_VERSION=2 -sMAX_WEBGL_VERSION=2 -sGL_ENABLE_GET_PROC_ADDRESS=1
-    -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -lidbfs.js --pre-js ${CMAKE_SOURCE_DIR}/web/storage.js
+    -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -lidbfs.js --pre-js ${CMAKE_SOURCE_DIR}/web/storage.js --pre-js ${CMAKE_SOURCE_DIR}/web/xr.js
     --shell-file ${CMAKE_SOURCE_DIR}/web/shell.html
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/data@/data"
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/tests/game@/tests/game")
   # shortcut: relinks only when the shell or a data/test file listed at configure time changes; re-run cmake after adding files.
   file(GLOB_RECURSE FK_WEB_DEPS ${CMAKE_SOURCE_DIR}/data/* ${CMAKE_SOURCE_DIR}/tests/game/*)
-  set_property(TARGET fukuruma APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/web/shell.html ${FK_WEB_DEPS})
+  set_property(TARGET fukuruma APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/web/shell.html ${CMAKE_SOURCE_DIR}/web/xr.js
+    ${FK_WEB_DEPS})
   add_custom_command(TARGET fukuruma POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy fukuruma.html index.html
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -170,6 +171,7 @@ add_test(NAME game_travel COMMAND fukuruma --headless --scenario ${FK_SRC}/tests
 add_test(NAME game_fukuruma COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/fukuruma.lua)
 add_test(NAME game_chain_views COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/chain_views.lua)
 add_test(NAME game_touch_layout COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/touch_layout.lua)
+add_test(NAME game_stereo COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/stereo.lua)
 add_test(NAME game_clouds COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/clouds.lua)
 add_test(NAME game_dig COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/dig.lua)
 add_test(NAME game_descent COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/descent.lua)
@@ -185,10 +187,10 @@ set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_
   game_systems_norender game_navigation_norender PROPERTIES LABELS unit)
 set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible game_input
   game_showcase_lighting game_showcase_materials game_showcase_skinning game_feel game_graphics_menu game_first_person
-  game_scale_ladder game_physics game_navigation game_planets game_stars game_descent game_terrain_materials game_dig game_clouds game_water game_weather game_rivers game_chain game_drive game_travel game_fukuruma game_chain_views game_touch_layout PROPERTIES LABELS game)
+  game_scale_ladder game_physics game_navigation game_planets game_stars game_descent game_terrain_materials game_dig game_clouds game_water game_weather game_rivers game_chain game_drive game_travel game_fukuruma game_chain_views game_touch_layout game_stereo PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
-set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation game_terrain_materials game_dig game_clouds game_water game_weather game_rivers game_chain game_drive game_travel game_fukuruma game_chain_views game_touch_layout PROPERTIES TIMEOUT 300)
+set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation game_terrain_materials game_dig game_clouds game_water game_weather game_rivers game_chain game_drive game_travel game_fukuruma game_chain_views game_touch_layout game_stereo PROPERTIES TIMEOUT 300)
 # The sandbox scenes draw the world's ground (software rendering, instrumented builds): slower than the rest.
 set_tests_properties(game_boot game_boot_reproducible game_input game_feel game_first_person game_showcase_lighting
   game_physics game_graphics_menu PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
