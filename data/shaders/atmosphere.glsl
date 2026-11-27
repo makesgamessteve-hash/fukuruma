@@ -78,6 +78,7 @@ void main() {
     vec3 seen = scene * transmit + inscatter;
     // Clouds: marched along the ray through their layer, in front of what is drawn; lit by the star through the cloud
     // above each sample (forward-scattering, with a little light from the sky), seen through half the air's haze.
+#ifdef CLOUDS
     if (u_cloud_steps > 0) {
         vec2 outer = sphere(cam, dir, u_radius + u_cloud_layer.y), inner = sphere(cam, dir, u_radius + u_cloud_layer.x);
         float hc = length(cam) - u_radius, a, b;
@@ -110,6 +111,7 @@ void main() {
             seen = seen * t + lit * sqrt(transmit);
         }
     }
+#endif
     o_color = vec4(seen, 1.0);
 }
 #endif

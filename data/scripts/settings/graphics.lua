@@ -91,7 +91,7 @@ function graphics.apply(state)
     width = resolution.width, height = resolution.height, fill = state.fill,
     supersample = state.aa == "ssaa" and 2 or 1, taa = state.aa == "taa",
     shadow_cascades = state.shadows, shadow_size = state.shadow_size, ao_samples = state.ao,
-    max_lights = state.lights, max_particles = state.particles, dither = state.dither,
+    max_lights = state.lights, max_particles = state.particles, dither = state.dither, clouds = (state.clouds or 24) > 0,
   })
   fk.gfx.palette(state.palette and graphics.PALETTE or nil)
   require("planet_view").PIXELS = state.terrain or 4

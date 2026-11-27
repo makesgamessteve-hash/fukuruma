@@ -18,6 +18,7 @@ typedef struct {
     bool bloom, hdr, dither;
     bool taa;  /* temporal anti-aliasing */
     bool fill; /* the internal image takes the window's shape; height is the target */
+    bool clouds; /* the cloud layer's code is compiled into the shaders (software renderers run it even when unused) */
 } fk_gfx_settings;
 
 typedef struct {

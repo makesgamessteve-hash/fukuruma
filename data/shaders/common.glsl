@@ -121,6 +121,9 @@ float cloud_density(vec3 p) {
 }
 // How much of the star's light gets through the clouds to p (relative to the centre), along sun.
 float cloud_shadow(vec3 p, vec3 sun) {
+#ifndef CLOUDS
+    return 1.0;
+#else
     if (u_cloud_steps == 0) return 1.0;
     float depth = 0.0, ds = (u_cloud_layer.y - u_cloud_layer.x) / 4.0;
     vec3 up = normalize(p);
@@ -128,6 +131,7 @@ float cloud_shadow(vec3 p, vec3 sun) {
     float start = max(u_cloud_layer.x - h, 0.0) / along; // to the bottom of the layer, along the sun
     for (int i = 0; i < 4; i++) depth += cloud_density(p + sun * (start + (float(i) + 0.5) * ds / along)) * ds / along;
     return exp(-depth);
+#endif
 }
 
 // Dug ground (voxel-terrain spec): terrain pixels inside a dig are left out (its walls are their own mesh).

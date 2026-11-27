@@ -640,6 +640,7 @@ static int l_configure(lua_State *L) {
     s.dither = bool_field(L, "dither", s.dither);
     s.taa = bool_field(L, "taa", s.taa);
     s.fill = bool_field(L, "fill", s.fill);
+    s.clouds = bool_field(L, "clouds", s.clouds);
     const char *bad = fk_gfx_settings_check(&s);
     if (bad) return luaL_error(L, "configure: '%s' is out of range", bad);
     *current = s;
@@ -672,6 +673,8 @@ static int l_settings(lua_State *L) {
     lua_setfield(L, -2, "taa");
     lua_pushboolean(L, s->fill);
     lua_setfield(L, -2, "fill");
+    lua_pushboolean(L, s->clouds);
+    lua_setfield(L, -2, "clouds");
     return 1;
 }
 

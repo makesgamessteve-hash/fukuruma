@@ -1,6 +1,9 @@
 /* The render pipeline: shadows, G-buffer, ambient occlusion, lighting, bloom, exposure, post,
    supersample filter, overlay and the integer upscale to the window. */
 #include <math.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten/html5_webgl.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -132,9 +135,9 @@ bool fk_gfx_configure(void) {
     R.sw = w * R.s.supersample, R.sh = h * R.s.supersample;
 
     char defines[256], all[512];
-    snprintf(defines, sizeof defines, "#define SHADOW_CASCADES %d\n#define SHADOW_SIZE %d\n#define AO_SAMPLES %d\n#define MAX_LIGHTS %d\n%s%s%s%s",
+    snprintf(defines, sizeof defines, "#define SHADOW_CASCADES %d\n#define SHADOW_SIZE %d\n#define AO_SAMPLES %d\n#define MAX_LIGHTS %d\n%s%s%s%s%s",
              R.s.shadow_cascades, R.s.shadow_size, R.s.ao_samples, R.s.max_lights, R.s.hdr ? "#define HDR\n" : "",
-             R.s.hdr && R.s.bloom ? "#define BLOOM\n" : "", R.s.dither ? "#define DITHER\n" : "", R.s.taa ? "#define TAA\n" : "");
+             R.s.hdr && R.s.bloom ? "#define BLOOM\n" : "", R.s.dither ? "#define DITHER\n" : "", R.s.taa ? "#define TAA\n" : "", R.s.clouds ? "#define CLOUDS\n" : "");
     bool ok = true;
     for (int i = 0; i < P_COUNT; i++) {
         snprintf(all, sizeof all, "%s%s", defines, program_defines[i]);
@@ -235,6 +238,12 @@ bool fk_gfx_init(void) {
     for (int f = 0; f < 6; f++) gl.TexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + (GLenum)f, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, black);
     gl.TexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     const char *renderer = (const char *)gl.GetString(GL_RENDERER);
+#ifdef __EMSCRIPTEN__ /* browsers report "WebKit WebGL": the real renderer tells software renderers apart */
+    if (emscripten_webgl_enable_extension(emscripten_webgl_get_current_context(), "WEBGL_debug_renderer_info")) {
+        const char *unmasked = (const char *)gl.GetString(0x9246); /* UNMASKED_RENDERER_WEBGL */
+        if (unmasked) renderer = unmasked;
+    }
+#endif
     snprintf(R.renderer, sizeof R.renderer, "%s", renderer ? renderer : "unknown");
 
     /* The 8x8 font atlas for text and rectangles. */
@@ -366,7 +375,7 @@ static void draw_meshes(GLuint program, bool materials, unsigned slices) {
 
 /* The cloud layer for the passes that see it (the air, and the lighting for the clouds' shadows). */
 static void cloud_uniforms(GLuint program, const fk_atmosphere *a) {
-    int steps = a->on ? a->cloud_steps : 0;
+    int steps = a->on && R.s.clouds ? a->cloud_steps : 0;
     gl.Uniform1i(LOC("u_cloud_steps"), steps);
     if (!steps) return;
     gl.Uniform3fv(LOC("u_centre"), 1, a->centre);
