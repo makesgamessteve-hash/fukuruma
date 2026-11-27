@@ -47,6 +47,7 @@ typedef GLdouble fk_gl_depth;
     X(void, Uniform3fv, (GLint, GLsizei, const GLfloat *))                                                     \
     X(void, Uniform4fv, (GLint, GLsizei, const GLfloat *))                                                     \
     X(void, UniformMatrix4fv, (GLint, GLsizei, GLboolean, const GLfloat *))                                    \
+    X(void, UniformMatrix3fv, (GLint, GLsizei, GLboolean, const GLfloat *))                                    \
     X(void, GenVertexArrays, (GLsizei, GLuint *))                                                              \
     X(void, BindVertexArray, (GLuint))                                                                         \
     X(void, DeleteVertexArrays, (GLsizei, const GLuint *))                                                     \

@@ -131,6 +131,22 @@ return {
     fk.input = real
     assert(ok, err)
   end,
+  ["M opens the maps, which hold the suit; a jump plays its sequence"] = function()
+    start()
+    local navmap = require("navmap")
+    with_keys({ M = true }, function() game.input() end)
+    assert(navmap.open)
+    with_keys({ W = true }, function() game.input() end)
+    sim.step(game)
+    assert(sim.get(game.suit, "suit").wz == 0, "the suit holds still while the maps are open")
+    with_keys({}, function() game.input() end)
+    with_keys({ M = true }, function() game.input() end)
+    assert(not navmap.open, "M closes them")
+    sim.emit("jump", {})
+    sim.step(game)
+    for _ = 1, 100 do game.draw(1, 1 / 60) end
+    assert(game.jump_fx == nil, "the sequence ends")
+  end,
   ["the menu holds the suit"] = function()
     start()
     with_keys({ Escape = true }, function() game.input() end)

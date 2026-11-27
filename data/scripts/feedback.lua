@@ -19,6 +19,8 @@ return {
     rumble = { 0.45, 0.2, 0.12 },
     sound = "impact",
   },
+  -- The Jump Ship's drive: a long, deep shake and rumble with the jump's roar.
+  jump = { trauma = 0.6, rumble = { 0.8, 0.6, 0.9 }, sound = "jump" },
   -- The suit's sensor pulse: a ring of light racing over the ground, a cyan flash, a ping.
   scan = {
     particles = {

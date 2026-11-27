@@ -71,7 +71,12 @@ void fk_world_destroy(fk_world *w) {
     free(w);
 }
 
-void fk_world_gravity(fk_world *w, const float gravity[3]) { v3_copy(w->gravity, gravity); }
+void fk_world_gravity(fk_world *w, const float gravity[3]) {
+    v3_copy(w->gravity, gravity);
+    for (int i = 0; i < w->n; i++) w->bodies[i].asleep = false, w->bodies[i].still = 0;
+}
+
+const float *fk_world_get_gravity(const fk_world *w) { return w->gravity; }
 int fk_world_count(const fk_world *w) { return w->n; }
 fk_body *fk_world_bodies(fk_world *w) { return w->bodies; }
 uint32_t fk_world_next_id(const fk_world *w) { return w->next_id; }

@@ -235,6 +235,23 @@ static int l_step(lua_State *L) {
     return 1;
 }
 
+/* world:gravity([{x, y, z}]) -> the world's gravity (setting it wakes every body) */
+static int l_gravity(lua_State *L) {
+    fk_world *w = world_arg(L);
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        float g[3];
+        for (int i = 0; i < 3; i++) {
+            lua_rawgeti(L, 2, i + 1);
+            g[i] = num(L, -1, "gravity");
+            lua_pop(L, 1);
+        }
+        fk_world_gravity(w, g);
+    }
+    push3(L, fk_world_get_gravity(w), 3);
+    return 1;
+}
+
 static int l_count(lua_State *L) {
     lua_pushinteger(L, fk_world_count(world_arg(L)));
     return 1;
@@ -253,6 +270,8 @@ static int l_state(lua_State *L) {
     lua_createtable(L, 0, 3);
     lua_pushinteger(L, fk_world_next_id(w));
     lua_setfield(L, -2, "next_id");
+    push3(L, fk_world_get_gravity(w), 3);
+    lua_setfield(L, -2, "gravity");
     int n = fk_world_count(w);
     lua_createtable(L, n, 0);
     for (int i = 0; i < n; i++) {
@@ -360,7 +379,10 @@ static int l_restore(lua_State *L) {
         lua_pop(L, 1);
         cache[i] = (fk_cached){(uint32_t)row[0], (uint32_t)row[1], (uint32_t)row[2], (float)row[3], {(float)row[4], (float)row[5]}};
     }
+    float gravity[3];
+    bool has_gravity = vec(L, 2, "gravity", gravity, 3);
     fk_world_clear(w, (uint32_t)next);
+    if (has_gravity) fk_world_gravity(w, gravity);
     for (int i = 0; i < nb; i++) fk_world_put(w, &list[i]); /* cannot fail: the ids were checked above */
     fk_world_put_cache(w, cache, nc);
     return 0;
@@ -369,7 +391,7 @@ static int l_restore(lua_State *L) {
 void fk_lua_physics_open(lua_State *L) {
     static const luaL_Reg methods[] = {{"add", l_add},       {"character", l_character}, {"remove", l_remove},
                                        {"get", l_get},       {"set", l_set},             {"move", l_move},
-                                       {"step", l_step},     {"count", l_count},         {"state", l_state},
+                                       {"step", l_step},     {"count", l_count},         {"gravity", l_gravity},         {"state", l_state},
                                        {"restore", l_restore}, {NULL, NULL}};
     luaL_newmetatable(L, "fk.world");
     lua_pushcfunction(L, l_gc);

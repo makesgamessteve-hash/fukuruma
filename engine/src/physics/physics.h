@@ -46,7 +46,8 @@ typedef struct fk_world fk_world;
 
 fk_world *fk_world_create(const float gravity[3]);
 void fk_world_destroy(fk_world *w);
-void fk_world_gravity(fk_world *w, const float gravity[3]);
+void fk_world_gravity(fk_world *w, const float gravity[3]); /* wakes every body */
+const float *fk_world_get_gravity(const fk_world *w);
 /* Adds a body (kind and shape set by the caller, mass 0 for static and kinematic bodies) and returns its id. */
 uint32_t fk_world_add(fk_world *w, const fk_body *init, float mass);
 bool fk_world_remove(fk_world *w, uint32_t id);

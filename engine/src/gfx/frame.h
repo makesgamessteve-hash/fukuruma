@@ -84,6 +84,9 @@ typedef struct {
     int palette_size;                 /* 0: palette mode off */
     float slice_near[FK_SLICE_COUNT], slice_far[FK_SLICE_COUNT]; /* metres; FK_SLICE_LOCAL's are unused */
     int slice; /* the slice of the next draws */
+    const fk_texture *sky_map; /* a cube map shown where nothing is drawn, or NULL */
+    float sky_strength;     /* multiplies the sky */
+    float sky_rotation[9];  /* turns world directions into the sky's (column-major) */
 } fk_frame;
 
 fk_frame *fk_frame_get(void);

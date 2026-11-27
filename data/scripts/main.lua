@@ -4,6 +4,8 @@
 -- sprint with Shift, A or RUN; scan with E, X or SCAN. V, the gamepad's Back button or VIEW opens the survey
 -- drone's outside view, which is for looking only. Escape, Start or MENU opens the settings; F5 saves, F9 loads.
 -- The suit is a physics character: it climbs low steps, stops at walls and the beacon tower, and pushes the crates.
+-- The range stands on a world of a generated star system; M, Y or MAP opens the galaxy and system maps, from which the
+-- Jump Ship jumps the range to another star (the sky, the light and gravity follow).
 -- Simulation (sim.*) uses only arithmetic and sqrt, so it is the same on every platform; animation, camera
 -- and effects are presentation.
 local mat4 = require("mat4")
@@ -27,6 +29,8 @@ local save = require("fk.save")
 local tween = require("fk.tween")
 local hud = require("hud")
 local frames = require("fk.frames")
+local universe = require("universe")
+local navmap = require("navmap")
 
 local game = {}
 
@@ -38,7 +42,6 @@ local EYE = { 0, 0.26, 0.22 }  -- the eyes behind the visor, from the head joint
 local SUIT_RADIUS, SUIT_HEIGHT = 0.8, 3.6
 local CRATES = { { -6, 5 }, { -4.6, 7.2 }, { 9, -4 } }
 local CRATE_SIZE, CRATE_MASS = 1.6, 400 -- kg: the suit can push them
-local GRAVITY = -9.81
 
 function game.init()
   game.graphics = graphics.load(fk.gfx.device())
@@ -76,7 +79,7 @@ function game.init()
   touch_view.init()
 
   -- The physics world: the deck, walls along its edges, the beacon tower, the crates and the suit.
-  game.world = fk.physics.world({ gravity = { 0, GRAVITY, 0 } })
+  game.world = fk.physics.world({ gravity = { 0, -9.81, 0 } })
   local half = GROUND_SIZE / 2
   game.world:add({ shape = "box", size = { GROUND_SIZE, 1, GROUND_SIZE }, position = { 0, -0.5, 0 }, friction = 0.8 })
   for _, wall in ipairs({ { half, 0, 1, GROUND_SIZE }, { -half, 0, 1, GROUND_SIZE }, { 0, half, GROUND_SIZE, 1 }, { 0, -half, GROUND_SIZE, 1 } }) do
@@ -92,6 +95,9 @@ function game.init()
   local body = game.world:character({ radius = SUIT_RADIUS, height = SUIT_HEIGHT, position = { 0, SUIT_HEIGHT / 2, 0 },
     step = 0.5, slope = 40, push = 800 })
   sim.attach("physics", { state = function() return game.world:state() end, restore = function(data) game.world:restore(data) end })
+  -- The range stands on a world of the current star system; its gravity is the world's.
+  universe.install(function(g) game.world:gravity({ 0, -g, 0 }) end)
+  game.sky_sphere = fk.gfx.mesh(shapes.sphere(1, 24, { 1, 1, 1 }))
 
   game.suit = sim.create()
   sim.set(game.suit, "suit", { x = 0, y = 0, z = 0, vx = 0, vy = 0, vz = 0, fx = 0, fz = 1, wx = 0, wz = 0, lx = 0, lz = 1,
@@ -106,7 +112,8 @@ function game.init()
     body.scan_at = sim.tick + SCAN_COOLDOWN
     sim.emit("scan", { position = { body.x, 0, body.z } })
   end)
-  feel.listen(sim, { scan = feedback.scan, impact = feedback.impact }, function() return game.listener() end)
+  feel.listen(sim, { scan = feedback.scan, impact = feedback.impact, jump = feedback.jump }, function() return game.listener() end)
+  sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
   sim.listen("scan", function() -- a scan swells the discovery theme for a while
     music.play("discovery", 2)
     game.discovery_until = feel.time + 25
@@ -120,6 +127,7 @@ function game.init()
   actions.define("look_y", { kind = "axis", gamepad = "righty" })
   actions.define("view", { kind = "button", keys = { "V" }, gamepad = { "back" }, touch = "view" })
   actions.define("menu", { kind = "button", keys = { "Escape" }, gamepad = { "start" }, touch = "menu" })
+  actions.define("map", { kind = "button", keys = { "M" }, gamepad = { "y" }, touch = "map" })
   actions.define("save", { kind = "button", keys = { "F5" } })
   actions.define("load", { kind = "button", keys = { "F9" } })
   menu.actions = { save = function() game.save() end, load = function() game.load() end }
@@ -127,6 +135,7 @@ function game.init()
   actions.touch_button("scan", 0.72, 0.84, 0.07)
   actions.touch_button("menu", 0.94, 0.1, 0.06)
   actions.touch_button("view", 0.94, 0.27, 0.05)
+  actions.touch_button("map", 0.94, 0.42, 0.05)
   game.control = { x = 0, z = 0, fx = 0, fz = 1 }
 end
 
@@ -176,7 +185,12 @@ end
 -- The menu and the outside view hold the suit: they are for looking only.
 function game.input()
   actions.update()
-  if actions.pressed("menu") then menu.toggle() end
+  if navmap.open then -- the maps take the controls; the suit holds still
+    local target = navmap.update(game.frame_dt)
+    if target then sim.send("jump", target) end
+    if actions.pressed("map") and navmap.open then navmap.toggle() end
+  elseif actions.pressed("menu") then menu.toggle()
+  elseif actions.pressed("map") and not menu.open then navmap.toggle() end
   if actions.pressed("save") then game.save() end
   if actions.pressed("load") then game.load() end
   if actions.pressed("view") and not menu.open then
@@ -190,12 +204,13 @@ function game.input()
     fk.input.capture(capture)
     game.captured = capture
   end
-  if not menu.open then look() end
+  local busy = menu.open or navmap.open
+  if not busy then look() end
   local x, y = actions.value("move_x"), actions.value("move_y")
   local len = math.sqrt(x * x + y * y)
   if len > 1 then x, y = x / len, y / len end
   local speed = actions.held("sprint") and game.RUN or game.WALK
-  if menu.open or game.view == "drone" then x, y = 0, 0 end
+  if busy or game.view == "drone" then x, y = 0, 0 end
   local forward, right = game.helmet:ground_axes()
   local wx, wz = (right[1] * x - forward[1] * y) * speed, (right[3] * x - forward[3] * y) * speed
   local fx, fz = math.floor(forward[1] * 1000 + 0.5) / 1000, math.floor(forward[3] * 1000 + 0.5) / 1000
@@ -204,7 +219,7 @@ function game.input()
     game.control = { x = wx, z = wz, fx = fx, fz = fz }
     sim.send("move", { x = wx, z = wz, fx = fx, fz = fz })
   end
-  if actions.pressed("scan") and not menu.open and game.view == "helmet" then sim.send("scan", {}) end
+  if actions.pressed("scan") and not busy and game.view == "helmet" then sim.send("scan", {}) end
 end
 
 -- The suit accelerates towards the wanted velocity and turns to face where the Commander looks; the physics
@@ -218,7 +233,7 @@ function game.tick()
     local step = ACCEL * dt
     if d <= step then b.vx, b.vz = b.wx, b.wz
     else b.vx, b.vz = b.vx + dx / d * step, b.vz + dz / d * step end
-    b.vy = b.vy + GRAVITY * dt
+    b.vy = b.vy + game.world:gravity()[2] * dt
     local p, grounded = game.world:move(b.body, { b.vx * dt, b.vy * dt, b.vz * dt }, dt)
     b.vx, b.vz = (p[1] - b.x) / dt, (p[3] - b.z) / dt
     if grounded then b.vy = 0 end
@@ -267,10 +282,20 @@ local function eye_position(model, head)
   return { sx + (ax - sx) * k, sy + (ay - sy) * k, sz + (az - sz) * k }
 end
 
+-- The sky over the range: the real star of the current system, the world's air, its other bodies and the stars.
+local function draw_sky()
+  local t = sim.tick * sim.dt
+  local light = universe.light(t)
+  local b = light.background
+  fk.gfx.clear(b[1], b[2], b[3])
+  if light.sun.intensity > 0 then fk.gfx.sun(light.sun) else fk.gfx.sun({ direction = { 0, 1, 0 }, intensity = 0 }) end
+  fk.gfx.ambient({ sky = light.ambient.sky, ground = light.ambient.ground, intensity = 1 })
+  fk.gfx.sky(universe.view().map, { strength = light.stars, rotation = light.galaxy_rotation })
+  universe.draw_sky(t, game.sky_sphere, light)
+end
+
 local function draw_stage(dt)
-  fk.gfx.clear(0.13, 0.17, 0.3) -- dusk sky
-  fk.gfx.sun({ direction = { 0.55, 0.45, -0.7 }, color = { 1, 0.78, 0.55 }, intensity = 5 }) -- low, behind the camera
-  fk.gfx.ambient({ sky = { 0.35, 0.45, 0.7 }, ground = { 0.28, 0.22, 0.16 }, intensity = 0.5 })
+  draw_sky()
   fk.gfx.grade({ exposure = -0.6, contrast = 1.1, saturation = 1.1 })
   fk.gfx.light({ position = { 6, 5.8, 4 }, color = { 1, 0.62, 0.3 }, intensity = 22, radius = 14 })
   fk.gfx.draw(game.ground, mat4.identity(), { texture = game.deck, roughness = 0.9 })
@@ -314,6 +339,22 @@ function game.draw(alpha, dt)
     hud.visor({ yaw = game.helmet.yaw, speed = speed, turn_rate = game.helmet.turn_rate, vignette = comfort.current.vignette,
       scan = math.max(0, math.min(1, 1 - (body.scan_at - sim.tick) / SCAN_COOLDOWN)) })
   end
+  if game.jump_fx then -- streaks racing out of the centre, then a flash that hides the arrival
+    game.jump_fx = game.jump_fx + dt
+    local k = game.jump_fx
+    if k < 0.8 then
+      for i = 1, 40 do
+        local a, r = i * 2.399963, (i * 37 % 100) / 100
+        local len = (k / 0.8) * (20 + r * 60)
+        local x0, y0 = w / 2 + fk.math.cos(a) * (10 + r * w * k), h / 2 + fk.math.sin(a) * (10 + r * h * k)
+        fk.gfx.rect(math.floor(x0), math.floor(y0), math.max(1, math.floor(math.abs(fk.math.cos(a)) * len)), 1, { 0.8, 0.9, 1, 0.8 })
+      end
+    end
+    local flash = k < 0.5 and k / 0.5 or math.max(0, 1 - (k - 0.5) / 1.0)
+    fk.gfx.rect(0, 0, w, h, { 0.9, 0.95, 1, flash })
+    if k > 1.5 then game.jump_fx = nil end
+  end
+  navmap.draw(feel.time)
   touch_view.draw(actions.touch_controls())
   if game.toast then
     local a = game.toast.fade:update(dt)

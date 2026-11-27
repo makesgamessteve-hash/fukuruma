@@ -42,6 +42,7 @@ steps, stop at walls and shove the crates. Next is M3, galaxy and star systems (
 | Sprint | Shift | A | RUN button |
 | Sensor scan | E | X | SCAN button |
 | Outside view (survey drone, for looking only) | V | Back | VIEW button |
+| Galaxy and system maps (Tab switches, ← → choose, Enter jumps) | M | Y (X switches) | MAP button |
 | Settings (graphics, comfort, audio) | Escape | Start | MENU button |
 | Quick save / quick load | F5 / F9 | in the settings menu | in the settings menu |
 | In the menu: choose, change, close | ↑ / ↓, ← / →, Escape (or the mouse) | d-pad or stick, A, B | tap a row, tap left or right of a value |

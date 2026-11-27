@@ -39,3 +39,5 @@ void fk_gfx_mesh_destroy(fk_mesh *m);
    linear data (normals, roughness). Creates the mipmaps. Replaces the pixels of an existing texture. */
 void fk_gfx_texture_upload(fk_texture *t, const uint8_t *rgba, int width, int height, bool srgb);
 void fk_gfx_texture_destroy(fk_texture *t);
+/* A cube map from 6 faces of size x size linear RGB floats (GL face order), stored as half floats. */
+void fk_gfx_cubemap_upload(fk_texture *t, const float *rgb, int size);

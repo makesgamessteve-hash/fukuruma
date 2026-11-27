@@ -1,5 +1,7 @@
 /* GL function loading, shader programs and meshes. */
 #include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -126,6 +128,38 @@ void fk_gfx_texture_upload(fk_texture *t, const uint8_t *rgba, int width, int he
     gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     t->width = width;
     t->height = height;
+}
+
+static uint16_t half(float f) { /* float to IEEE half, rounding to nearest; no NaNs here */
+    uint32_t x;
+    memcpy(&x, &f, sizeof x);
+    uint32_t sign = (x >> 16) & 0x8000u, e = (x >> 23) & 0xff, m = x & 0x7fffffu;
+    if (e < 103) return (uint16_t)sign;                    /* too small: zero */
+    if (e > 142) return (uint16_t)(sign | 0x7bffu);         /* too large: the largest half */
+    if (e < 113) return (uint16_t)(sign | ((m | 0x800000u) >> (126 - e))); /* subnormal */
+    return (uint16_t)(sign | ((e - 112) << 10) | ((m + 0x1000u) >> 13));
+}
+
+void fk_gfx_cubemap_upload(fk_texture *t, const float *rgb, int size) {
+    uint16_t *px = malloc((size_t)size * size * 4 * sizeof *px);
+    if (!px) return;
+    if (!t->id) gl.GenTextures(1, &t->id);
+    gl.BindTexture(GL_TEXTURE_CUBE_MAP, t->id);
+    gl.PixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    for (int f = 0; f < 6; f++) {
+        const float *src = &rgb[(size_t)f * size * size * 3];
+        for (int i = 0; i < size * size; i++) {
+            for (int k = 0; k < 3; k++) px[i * 4 + k] = half(src[i * 3 + k]);
+            px[i * 4 + 3] = 0x3c00u; /* 1 */
+        }
+        gl.TexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + (GLenum)f, 0, GL_RGBA16F, size, size, 0, GL_RGBA, GL_HALF_FLOAT, px);
+    }
+    free(px);
+    gl.TexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    gl.TexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    gl.TexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl.TexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    t->width = t->height = size;
 }
 
 void fk_gfx_texture_destroy(fk_texture *t) {

@@ -19,6 +19,9 @@ uniform vec3 u_sun_color;
 uniform vec3 u_sky;
 uniform vec3 u_ground;
 uniform vec3 u_background;
+uniform samplerCube u_sky_map; // the stars and the galactic band (black without a sky)
+uniform float u_sky_strength;
+uniform mat3 u_sky_rotation;  // world directions into the sky's
 uniform float u_exposure_bias;
 uniform int u_nlights;
 #if MAX_LIGHTS > 0
@@ -63,7 +66,9 @@ void main() {
     float depth = texture(u_depth, v_uv).r;
     vec3 color;
     if (is_sky(depth)) {
-        color = u_background;
+        vec4 far = u_slice_inv_proj[1] * vec4(v_uv * 2.0 - 1.0, 1.0, 1.0); // through the pixel, in view space
+        vec3 dir = normalize(mat3(u_inv_view) * (far.xyz / far.w));
+        color = u_background + texture(u_sky_map, u_sky_rotation * dir).rgb * u_sky_strength;
     } else {
         vec3 world = (u_inv_view * vec4(view_position(v_uv, depth), 1.0)).xyz;
         vec4 base = texture(u_base, v_uv);

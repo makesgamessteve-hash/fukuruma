@@ -49,6 +49,13 @@ local function activate(row, step)
   end
 end
 
+-- Polls the controls for screens that are not menus (the maps): the presses of this frame by name (up, down, left,
+-- right, confirm, back, click). Call once per frame.
+function ui.input()
+  poll()
+  return pressed
+end
+
 function ui.focus()
   return focus
 end

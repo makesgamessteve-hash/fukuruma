@@ -45,7 +45,7 @@ static const char *const program_defines[P_COUNT] = {
 
 static struct {
     bool hdr_supported;
-    GLuint vao, white, font, sprite_vao, sprite_vbo, bones, particle_vao, particle_vbo; /* survive reconfiguration */
+    GLuint vao, white, font, sprite_vao, sprite_vbo, bones, particle_vao, particle_vbo, black_cube; /* survive reconfiguration */
     GLuint programs[P_COUNT];
     char renderer[128];
     GLuint history[2], fb_history[2]; /* temporal anti-aliasing */
@@ -110,13 +110,13 @@ static void release(void) {
     gl.DeleteFramebuffers((GLsizei)(sizeof fbs / sizeof *fbs), fbs);
     bool hdr_supported = R.hdr_supported;
     GLuint vao = R.vao, white = R.white, font = R.font, sprite_vao = R.sprite_vao, sprite_vbo = R.sprite_vbo, bones = R.bones;
-    GLuint particle_vao = R.particle_vao, particle_vbo = R.particle_vbo;
+    GLuint particle_vao = R.particle_vao, particle_vbo = R.particle_vbo, black_cube = R.black_cube;
     char renderer[sizeof R.renderer];
     memcpy(renderer, R.renderer, sizeof renderer);
     memset(&R, 0, sizeof R);
     R.hdr_supported = hdr_supported, R.vao = vao, R.white = white, R.font = font;
     R.sprite_vao = sprite_vao, R.sprite_vbo = sprite_vbo, R.bones = bones;
-    R.particle_vao = particle_vao, R.particle_vbo = particle_vbo;
+    R.particle_vao = particle_vao, R.particle_vbo = particle_vbo, R.black_cube = black_cube;
     memcpy(R.renderer, renderer, sizeof renderer);
 }
 
@@ -225,6 +225,11 @@ bool fk_gfx_init(void) {
     gl.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 4, 1, 0, GL_RGBA, GL_FLOAT, identity);
     gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl.GenTextures(1, &R.black_cube); /* the sky when there is none */
+    gl.BindTexture(GL_TEXTURE_CUBE_MAP, R.black_cube);
+    const unsigned char black[4] = {0, 0, 0, 255};
+    for (int f = 0; f < 6; f++) gl.TexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + (GLenum)f, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, black);
+    gl.TexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     const char *renderer = (const char *)gl.GetString(GL_RENDERER);
     snprintf(R.renderer, sizeof R.renderer, "%s", renderer ? renderer : "unknown");
 
@@ -274,9 +279,9 @@ const char *fk_gfx_renderer(void) { return R.renderer; }
 
 void fk_gfx_shutdown(void) {
     release();
-    GLuint textures[3] = {R.white, R.font, R.bones}, vaos[3] = {R.vao, R.sprite_vao, R.particle_vao};
+    GLuint textures[4] = {R.white, R.font, R.bones, R.black_cube}, vaos[3] = {R.vao, R.sprite_vao, R.particle_vao};
     GLuint buffers[2] = {R.sprite_vbo, R.particle_vbo};
-    gl.DeleteTextures(3, textures);
+    gl.DeleteTextures(4, textures);
     gl.DeleteVertexArrays(3, vaos);
     gl.DeleteBuffers(2, buffers);
     memset(&R, 0, sizeof R);
@@ -519,6 +524,9 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     sampler(program, "u_depth", 3, GL_TEXTURE_2D, R.g_depth);
     sampler(program, "u_ao", 4, GL_TEXTURE_2D, ao);
     sampler(program, "u_shadow", 5, GL_TEXTURE_2D_ARRAY, R.shadow);
+    sampler(program, "u_sky_map", 6, GL_TEXTURE_CUBE_MAP, f->sky_map && f->sky_map->id ? f->sky_map->id : R.black_cube);
+    gl.Uniform1f(LOC("u_sky_strength"), f->sky_strength);
+    gl.UniformMatrix3fv(LOC("u_sky_rotation"), 1, GL_FALSE, f->sky_rotation);
     slice_uniforms(program);
     gl.UniformMatrix4fv(LOC("u_inv_view"), 1, GL_FALSE, inv_view);
     gl.UniformMatrix4fv(LOC("u_view"), 1, GL_FALSE, f->view);

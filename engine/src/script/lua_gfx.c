@@ -1,9 +1,12 @@
 /* fk.gfx: meshes, camera, lights, materials, overlay and graphics settings for scripts. Everything is
    validated (mods are scripts too); without rendering, calls only validate and record. */
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
+#include "core/jobs.h"
 #include "fx/particles.h"
+#include "gen/sky.h"
 #include "gfx/frame.h"
 #include "gfx/gfx.h"
 #include "lauxlib.h"
@@ -63,6 +66,104 @@ static void keep_alive(lua_State *L, int arg) { /* the mesh must outlive this fr
     lua_pushvalue(L, arg);
     lua_rawseti(L, -2, (lua_Integer)luaL_len(L, -2) + 1);
     lua_pop(L, 1);
+}
+
+/* Skies ---------------------------------------------------------------------------------------------------- */
+
+typedef struct {
+    uint64_t seed;
+    double pos[3], radius;
+    int size, stars;
+    float *rgb; /* the baked faces until uploaded */
+    uint32_t job;
+    fk_texture tex;
+} sky_map;
+
+static void bake(void *data) {
+    sky_map *m = data;
+    m->stars = fk_sky_bake(m->seed, m->pos, m->radius, m->size, m->rgb);
+}
+
+/* fk.gfx.starfield(seed, {x, y, z}, radius, size): bakes the sky seen from a point of the galaxy in the background.
+   map:ready(); map:stars() waits and gives the number of stars drawn. */
+static int l_starfield(lua_State *L) {
+    sky_map *m = lua_newuserdatauv(L, sizeof *m, 0);
+    memset(m, 0, sizeof *m);
+    luaL_setmetatable(L, "fk.sky_map");
+    m->seed = (uint64_t)luaL_checkinteger(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    for (int i = 0; i < 3; i++) m->pos[i] = number_at(L, 2, i + 1, "starfield");
+    m->radius = luaL_checknumber(L, 3);
+    m->size = (int)luaL_optinteger(L, 4, 256);
+    luaL_argcheck(L, m->radius > 0 && m->radius <= 500, 3, "the radius must be from 0 to 500 light-years");
+    luaL_argcheck(L, m->size >= 8 && m->size <= 1024, 4, "the size must be from 8 to 1024");
+    m->rgb = malloc((size_t)6 * m->size * m->size * 3 * sizeof *m->rgb);
+    if (!m->rgb) return luaL_error(L, "out of memory");
+    m->job = fk_jobs_submit(bake, m);
+    return 1;
+}
+
+static sky_map *finished(lua_State *L, int arg) {
+    sky_map *m = luaL_checkudata(L, arg, "fk.sky_map");
+    if (m->rgb) { /* once baked: upload when rendering, then the pixels can go */
+        fk_jobs_wait(m->job);
+        if (rendering) fk_gfx_cubemap_upload(&m->tex, m->rgb, m->size);
+        free(m->rgb);
+        m->rgb = NULL;
+    }
+    return m;
+}
+
+static int l_sky_ready(lua_State *L) {
+    sky_map *m = luaL_checkudata(L, 1, "fk.sky_map");
+    lua_pushboolean(L, !m->rgb || fk_jobs_done(m->job));
+    return 1;
+}
+
+static int l_sky_stars(lua_State *L) {
+    lua_pushinteger(L, finished(L, 1)->stars);
+    return 1;
+}
+
+static int l_sky_gc(lua_State *L) {
+    sky_map *m = luaL_checkudata(L, 1, "fk.sky_map");
+    if (m->rgb) fk_jobs_wait(m->job); /* the job writes into rgb */
+    free(m->rgb);
+    m->rgb = NULL;
+    if (rendering && m->tex.id) fk_gfx_texture_destroy(&m->tex);
+    return 0;
+}
+
+/* fk.gfx.sky(map, {strength = 1, rotation = {x, y, z, w}}) shows a sky map where nothing is drawn; fk.gfx.sky(nil)
+   removes it. The rotation turns the world's directions into the map's (galaxy) directions. */
+static int l_sky(lua_State *L) {
+    fk_frame *f = fk_frame_get();
+    if (lua_isnoneornil(L, 1)) {
+        f->sky_map = NULL;
+        lua_pushnil(L);
+        lua_setfield(L, LUA_REGISTRYINDEX, "fk.sky"); /* no longer kept alive */
+        return 0;
+    }
+    sky_map *m = finished(L, 1);
+    f->sky_map = &m->tex;
+    lua_pushvalue(L, 1);
+    lua_setfield(L, LUA_REGISTRYINDEX, "fk.sky");
+    float q[4] = {0, 0, 0, 1};
+    f->sky_strength = 1;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        f->sky_strength = field_number(L, 2, "strength", 1, 0, 1000, "sky");
+        if (lua_getfield(L, 2, "rotation") != LUA_TNIL) {
+            if (!lua_istable(L, -1) || luaL_len(L, -1) != 4) return luaL_error(L, "sky: 'rotation' must be a quaternion {x, y, z, w}");
+            for (int i = 0; i < 4; i++) q[i] = number_at(L, lua_gettop(L), i + 1, "rotation");
+        }
+        lua_pop(L, 1);
+    }
+    float x = q[0], y = q[1], z = q[2], w = q[3], *r = f->sky_rotation;
+    r[0] = 1 - 2 * (y * y + z * z), r[1] = 2 * (x * y + z * w), r[2] = 2 * (x * z - y * w);
+    r[3] = 2 * (x * y - z * w), r[4] = 1 - 2 * (x * x + z * z), r[5] = 2 * (y * z + x * w);
+    r[6] = 2 * (x * z + y * w), r[7] = 2 * (y * z - x * w), r[8] = 1 - 2 * (x * x + y * y);
+    return 0;
 }
 
 void fk_script_frame_begin(lua_State *L) {
@@ -168,6 +269,9 @@ static int l_draw(lua_State *L) {
         mat.roughness = field_number(L, 3, "roughness", 0.6f, 0, 1, "draw");
         mat.metalness = field_number(L, 3, "metalness", 0, 0, 1, "draw");
         field_vec3(L, 3, "emission", mat.emission, ZERO, 0, 1000, "draw");
+        float color[3];
+        field_vec3(L, 3, "color", color, ONE, 0, 1, "draw"); /* sRGB, multiplies the vertex colours */
+        for (int i = 0; i < 3; i++) mat.base[i] = fk_srgb_to_linear(color[i]);
         if (lua_getfield(L, 3, "texture") != LUA_TNIL) {
             mat.base_tex = fk_lua_texture_arg(L, -1);
             if (!mat.base_tex) return luaL_error(L, "draw: 'texture' must be a texture from fk.gfx.texture");
@@ -465,9 +569,16 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
                                    {"configure", l_configure}, {"settings", l_settings}, {"size", l_size},
                                    {"text", l_text},       {"rect", l_rect},         {"palette", l_palette},
                                    {"device", l_device},   {"emit", l_emit},         {"particles", l_particles},
-                                   {"slices", l_slices},
+                                   {"slices", l_slices},   {"starfield", l_starfield}, {"sky", l_sky},
                                    {NULL, NULL}};
     rendering = render;
+    static const luaL_Reg sky_methods[] = {{"ready", l_sky_ready}, {"stars", l_sky_stars}, {NULL, NULL}};
+    luaL_newmetatable(L, "fk.sky_map");
+    lua_pushcfunction(L, l_sky_gc);
+    lua_setfield(L, -2, "__gc");
+    luaL_newlib(L, sky_methods);
+    lua_setfield(L, -2, "__index");
+    lua_pop(L, 1);
     luaL_newmetatable(L, "fk.mesh");
     lua_pushcfunction(L, l_mesh_gc);
     lua_setfield(L, -2, "__gc");
