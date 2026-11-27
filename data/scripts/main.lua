@@ -125,7 +125,8 @@ function game.init()
     sim.emit("scan", { position = { body.x, 0, body.z } })
   end)
   feel.listen(sim, { scan = feedback.scan, impact = feedback.impact, jump = feedback.jump, dig = feedback.dig,
-    deploy = feedback.deploy, recall = feedback.recall, board = feedback.board, stomp = feedback.stomp },
+    deploy = feedback.deploy, recall = feedback.recall, board = feedback.board, stomp = feedback.stomp,
+    teleport = feedback.teleport, autopilot = feedback.autopilot, arrived = feedback.arrived },
     function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
   sim.listen("scan", function() -- a scan swells the discovery theme for a while
@@ -147,6 +148,8 @@ function game.init()
   actions.define("board_down", { kind = "button", keys = { "N" }, gamepad = { "dpdown" } }) -- to a child doll's seat
   actions.define("deploy", { kind = "button", keys = { "T" }, gamepad = { "dpright" } })
   actions.define("lift", { kind = "axis", negative = { "C" }, positive = { "Space" } }) -- flying dolls up and down
+  actions.define("teleport", { kind = "button", keys = { "P" } }) -- Jump Ship <-> stations
+  actions.define("autopilot", { kind = "button", keys = { "O" } })
   actions.define("recall", { kind = "button", keys = { "R" }, gamepad = { "dpleft" } })
   actions.define("save", { kind = "button", keys = { "F5" } })
   actions.define("load", { kind = "button", keys = { "F9" } })
@@ -261,6 +264,9 @@ function game.input()
     if actions.pressed("board_down") and down then sim.send("board", { id = down }) end
     if actions.pressed("deploy") and kind then sim.send("deploy", { kind = kind }) end
     if actions.pressed("recall") and down then sim.send("recall", { id = down }) end
+    local node, goal = chain.teleport_target(), chain.autopilot_target()
+    if actions.pressed("teleport") and node then sim.send("teleport", { id = node }) end
+    if actions.pressed("autopilot") and goal then sim.send("autopilot", { id = goal }) end
   end
 end
 

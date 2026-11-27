@@ -15,7 +15,9 @@ chain.REACH = 2.5 -- a doll deploys and boards only what stands within this many
 -- sky to the south, the Land Explorer and the Walker on the ground south of the range, the Commander in the
 -- Exosuit on the range (the suit of main.lua). {kind, x, y (ground: above the ground; else above the range), z}
 chain.START = {
-  { "jump_ship", 0, 3.0e7, 0 },
+  -- shortcut: the Jump Ship parks 1,200 km up, where 32-bit positions still hold its bridge to centimetres; park it
+  -- in a truly high orbit once dolls are drawn relative to the camera.
+  { "jump_ship", 0, 1.2e6, 0 },
   { "space_station", 0, 4.0e5, 0 },
   { "continental_explorer", 0, 3500, -14000 },
   { "land_explorer", 0, 0, -3500 },
@@ -65,12 +67,22 @@ local function distance(a, b)
   return math.sqrt(dx * dx + dy * dy + dz * dz)
 end
 
--- Can the Commander go from doll a to doll b? b is a's parent or child, and near enough (the larger one's reach).
-local function linked(a, b)
-  if b.parent ~= a.id and a.parent ~= b.id then return false end
-  local size = math.max(dolls.by_id[a.kind].size_m, dolls.by_id[b.kind].size_m)
-  return dolls.by_id[a.kind].place == "orbit" or dolls.by_id[b.kind].place == "orbit" or distance(a, b) <= size * chain.REACH
+local function near(a, b)
+  return distance(a, b) <= math.max(dolls.by_id[a.kind].size_m, dolls.by_id[b.kind].size_m) * chain.REACH
 end
+
+-- Can the Commander go from doll a to doll b? A Drop Ship docks with any doll near it, either way. Otherwise b is a's
+-- parent or child: in orbit both (their hangars), or on and over the ground both and near. Between orbit and the
+-- ground only a Drop Ship goes.
+local function linked(a, b)
+  if a.kind == "drop_ship" or b.kind == "drop_ship" then return near(a, b) end
+  if b.parent ~= a.id and a.parent ~= b.id then return false end
+  local ao, bo = dolls.by_id[a.kind].place == "orbit", dolls.by_id[b.kind].place == "orbit"
+  if ao or bo then return ao and bo end
+  return near(a, b)
+end
+
+chain.TELEPORT = { jump_ship = true, space_station = true } -- the teleport network's nodes
 
 -- Sets up the component and the commands. suit(): the suit's state {x, y, z}; move_suit(x, y, z): puts the suit
 -- (feet) there.
@@ -126,6 +138,21 @@ function chain.install(suit, move_suit)
     chain.state().at = d.id
     sim.emit("board", { position = { d.x, d.y, d.z }, kind = d.kind, id = d.id, strength = 0.6 })
   end)
+
+  sim.on("teleport", function(args) -- between the Jump Ship and the stations, however far apart (teleport network)
+    local c, d = chain.current(), chain.find(args.id)
+    if not d or d == c or not chain.TELEPORT[c.kind] or not chain.TELEPORT[d.kind] then return end
+    chain.state().at = d.id
+    sim.emit("teleport", { position = { d.x, d.y, d.z }, kind = d.kind, id = d.id, strength = 1 })
+  end)
+
+  sim.on("autopilot", function(args) -- the doll the Commander sits in goes to another doll by itself
+    local c, d = chain.current(), chain.find(args.id)
+    local ctl = dolls.by_id[c.kind].controller
+    if not d or d == c or not ctl or ctl.kind == "fixed" then return end
+    c.auto = d.id
+    sim.emit("autopilot", { position = { c.x, c.y, c.z }, kind = c.kind, id = d.id, strength = 0.5 })
+  end)
   chain.install_drive()
 end
 
@@ -140,6 +167,29 @@ function chain.down()
   local c, best, id = chain.current(), math.huge, nil
   for _, d in ipairs(chain.state().dolls) do
     if d.parent == c.id and distance(c, d) < best then best, id = distance(c, d), d.id end
+  end
+  return id
+end
+
+-- The teleport button's target: from the Jump Ship the first station, from a station the Jump Ship (or nil).
+function chain.teleport_target()
+  local c = chain.current()
+  if not chain.TELEPORT[c.kind] then return nil end
+  for _, d in ipairs(chain.state().dolls) do
+    if d ~= c and chain.TELEPORT[d.kind] and (c.kind ~= d.kind) then return d.id end
+  end
+end
+
+-- The autopilot button's target: a Drop Ship high up heads for the nearest Continental Explorer, low down for the
+-- nearest doll in orbit; any other doll walks or flies back to its parent.
+function chain.autopilot_target()
+  local c = chain.current()
+  if c.kind ~= "drop_ship" then return c.parent end
+  local high = c.y - chain.ground(c.x, c.z) > 50000
+  local best, id = math.huge, nil
+  for _, d in ipairs(chain.state().dolls) do
+    local fits = high and d.kind == "continental_explorer" or not high and dolls.by_id[d.kind].place == "orbit"
+    if fits and distance(c, d) < best then best, id = distance(c, d), d.id end
   end
   return id
 end
@@ -179,8 +229,11 @@ function chain.screens()
     if d.parent == c.id or d.id == c.parent then out[#out + 1] = label(d.kind) .. " " .. metres(distance(c, d)) end
   end
   if #out == 1 then out[2] = "NONE" end
+  local target = c.auto and chain.find(c.auto)
   local list = { { label(c.kind), "AT THE CONTROLS" }, hold, out,
-    { "ALTITUDE", metres(math.max(0, c.y - chain.ground(c.x, c.z))) }, { "B UP  N DOWN", "T DEPLOY  R RECALL" } }
+    { "ALTITUDE", metres(math.max(0, c.y - chain.ground(c.x, c.z))) }, { "B UP  N DOWN", "T DEPLOY  R RECALL" },
+    target and { "AUTOPILOT", label(target.kind) .. " " .. metres(distance(c, target)) } or { "AUTOPILOT", "O: OFF" },
+    { "TELEPORT", chain.TELEPORT[c.kind] and "P: READY" or "NO NODE" } }
   for i = #list + 1, 8 do list[i] = { "SYSTEMS", "NOMINAL" } end
   return list
 end
@@ -196,15 +249,47 @@ function chain.install_drive()
     if c.kind == "exosuit" then return end
     local function clamp(v) return math.max(-1, math.min(1, tonumber(v) or 0)) end
     c.drive = { throttle = clamp(args.throttle), turn = clamp(args.turn), lift = clamp(args.lift) }
+    if c.drive.throttle ~= 0 or c.drive.turn ~= 0 or c.drive.lift ~= 0 then c.auto = nil end -- the hands take over
   end)
+end
+
+-- Autopilot: the drive that takes doll d towards doll t (turning by the side the target lies on; no angles, so only
+-- arithmetic), or nil once it is there (within half its reach), which ends the autopilot.
+local function autopilot(d, t, ctl)
+  local dx, dy, dz = t.x - d.x, t.y - d.y, t.z - d.z
+  local flat = math.sqrt(dx * dx + dz * dz)
+  if math.sqrt(flat * flat + dy * dy) <= math.max(dolls.by_id[d.kind].size_m, dolls.by_id[t.kind].size_m) * chain.REACH * 0.5 then
+    return nil
+  end
+  local fx, fz = fk.math.sin(d.yaw), fk.math.cos(d.yaw)
+  local ahead = flat > 1e-6 and (fx * dx + fz * dz) / flat or 1
+  local left = flat > 1e-6 and (fz * dx - fx * dz) / flat or 0 -- the side a larger yaw turns to
+  local turn = ahead < 0 and (left >= 0 and 1 or -1) or math.max(-1, math.min(1, left * 4))
+  local lift = ctl.kind == "flight" and math.max(-1, math.min(1, dy / math.max(500, flat * 0.2))) or 0
+  return { throttle = ahead < 0.3 and 0.3 or 1, turn = turn, lift = lift }
+end
+
+-- How fast a doll may go: flying dolls faster the higher they are (thin air; a Drop Ship from orbit), up to 8 km/s.
+local function top_speed(d, ctl)
+  if ctl.kind ~= "flight" then return ctl.speed end
+  return math.min(8000, ctl.speed * (1 + math.max(0, d.y - chain.ground(d.x, d.z)) / 5000))
 end
 
 local function steer(d, dt)
   local ctl = dolls.by_id[d.kind].controller
   if not ctl or ctl.kind == "fixed" then return end
-  local drive = d.drive or { throttle = 0, turn = 0, lift = 0 }
   d.yaw, d.speed, d.stride = d.yaw or 0, d.speed or 0, d.stride or 0 -- (games saved before the controllers)
-  local want, step = drive.throttle * ctl.speed, ctl.accel * dt
+  local drive = d.drive or { throttle = 0, turn = 0, lift = 0 }
+  if d.auto then
+    local t = chain.find(d.auto)
+    drive = t and autopilot(d, t, ctl) or { throttle = 0, turn = 0, lift = 0 }
+    if not t or drive.throttle == 0 then
+      d.auto = nil
+      if t then sim.emit("arrived", { position = { d.x, d.y, d.z }, kind = d.kind, id = t.id, strength = 0.5 }) end
+    end
+  end
+  local top = top_speed(d, ctl)
+  local want, step = drive.throttle * top, ctl.accel * dt * top / ctl.speed
   d.speed = d.speed + math.max(-step, math.min(step, want - d.speed))
   d.yaw = d.yaw + drive.turn * ctl.turn * dt * math.min(1, 0.3 + math.abs(d.speed) / ctl.speed)
   local dx, dz = fk.math.sin(d.yaw) * d.speed * dt, fk.math.cos(d.yaw) * d.speed * dt
@@ -219,7 +304,7 @@ local function steer(d, dt)
         strength = math.min(1, dolls.by_id[d.kind].size_m / 600 + 0.35) })
     end
   else
-    d.y = math.max(ground + ctl.min_altitude, d.y + drive.lift * ctl.climb * dt)
+    d.y = math.max(ground + ctl.min_altitude, d.y + drive.lift * ctl.climb * dt * top / ctl.speed) -- (faster up high too)
   end
 end
 
@@ -229,7 +314,11 @@ end
 -- network (M6).
 function chain.tick(world_key)
   local s, state = chain.suit(), chain.state()
-  steer(chain.current(), sim.dt)
+  local current = chain.current()
+  steer(current, sim.dt)
+  for _, d in ipairs(state.dolls) do -- dolls on autopilot go on without the Commander
+    if d ~= current and d.auto then steer(d, sim.dt) end
+  end
   local moved = state.world ~= world_key
   state.world = world_key
   for _, d in ipairs(state.dolls) do

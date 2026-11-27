@@ -648,7 +648,8 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 - **OpenSpec:** `add-doll-chain` (first step done: the doll registry, a hull grammar, the chain with deploy, recall
   and board, seat views), `add-cockpits` (done: cabins, screens, the seat's look limit), `add-vehicle-controllers` (done: legged,
-  flight and fixed controllers, stomps, seat bob), `add-teleport-network`, `add-autopilot`, then the
+  flight and fixed controllers, stomps, seat bob), `add-travel` (done: teleport network, Drop Ship between
+  orbit and the ground, autopilot), then the
   Fukuruma test.
 - **Work:** the doll registry and schema, detailed procedural hulls for the seven dolls and the Drop
   Ship (part grammar with greebles, PBR materials, lights), deploy / recall / board / disembark as

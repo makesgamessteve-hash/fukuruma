@@ -70,6 +70,7 @@ return {
     local suit = sim.get(game.suit, "suit")
     local heard = {}
     for _, name in ipairs({ "board", "deploy", "recall" }) do sim.listen(name, function(e) heard[name] = e.kind end) end
+    heard.teleport = nil
     sim.send("board", { id = find("walker").id })
     step()
     assert(chain.current().kind == "walker" and heard.board == "walker" and not chain.on_foot())
@@ -106,12 +107,39 @@ return {
     sim.send("recall", { id = 999 })
     step()
     assert(chain.current().kind == "land_explorer", "unknown dolls change nothing")
-    -- all the way up, and the Space Station's reach is the whole orbit
-    for _ = 1, 3 do
-      sim.send("board", { id = chain.up() })
+    -- up to the Continental Explorer; the station above is reached only by Drop Ship
+    sim.send("board", { id = chain.up() })
+    step()
+    assert(chain.current().kind == "continental_explorer")
+    sim.send("board", { id = chain.up() })
+    step()
+    assert(chain.current().kind == "continental_explorer", "no climbing straight into orbit")
+    sim.send("deploy", { kind = "drop_ship" })
+    step()
+    local drop = find("drop_ship")
+    sim.send("board", { id = drop.id })
+    step()
+    assert(chain.current() == drop and chain.teleport_target() == nil)
+    assert(chain.autopilot_target() == find("space_station").id, "low down: the Drop Ship heads for orbit")
+    local arrived
+    sim.listen("arrived", function(e) arrived = e.id end)
+    sim.send("autopilot", { id = chain.autopilot_target() })
+    step()
+    assert(drop.auto and chain.screens()[6][1] == "AUTOPILOT")
+    for _ = 1, 20000 do -- up to the station, faster the higher it climbs
       step()
+      if not drop.auto then break end
     end
-    assert(chain.current().kind == "jump_ship" and chain.up() == nil)
+    assert(arrived == find("space_station").id and drop.y > 3e5, "the Drop Ship has climbed to the station: " .. drop.y)
+    sim.send("board", { id = find("space_station").id })
+    step()
+    assert(chain.current().kind == "space_station" and chain.teleport_target() == find("jump_ship").id)
+    sim.send("teleport", { id = chain.teleport_target() })
+    step()
+    assert(chain.current().kind == "jump_ship" and chain.up() == nil and heard.teleport == nil)
+    sim.send("teleport", { id = find("walker").id })
+    step()
+    assert(chain.current().kind == "jump_ship", "no teleport node at the Walker")
     assert(chain.next_kind() == "space_station", "stations before Drop Ships")
     sim.send("deploy", { kind = "drop_ship" })
     step()
@@ -158,13 +186,24 @@ return {
     sim.send("drive", { lift = -1 })
     step(3000)
     assert(c.y >= chain.ground(c.x, c.z) + 1500 - 1e-6, "no lower than its floor")
-    sim.send("board", { id = chain.up() })
-    step()
-    local station = chain.current()
+    local station = find("space_station")
     local x0 = station.x
+    sim.send("autopilot", { id = find("land_explorer").id }) -- then the hands take over again
+    step()
+    assert(c.auto)
     sim.send("drive", { throttle = 1 })
     step(60)
-    assert(station.x == x0 and station.y == 4.0e5, "a station holds its orbit")
+    assert(c.auto == nil and station.x == x0 and station.y == 4.0e5, "the hands cancel the autopilot; a station holds")
+    c.auto = 999
+    step()
+    assert(c.auto == nil, "a vanished target ends the autopilot")
+    c.auto = find("land_explorer").id -- on autopilot it goes on after the Commander has left
+    sim.send("board", { id = chain.down() })
+    step(10)
+    assert(c.speed > 0 and c.auto)
+    sim.send("autopilot", { id = chain.current().id })
+    step()
+    assert(chain.current().auto == nil, "no autopilot to the doll itself")
     local old = { kind = "walker", x = 0, y = 0, z = 0 } -- a doll saved before the controllers
     assert(chain.bob(old) == 0 and chain.seat(old)[2] > 0)
   end,

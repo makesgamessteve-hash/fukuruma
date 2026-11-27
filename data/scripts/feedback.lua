@@ -48,6 +48,13 @@ return {
     rumble = { 0.7, 0.25, 0.2 },
     sound = "impact",
   },
+  -- Teleported between the Jump Ship and a station: a white flash, a hard shake, the drive's roar.
+  teleport = { light = { color = { 0.8, 0.9, 1 }, intensity = 40, radius = 30, duration = 0.4, offset = { 0, 2, 0 } },
+    trauma = 0.45, rumble = { 0.5, 0.8, 0.4 }, sound = "jump" },
+  -- The autopilot takes over: a soft confirming chime and a light buzz in the sticks.
+  autopilot = { trauma = 0.04, rumble = { 0.1, 0.3, 0.2 }, sound = "ui_confirm" },
+  -- The autopilot has arrived: a scan-like ping and a nudge.
+  arrived = { trauma = 0.1, rumble = { 0.2, 0.4, 0.2 }, sound = "scan" },
   -- The Commander at another doll's controls: the seat settles, the instruments chime.
   board = { trauma = 0.08, rumble = { 0.15, 0.25, 0.15 }, sound = "ui_confirm" },
   -- The Jump Ship's drive: a long, deep shake and rumble with the jump's roar.
