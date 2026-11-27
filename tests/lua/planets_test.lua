@@ -15,6 +15,16 @@ local function body(class, extra)
 end
 
 return {
+  ["oceans have floors below sea level"] = function()
+    local d = planets.describe(body("terran", { atmosphere = { gas = "n2o2", pressure = 1 } }))
+    assert(d.ocean, "a terran world has an ocean")
+    local deepest = 0
+    for k = 0, 199 do
+      local a = k * 0.0314
+      deepest = math.min(deepest, d.surface:height(fk.math.cos(a), 0.1, fk.math.sin(a)))
+    end
+    assert(deepest < -100, "its floor lies well below the surface: " .. deepest)
+  end,
   ["every class has a recipe and a describable surface"] = function()
     for _, c in ipairs(classes.list) do
       if not c.id:find("^test_") then

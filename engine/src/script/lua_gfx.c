@@ -425,6 +425,28 @@ static int l_atmosphere(lua_State *L) {
     return 0;
 }
 
+/* fk.gfx.water{centre, radius, deep = {r, g, b}, shallow, time, waves} (sRGB colours) or fk.gfx.water(nil): the sea
+   (water spec), per frame */
+static int l_water(lua_State *L) {
+    fk_water *w = &fk_frame_get()->water;
+    if (lua_isnoneornil(L, 1)) {
+        w->on = false;
+        return 0;
+    }
+    luaL_checktype(L, 1, LUA_TTABLE);
+    static const float ZERO3[3] = {0, 0, 0}, DEEP[3] = {0.02f, 0.1f, 0.16f}, SHALLOW[3] = {0.1f, 0.42f, 0.42f};
+    field_vec3(L, 1, "centre", w->centre, ZERO3, -1e30f, 1e30f, "water");
+    w->radius = field_number(L, 1, "radius", 1, 1e-6f, 1e30f, "water");
+    float deep[3], shallow[3];
+    field_vec3(L, 1, "deep", deep, DEEP, 0, 1, "water");
+    field_vec3(L, 1, "shallow", shallow, SHALLOW, 0, 1, "water");
+    for (int k = 0; k < 3; k++) w->deep[k] = fk_srgb_to_linear(deep[k]), w->shallow[k] = fk_srgb_to_linear(shallow[k]);
+    w->time = (float)fmod(field_number(L, 1, "time", 0, 0, 1e9f, "water"), 3600.0);
+    w->waves = field_number(L, 1, "waves", 0.6f, 0, 20, "water");
+    w->on = true;
+    return 0;
+}
+
 /* fk.gfx.stats() -> draws, triangles recorded so far this frame (budgets) */
 static int l_stats(lua_State *L) {
     lua_pushinteger(L, fk_frame_get()->ndraws);
@@ -735,7 +757,7 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
                                    {"text", l_text},       {"rect", l_rect},         {"palette", l_palette},
                                    {"device", l_device},   {"emit", l_emit},         {"particles", l_particles},
                                    {"slices", l_slices},   {"starfield", l_starfield}, {"sky", l_sky}, {"stats", l_stats}, {"atmosphere", l_atmosphere}, {"sun2", l_sun2},
-                                   {"instances", l_instances}, {"wind", l_wind},
+                                   {"instances", l_instances}, {"wind", l_wind}, {"water", l_water},
                                    {NULL, NULL}};
     rendering = render;
     static const luaL_Reg sky_methods[] = {{"ready", l_sky_ready}, {"stars", l_sky_stars}, {NULL, NULL}};

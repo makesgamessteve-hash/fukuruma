@@ -48,6 +48,7 @@ void fk_frame_reset(void) {
     memset(frame.sun2_color, 0, sizeof frame.sun2_color);
     memset(frame.wind, 0, sizeof frame.wind);
     frame.atmosphere.on = false;
+    frame.water.on = false;
     memset(frame.sky_rotation, 0, sizeof frame.sky_rotation);
     frame.sky_rotation[0] = frame.sky_rotation[4] = frame.sky_rotation[8] = 1;
 }
@@ -55,6 +56,7 @@ void fk_frame_reset(void) {
 void fk_frame_begin(void) {
     frame.ndraws = frame.noverlays = frame.nlights = frame.nsprites = frame.nbones = frame.triangles = 0;
     frame.atmosphere.on = false; /* set every frame, like the draws */
+    frame.water.on = false;
 }
 
 static void *grow(void *items, int *cap, size_t size) {

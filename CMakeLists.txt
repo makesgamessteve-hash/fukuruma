@@ -161,6 +161,7 @@ add_test(NAME game_navigation COMMAND fukuruma --headless --scenario ${FK_SRC}/t
 add_test(NAME game_navigation_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/navigation.lua)
 add_test(NAME game_planets COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/planets.lua)
 add_test(NAME game_terrain_materials COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/terrain_materials.lua)
+add_test(NAME game_water COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/water.lua)
 add_test(NAME game_clouds COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/clouds.lua)
 add_test(NAME game_dig COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/dig.lua)
 add_test(NAME game_descent COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/descent.lua)
@@ -176,10 +177,10 @@ set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_
   game_systems_norender game_navigation_norender PROPERTIES LABELS unit)
 set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible game_input
   game_showcase_lighting game_showcase_materials game_showcase_skinning game_feel game_graphics_menu game_first_person
-  game_scale_ladder game_physics game_navigation game_planets game_stars game_descent game_terrain_materials game_dig game_clouds PROPERTIES LABELS game)
+  game_scale_ladder game_physics game_navigation game_planets game_stars game_descent game_terrain_materials game_dig game_clouds game_water PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
-set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation game_terrain_materials game_dig game_clouds PROPERTIES TIMEOUT 300)
+set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation game_terrain_materials game_dig game_clouds game_water PROPERTIES TIMEOUT 300)
 # The sandbox scenes draw the world's ground (software rendering, instrumented builds): slower than the rest.
 set_tests_properties(game_boot game_boot_reproducible game_input game_feel game_first_person game_showcase_lighting
   game_physics game_graphics_menu PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds

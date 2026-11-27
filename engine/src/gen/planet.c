@@ -28,8 +28,8 @@ static double raw(const fk_planet *p, const double d[3]) {
 
 static double natural(const fk_planet *p, const double d[3]) {
     double h = raw(p, d);
-    if (p->ocean && h < p->sea_level) h = p->sea_level; /* the ocean's surface */
-    return (h - p->sea_level) * p->relief;
+    double above = (h - p->sea_level) * p->relief;
+    return p->ocean && above < 0 ? above * 0.5 : above; /* the sea floor (water spec draws the sea over it) */
 }
 
 double fk_planet_height(const fk_planet *p, const double d[3]) {

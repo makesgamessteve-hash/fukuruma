@@ -75,6 +75,14 @@ typedef struct {
     float position[3], color[3], radius; /* color: linear, times intensity */
 } fk_point_light;
 
+/* The sea of the world the camera is at (water spec): a sphere about centre at radius (sea level). */
+typedef struct {
+    bool on;
+    float centre[3], radius;
+    float deep[3], shallow[3]; /* linear colours of deep and shallow water */
+    float time, waves;         /* presentation seconds; wave height (metres) */
+} fk_water;
+
 /* The air of the world the camera is at or looking at (one per frame), for atmospheric scattering. */
 typedef struct {
     bool on;
@@ -116,6 +124,7 @@ typedef struct {
     float sky_strength;     /* multiplies the sky */
     float sky_rotation[9];  /* turns world directions into the sky's (column-major) */
     fk_atmosphere atmosphere;
+    fk_water water;
 } fk_frame;
 
 fk_frame *fk_frame_get(void);

@@ -21,10 +21,10 @@
 #define LUM_LOD 6.0f /* the 1x1 mip level of the 64x32 luminance target */
 
 enum { P_GBUFFER, P_SHADOW, P_SSAO, P_BLUR, P_LIGHT, P_BRIGHT, P_DOWN, P_UP, P_LUM, P_EXPOSURE, P_POST, P_OVERLAY, P_TAA, P_SPRITE,
-       P_PARTICLE, P_ATMOSPHERE, P_COUNT };
+       P_PARTICLE, P_ATMOSPHERE, P_WATER, P_COUNT };
 static const char *const program_files[P_COUNT] = {"gbuffer", "shadow", "ssao",     "blur",     "lighting", "bloom", "bloom",
                                                    "bloom",   "luminance", "exposure", "post", "flat", "taa", "sprite",
-                                                   "particle", "atmosphere"};
+                                                   "particle", "atmosphere", "water"};
 static const char *const program_defines[P_COUNT] = {
     "#define SCENE_MESH\n",
     "#define SCENE_MESH\n",
@@ -42,6 +42,7 @@ static const char *const program_defines[P_COUNT] = {
     "",
     "",
     "#define FULLSCREEN\n",
+    "#define FULLSCREEN\n",
 };
 
 static struct {
@@ -58,6 +59,7 @@ static struct {
     GLuint shadow, fb_shadow;
     GLuint ao[2], fb_ao[2];
     GLuint light, fb_light, air, fb_air; /* air: the lit image seen through the atmosphere */
+    GLuint water, fb_water;              /* the lit image with the sea over it */
     GLuint bloom[BLOOM_LEVELS], fb_bloom[BLOOM_LEVELS];
     int bloom_w[BLOOM_LEVELS], bloom_h[BLOOM_LEVELS];
     GLuint lum, fb_lum;
@@ -103,10 +105,10 @@ static void release(void) {
         if (R.programs[i]) gl.DeleteProgram(R.programs[i]);
     GLuint textures[] = {R.g_base,      R.g_normal, R.g_emission,  R.g_depth,     R.shadow,   R.ao[0],    R.ao[1],
                          R.light,       R.bloom[0], R.bloom[1],    R.bloom[2],    R.bloom[3], R.lum,      R.exposure[0],
-                         R.exposure[1], R.final_ss, R.final, R.history[0], R.history[1], R.air};
+                         R.exposure[1], R.final_ss, R.final, R.history[0], R.history[1], R.air, R.water};
     GLuint fbs[] = {R.fb_gbuffer, R.fb_shadow,   R.fb_ao[0],       R.fb_ao[1],       R.fb_light,    R.fb_bloom[0],
                     R.fb_bloom[1], R.fb_bloom[2], R.fb_bloom[3],    R.fb_lum,         R.fb_exposure[0],
-                    R.fb_exposure[1], R.fb_final_ss, R.fb_final, R.fb_history[0], R.fb_history[1], R.fb_air};
+                    R.fb_exposure[1], R.fb_final_ss, R.fb_final, R.fb_history[0], R.fb_history[1], R.fb_air, R.fb_water};
     gl.DeleteTextures((GLsizei)(sizeof textures / sizeof *textures), textures);
     gl.DeleteFramebuffers((GLsizei)(sizeof fbs / sizeof *fbs), fbs);
     bool hdr_supported = R.hdr_supported;
@@ -179,6 +181,9 @@ bool fk_gfx_configure(void) {
     R.air = R.s.hdr ? texture(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT, R.sw, R.sh, GL_LINEAR)
                     : texture(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, R.sw, R.sh, GL_LINEAR);
     R.fb_air = framebuffer(1, &R.air, 0);
+    R.water = R.s.hdr ? texture(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT, R.sw, R.sh, GL_LINEAR)
+                      : texture(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, R.sw, R.sh, GL_LINEAR);
+    R.fb_water = framebuffer(1, &R.water, 0);
     if (R.s.taa)
         for (int i = 0; i < 2; i++) {
             R.history[i] = R.s.hdr ? texture(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT, R.sw, R.sh, GL_LINEAR)
@@ -374,6 +379,17 @@ static void cloud_uniforms(GLuint program, const fk_atmosphere *a) {
     const float layer[4] = {a->cloud_bottom, a->cloud_top, a->cloud_cover, a->cloud_density};
     gl.Uniform4fv(LOC("u_cloud_layer"), 1, layer);
     gl.Uniform3fv(LOC("u_cloud_offset"), 1, a->cloud_offset);
+}
+
+/* The sea (water spec) for the passes that see it: the water pass, and the lighting for caustics under it. */
+static void water_uniforms(GLuint program, const fk_water *w) {
+    gl.Uniform1i(LOC("u_water_on"), w->on ? 1 : 0);
+    if (!w->on) return;
+    gl.Uniform3fv(LOC("u_water_centre"), 1, w->centre);
+    gl.Uniform1f(LOC("u_water_radius"), w->radius);
+    gl.Uniform3fv(LOC("u_water_deep"), 1, w->deep);
+    gl.Uniform3fv(LOC("u_water_shallow"), 1, w->shallow);
+    gl.Uniform2f(LOC("u_water_waves"), w->time, w->waves);
 }
 
 /* The slices' projections (with this frame's TAA jitter) and their inverses. */
@@ -595,6 +611,7 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     }
     gl.Uniform1i(LOC("u_nlights"), nlights);
     cloud_uniforms(program, &f->atmosphere); /* the clouds' shadows on the ground */
+    water_uniforms(program, &f->water);       /* caustics under the sea */
     if (nlights) {
         gl.Uniform4fv(LOC("u_light_pos"), nlights, positions);
         gl.Uniform4fv(LOC("u_light_color"), nlights, colors);
@@ -606,11 +623,25 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
 
     /* 4b. TAA: blend with the reprojected, neighbourhood-clamped history. */
     GLuint scene = R.light;
+    if (f->water.on) { /* 4b. The sea over what is drawn (or the view from under it) */
+        target(R.fb_water, R.sw, R.sh);
+        program = use(P_WATER);
+        sampler(program, "u_scene", 0, GL_TEXTURE_2D, R.light);
+        sampler(program, "u_depth", 1, GL_TEXTURE_2D, R.g_depth);
+        slice_uniforms(program);
+        gl.UniformMatrix4fv(LOC("u_inv_view"), 1, GL_FALSE, inv_view);
+        gl.Uniform3fv(LOC("u_sun_dir"), 1, f->sun_dir);
+        gl.Uniform3fv(LOC("u_sun_color"), 1, f->sun_color);
+        gl.Uniform3fv(LOC("u_sky"), 1, f->sky);
+        water_uniforms(program, &f->water);
+        fullscreen();
+        scene = R.water;
+    }
     const fk_atmosphere *a = &f->atmosphere;
     if (a->on) { /* 4b. The air between the camera and everything */
         target(R.fb_air, R.sw, R.sh);
         program = use(P_ATMOSPHERE);
-        sampler(program, "u_scene", 0, GL_TEXTURE_2D, R.light);
+        sampler(program, "u_scene", 0, GL_TEXTURE_2D, scene);
         sampler(program, "u_depth", 1, GL_TEXTURE_2D, R.g_depth);
         slice_uniforms(program);
         gl.UniformMatrix4fv(LOC("u_inv_view"), 1, GL_FALSE, inv_view);

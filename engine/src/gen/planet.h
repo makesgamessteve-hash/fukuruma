@@ -35,7 +35,7 @@ typedef struct {
 /* The unit direction of face coordinates (u, v in -1..1) on a cube face (0..5: +x, -x, +y, -y, +z, -z), spread
    evenly over the sphere. */
 void fk_cube_to_sphere(int face, double u, double v, double d[3]);
-/* Height (metres above the radius) and colour (sRGB) at a unit direction. */
+/* Height (metres above the radius; under an ocean, its floor) and colour (sRGB) at a unit direction. */
 double fk_planet_height(const fk_planet *p, const double d[3]);
 void fk_planet_color(const fk_planet *p, const double d[3], double height, float rgb[3]);
 /* Builds chunk (face, level, x, y): vertices relative to centre (metres, planet axes), skirts included. Fills centre

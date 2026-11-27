@@ -139,7 +139,7 @@ function planets.describe(body)
     def.cloud_cover = cloud
   end
   local d = { class = body.class, radius = body.radius, relief = r.relief, surface = fk.planet.new(def), bands = r.bands,
-    rings = body.rings, cloud_cover = def.cloud_cover }
+    rings = body.rings, cloud_cover = def.cloud_cover, ocean = r.ocean }
   if air then
     local o = AIR[air.gas] or AIR.n2
     local p = math.min(air.pressure, 50) -- deeper air than that looks the same from outside

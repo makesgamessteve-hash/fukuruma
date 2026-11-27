@@ -130,6 +130,20 @@ float cloud_shadow(vec3 p, vec3 sun) {
     return exp(-depth);
 }
 
+// The sea (water spec): a sphere at sea level about the world's centre.
+uniform int u_water_on;
+uniform vec3 u_water_centre;   // camera-relative world space, like the scene
+uniform float u_water_radius;
+uniform vec3 u_water_deep, u_water_shallow; // linear colours
+uniform vec2 u_water_waves;    // time (seconds), wave height (metres)
+// Bright threads of light that the waves focus on the sea floor (relative position, time).
+float caustics(vec3 p, float t) {
+    vec2 q = p.xz * 0.9 + p.y * 0.3;
+    float a = abs(sin(q.x + sin(q.y * 1.3 + t * 0.9)) * sin(q.y * 1.1 + sin(q.x * 0.7 - t * 0.7)));
+    float b = abs(sin(q.x * 1.7 - t * 0.5 + sin(q.y * 2.1)) * sin(q.y * 1.9 + t * 0.6));
+    return 0.35 + 1.4 * pow(1.0 - min(a, b), 6.0);
+}
+
 // Dug ground (voxel-terrain spec): terrain pixels inside a dig are left out (its walls are their own mesh).
 uniform int u_ndigs;
 uniform vec4 u_digs[16]; // draw axes: centre and radius

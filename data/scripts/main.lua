@@ -349,6 +349,8 @@ function game.draw(alpha, dt)
     { digs = dig.nearest({ inv_x, inv_y, inv_z }) })
   dig.draw(game.dug, universe.ground())
   fk.gfx.wind({ direction = { 0.8, 0.35 }, strength = 1, time = feel.time })
+  local g = universe.ground()
+  if g and g.desc.ocean then fk.gfx.water({ centre = g.centre, radius = g.radius, time = feel.time, waves = 0.5 }) end
   scatter.draw(game.plants, universe.ground(), { inv_x, inv_y, inv_z })
   fk.audio.listener({ position = { inv_x, inv_y, inv_z }, right = { view[1], view[5], view[9] } })
   reverb.update(game.suit_position())
