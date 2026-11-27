@@ -115,9 +115,11 @@ the Commander leave the seat and walk around inside while the doll travels.
   detect a hazard, so better sensors mean faster and safer travel.
 - **Exosuit:** first person on foot, with jump jets and climbing.
 
-Every doll can **deploy** the next one, **recall** it, and be **boarded**. Boarding is walked in first
-person: out of the cockpit, down to the hangar or airlock, into the next doll and onto its seat (a
-quick "go to the controls" shortcut plays the walk as a short first-person sequence). Vehicles you
+Every doll can **deploy** the next one, **recall** it, and be **boarded**. This is the nesting doll the
+game is named after: the next doll down stands docked in its parent's hangar, and the Commander
+boards it on foot, out of the bridge, down to the hangar, up the ramp into the docked doll, along
+its corridors to its bridge, and deploys it from there, leaving the parent behind (decided
+2026-11-27). A quick "go to the controls" shortcut plays the walk as a short first-person sequence. Vehicles you
 leave behind stay in the world, where they can be damaged, stranded or stolen.
 
 ### 2.5 Fully explorable interiors
@@ -129,11 +131,13 @@ Each doll has a hull (a detailed model assembled from parts by a Lua grammar) an
 Hull (shape, zones)            e.g. Jump Ship: hangars, foundries, engineering, research, bridge
   └─ Zone (function, layout)   e.g. "Station Hangar 2", "Hydroponics Ring", "Drone Foundry"
        └─ Sector (fixed cube)  generated when the Commander comes near, unloaded when far away
-            └─ Rooms, corridors, props (tile grid sized for a 3.6 m exosuit)
+            └─ Rooms, corridors, props (tile grid sized for people: the Commander walks inside as a human)
 ```
 
-- Interiors are walkable at Exosuit scale. Hangars are sized for the doll they hold: a Jump Ship
-  hangar for a 31 km station is bigger than a city.
+- Interiors are made for people: the Commander walks every doll's rooms, corridors and decks as a
+  human (1.8 m), and puts the Exosuit on at a suit bay or airlock to go out onto a planet (decided
+  2026-11-27). Hangars are sized for the doll they hold: a Jump Ship hangar for a 31 km station is
+  bigger than a city.
 - Changes (opened doors, damage, items, intruders) are stored as **deltas** per sector, so a
   144 km ship costs only what the player changed.
 - Trams, lifts and teleport pads connect zones. The bridge and other key rooms are hand-authored in Lua.
@@ -147,7 +151,8 @@ Hull (shape, zones)            e.g. Jump Ship: hangars, foundries, engineering, 
 
 The game is seen **only through the Commander's eyes**. There is no chase camera.
 
-- **On foot:** the view from inside the Exosuit's helmet, with the visor HUD, the suit's arms and
+- **On foot inside a doll:** the Commander's own eyes, at human height, in rooms made for people.
+- **On foot outside:** the view from inside the Exosuit's helmet, with the visor HUD, the suit's arms and
   hands, and its legs and feet when you look down. The head bobs and sways with the suit's mass.
 - **At the controls:** every doll has a cockpit or bridge with a seat, windows or a canopy, and
   instruments. The Commander sits there and looks out: the Walker's cabin sways 60 m above the ground
