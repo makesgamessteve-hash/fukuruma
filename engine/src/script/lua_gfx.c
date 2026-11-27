@@ -298,6 +298,31 @@ static int l_draw(lua_State *L) {
 
 /* fk.gfx.slices{near = {n, f}, planetary = {n, f}, celestial = {n, f}}: the near and far planes (metres) of the
    depth slices; the local slice uses the camera's projection. Slices not named keep their planes. */
+/* fk.gfx.atmosphere{centre, radius, top, height, rayleigh = {r, g, b}, mie, absorb = {r, g, b}} sets the air seen
+   this frame (camera-relative world space, metres; set it every frame); fk.gfx.atmosphere(nil) removes it. */
+static int l_atmosphere(lua_State *L) {
+    fk_atmosphere *a = &fk_frame_get()->atmosphere;
+    if (lua_isnoneornil(L, 1)) {
+        a->on = false;
+        return 0;
+    }
+    luaL_checktype(L, 1, LUA_TTABLE);
+    static const float ZERO3[3] = {0, 0, 0};
+    field_vec3(L, 1, "centre", a->centre, ZERO3, -1e30f, 1e30f, "atmosphere");
+    a->radius = field_number(L, 1, "radius", 1, 1e-6f, 1e30f, "atmosphere");
+    a->top = field_number(L, 1, "top", a->radius * 1.01f, a->radius, 1e30f, "atmosphere");
+    a->height = field_number(L, 1, "height", 8000, 1e-6f, 1e30f, "atmosphere");
+    field_vec3(L, 1, "rayleigh", a->rayleigh, ZERO3, 0, 1e30f, "atmosphere");
+    a->mie = field_number(L, 1, "mie", 0, 0, 1e30f, "atmosphere");
+    field_vec3(L, 1, "absorb", a->absorb, ZERO3, 0, 1e30f, "atmosphere");
+    float g[3];
+    static const float GREY[3] = {0.3f, 0.3f, 0.3f};
+    field_vec3(L, 1, "ground", g, GREY, 0, 1, "atmosphere"); /* sRGB */
+    for (int k = 0; k < 3; k++) a->ground[k] = fk_srgb_to_linear(g[k]);
+    a->on = true;
+    return 0;
+}
+
 /* fk.gfx.stats() -> draws, triangles recorded so far this frame (budgets) */
 static int l_stats(lua_State *L) {
     lua_pushinteger(L, fk_frame_get()->ndraws);
@@ -587,7 +612,7 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
                                    {"configure", l_configure}, {"settings", l_settings}, {"size", l_size},
                                    {"text", l_text},       {"rect", l_rect},         {"palette", l_palette},
                                    {"device", l_device},   {"emit", l_emit},         {"particles", l_particles},
-                                   {"slices", l_slices},   {"starfield", l_starfield}, {"sky", l_sky}, {"stats", l_stats},
+                                   {"slices", l_slices},   {"starfield", l_starfield}, {"sky", l_sky}, {"stats", l_stats}, {"atmosphere", l_atmosphere},
                                    {NULL, NULL}};
     rendering = render;
     static const luaL_Reg sky_methods[] = {{"ready", l_sky_ready}, {"stars", l_sky_stars}, {NULL, NULL}};

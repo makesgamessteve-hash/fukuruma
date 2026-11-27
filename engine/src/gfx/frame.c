@@ -45,11 +45,15 @@ void fk_frame_reset(void) {
     memcpy(frame.slice_far, far, sizeof far);
     frame.slice = FK_SLICE_LOCAL;
     frame.sky_map = NULL, frame.sky_strength = 0;
+    frame.atmosphere.on = false;
     memset(frame.sky_rotation, 0, sizeof frame.sky_rotation);
     frame.sky_rotation[0] = frame.sky_rotation[4] = frame.sky_rotation[8] = 1;
 }
 
-void fk_frame_begin(void) { frame.ndraws = frame.noverlays = frame.nlights = frame.nsprites = frame.nbones = frame.triangles = 0; }
+void fk_frame_begin(void) {
+    frame.ndraws = frame.noverlays = frame.nlights = frame.nsprites = frame.nbones = frame.triangles = 0;
+    frame.atmosphere.on = false; /* set every frame, like the draws */
+}
 
 static void *grow(void *items, int *cap, size_t size) {
     *cap = *cap ? *cap * 2 : 64;

@@ -52,6 +52,15 @@ return {
     fails(function() fk.gfx.slices({ near = { 4, 1 } }) end, "'near' needs 0 < near < far")
     fails(function() fk.gfx.slices({ celestial = 5 }) end, "'celestial' must be {near, far}")
   end,
+  ["the air and the frame's statistics"] = function()
+    fk.gfx.atmosphere({ centre = { 0, -6.4e6, 0 }, radius = 6.4e6, top = 6.46e6, height = 8000, rayleigh = { 5.8e-6, 13.5e-6, 33.1e-6 },
+      mie = 4e-6, absorb = { 0, 0, 0 }, ground = { 0.3, 0.4, 0.2 } })
+    fk.gfx.atmosphere(nil)
+    fails(function() fk.gfx.atmosphere({ radius = 0 }) end, "'radius' must be a number")
+    fails(function() fk.gfx.atmosphere({ radius = 10, top = 5 }) end, "'top' must be a number")
+    local draws, triangles = fk.gfx.stats()
+    assert(draws >= 0 and triangles >= 0)
+  end,
   ["planes can be tiled"] = function()
     local plane = require("shapes").plane(8, { 1, 1, 1 }, 2)
     assert(#plane.uvs == 8 and plane.uvs[2] == 4, "the texture repeats every 2 m")

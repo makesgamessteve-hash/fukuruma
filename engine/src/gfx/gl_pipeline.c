@@ -21,10 +21,10 @@
 #define LUM_LOD 6.0f /* the 1x1 mip level of the 64x32 luminance target */
 
 enum { P_GBUFFER, P_SHADOW, P_SSAO, P_BLUR, P_LIGHT, P_BRIGHT, P_DOWN, P_UP, P_LUM, P_EXPOSURE, P_POST, P_OVERLAY, P_TAA, P_SPRITE,
-       P_PARTICLE, P_COUNT };
+       P_PARTICLE, P_ATMOSPHERE, P_COUNT };
 static const char *const program_files[P_COUNT] = {"gbuffer", "shadow", "ssao",     "blur",     "lighting", "bloom", "bloom",
                                                    "bloom",   "luminance", "exposure", "post", "flat", "taa", "sprite",
-                                                   "particle"};
+                                                   "particle", "atmosphere"};
 static const char *const program_defines[P_COUNT] = {
     "#define SCENE_MESH\n",
     "#define SCENE_MESH\n",
@@ -41,6 +41,7 @@ static const char *const program_defines[P_COUNT] = {
     "#define FULLSCREEN\n",
     "",
     "",
+    "#define FULLSCREEN\n",
 };
 
 static struct {
@@ -56,7 +57,7 @@ static struct {
     GLuint g_base, g_normal, g_emission, g_depth, fb_gbuffer;
     GLuint shadow, fb_shadow;
     GLuint ao[2], fb_ao[2];
-    GLuint light, fb_light;
+    GLuint light, fb_light, air, fb_air; /* air: the lit image seen through the atmosphere */
     GLuint bloom[BLOOM_LEVELS], fb_bloom[BLOOM_LEVELS];
     int bloom_w[BLOOM_LEVELS], bloom_h[BLOOM_LEVELS];
     GLuint lum, fb_lum;
@@ -102,10 +103,10 @@ static void release(void) {
         if (R.programs[i]) gl.DeleteProgram(R.programs[i]);
     GLuint textures[] = {R.g_base,      R.g_normal, R.g_emission,  R.g_depth,     R.shadow,   R.ao[0],    R.ao[1],
                          R.light,       R.bloom[0], R.bloom[1],    R.bloom[2],    R.bloom[3], R.lum,      R.exposure[0],
-                         R.exposure[1], R.final_ss, R.final, R.history[0], R.history[1]};
+                         R.exposure[1], R.final_ss, R.final, R.history[0], R.history[1], R.air};
     GLuint fbs[] = {R.fb_gbuffer, R.fb_shadow,   R.fb_ao[0],       R.fb_ao[1],       R.fb_light,    R.fb_bloom[0],
                     R.fb_bloom[1], R.fb_bloom[2], R.fb_bloom[3],    R.fb_lum,         R.fb_exposure[0],
-                    R.fb_exposure[1], R.fb_final_ss, R.fb_final, R.fb_history[0], R.fb_history[1]};
+                    R.fb_exposure[1], R.fb_final_ss, R.fb_final, R.fb_history[0], R.fb_history[1], R.fb_air};
     gl.DeleteTextures((GLsizei)(sizeof textures / sizeof *textures), textures);
     gl.DeleteFramebuffers((GLsizei)(sizeof fbs / sizeof *fbs), fbs);
     bool hdr_supported = R.hdr_supported;
@@ -175,6 +176,9 @@ bool fk_gfx_configure(void) {
     R.light = R.s.hdr ? texture(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT, R.sw, R.sh, GL_LINEAR)
                       : texture(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, R.sw, R.sh, GL_LINEAR);
     R.fb_light = framebuffer(1, &R.light, 0);
+    R.air = R.s.hdr ? texture(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT, R.sw, R.sh, GL_LINEAR)
+                    : texture(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, R.sw, R.sh, GL_LINEAR);
+    R.fb_air = framebuffer(1, &R.air, 0);
     if (R.s.taa)
         for (int i = 0; i < 2; i++) {
             R.history[i] = R.s.hdr ? texture(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT, R.sw, R.sh, GL_LINEAR)
@@ -561,11 +565,34 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
 
     /* 4b. TAA: blend with the reprojected, neighbourhood-clamped history. */
     GLuint scene = R.light;
+    const fk_atmosphere *a = &f->atmosphere;
+    if (a->on) { /* 4b. The air between the camera and everything */
+        target(R.fb_air, R.sw, R.sh);
+        program = use(P_ATMOSPHERE);
+        sampler(program, "u_scene", 0, GL_TEXTURE_2D, R.light);
+        sampler(program, "u_depth", 1, GL_TEXTURE_2D, R.g_depth);
+        slice_uniforms(program);
+        gl.UniformMatrix4fv(LOC("u_inv_view"), 1, GL_FALSE, inv_view);
+        gl.Uniform3fv(LOC("u_centre"), 1, a->centre);
+        gl.Uniform1f(LOC("u_radius"), a->radius);
+        gl.Uniform1f(LOC("u_top"), a->top);
+        gl.Uniform1f(LOC("u_height"), a->height);
+        gl.Uniform3fv(LOC("u_rayleigh"), 1, a->rayleigh);
+        gl.Uniform1f(LOC("u_mie"), a->mie);
+        gl.Uniform3fv(LOC("u_absorb"), 1, a->absorb);
+        gl.Uniform3fv(LOC("u_sun_dir"), 1, f->sun_dir);
+        gl.Uniform3fv(LOC("u_sun_color"), 1, f->sun_color);
+        float ground[3];
+        for (int k = 0; k < 3; k++) ground[k] = a->ground[k] * f->sun_color[k] * 0.3183099f; /* albedo / pi */
+        gl.Uniform3fv(LOC("u_ground"), 1, ground);
+        fullscreen();
+        scene = R.air;
+    }
     if (R.s.taa) {
         int next = 1 - R.history_index;
         target(R.fb_history[next], R.sw, R.sh);
         program = use(P_TAA);
-        sampler(program, "u_current", 0, GL_TEXTURE_2D, R.light);
+        sampler(program, "u_current", 0, GL_TEXTURE_2D, scene);
         sampler(program, "u_history", 1, GL_TEXTURE_2D, R.history[R.history_index]);
         sampler(program, "u_depth", 2, GL_TEXTURE_2D, R.g_depth);
         slice_uniforms(program);

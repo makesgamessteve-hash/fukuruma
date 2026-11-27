@@ -288,6 +288,7 @@ local function draw_sky()
   local light = universe.light(t)
   local b = light.background
   fk.gfx.clear(b[1], b[2], b[3])
+  if light.atmosphere then fk.gfx.atmosphere(light.atmosphere) end
   if light.sun.intensity > 0 then fk.gfx.sun(light.sun) else fk.gfx.sun({ direction = { 0, 1, 0 }, intensity = 0 }) end
   fk.gfx.ambient({ sky = light.ambient.sky, ground = light.ambient.ground, intensity = 1 })
   fk.gfx.sky(universe.view().map, { strength = light.stars, rotation = light.galaxy_rotation })

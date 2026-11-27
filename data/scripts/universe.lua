@@ -9,6 +9,8 @@ local systems = require("gen.systems")
 local frames = require("fk.frames")
 local units = require("gen.units")
 
+local planets = require("gen.planets")
+
 local universe = {}
 
 universe.RANGE = 20 -- light-years a jump reaches
@@ -134,6 +136,7 @@ local function rebuild(u)
   view.map = fk.gfx.starfield(fk.seed(), star.position, 100, 256) -- baked in the background
   local b = view.place and sys.bodies[view.place]
   view.air = b and b.atmosphere and b.atmosphere.pressure > 0.005 and b.atmosphere or nil
+  view.optics = view.air and planets.describe(b).atmosphere or nil -- scattering coefficients for the sky
   if b then
     local tilt = b.tilt or 0
     view.axis = { fk.math.sin(tilt), fk.math.cos(tilt), 0 }
@@ -162,6 +165,13 @@ end
 local SKY = { n2o2 = { 0.13, 0.17, 0.3 }, n2co2 = { 0.16, 0.2, 0.28 }, n2 = { 0.14, 0.16, 0.24 }, co2 = { 0.3, 0.2, 0.13 },
   sulfur = { 0.32, 0.27, 0.1 }, n2ch4 = { 0.3, 0.2, 0.08 }, co = { 0.22, 0.16, 0.12 }, h2he = { 0.2, 0.22, 0.3 } }
 
+local PALETTE = { lava = { 0.9, 0.35, 0.1 }, iron = { 0.45, 0.4, 0.38 }, barren = { 0.5, 0.48, 0.45 }, desert = { 0.8, 0.62, 0.4 },
+  terran = { 0.3, 0.5, 0.55 }, ocean = { 0.15, 0.35, 0.65 }, ice = { 0.85, 0.9, 0.95 }, glacier = { 0.75, 0.85, 0.95 },
+  carbon = { 0.15, 0.14, 0.13 }, super_earth = { 0.45, 0.5, 0.4 }, mini_neptune = { 0.55, 0.75, 0.85 },
+  ice_giant = { 0.45, 0.65, 0.9 }, gas_giant = { 0.85, 0.72, 0.55 }, hot_jupiter = { 0.6, 0.35, 0.25 },
+  eyeball = { 0.6, 0.55, 0.5 }, shattered = { 0.4, 0.35, 0.33 }, comet = { 0.8, 0.85, 0.9 } }
+universe.PALETTE = PALETTE
+
 -- The light over the range at time t (seconds): sun direction (local), colour, intensity, sky colour, ambient,
 -- star-map strength and the rotation from local into galaxy axes.
 function universe.light(t)
@@ -187,19 +197,20 @@ function universe.light(t)
   local sky = v.air and (SKY[v.air.gas] or SKY.n2) or { 0, 0, 0 }
   local thin = v.air and math.max(0, math.min(1, (fk.math.log(v.air.pressure) / fk.math.log(10) + 2) / 2)) or 0
   local k = day * thin
-  out.background = { sky[1] * k, sky[2] * k, sky[3] * k }
+  out.background = { 0, 0, 0 } -- space: the air's own scattering makes the sky (fk.gfx.atmosphere)
+  if v.optics then
+    local o, R = v.optics, sys.bodies[v.place].radius
+    local ground = PALETTE[sys.bodies[v.place].class] or PALETTE.barren
+    out.atmosphere = { centre = { 0, -R, 0 }, radius = R, top = o.top, height = o.height, rayleigh = o.rayleigh, mie = o.mie,
+      absorb = o.absorb, ground = ground }
+  end
   out.ambient = { sky = { 0.02 + 0.33 * k, 0.02 + 0.43 * k, 0.03 + 0.67 * k }, ground = { 0.02 + 0.26 * day, 0.02 + 0.2 * day, 0.02 + 0.14 * day } }
   out.stars = 1 - k
   out.galaxy_rotation = q -- system axes are galaxy axes
   return out
 end
 
-local PALETTE = { lava = { 0.9, 0.35, 0.1 }, iron = { 0.45, 0.4, 0.38 }, barren = { 0.5, 0.48, 0.45 }, desert = { 0.8, 0.62, 0.4 },
-  terran = { 0.3, 0.5, 0.55 }, ocean = { 0.15, 0.35, 0.65 }, ice = { 0.85, 0.9, 0.95 }, glacier = { 0.75, 0.85, 0.95 },
-  carbon = { 0.15, 0.14, 0.13 }, super_earth = { 0.45, 0.5, 0.4 }, mini_neptune = { 0.55, 0.75, 0.85 },
-  ice_giant = { 0.45, 0.65, 0.9 }, gas_giant = { 0.85, 0.72, 0.55 }, hot_jupiter = { 0.6, 0.35, 0.25 },
-  eyeball = { 0.6, 0.55, 0.5 }, shattered = { 0.4, 0.35, 0.33 }, comet = { 0.8, 0.85, 0.9 } }
-universe.PALETTE = PALETTE
+
 
 -- Draws the system's other bodies and stars in the sky over the range at time t, in local axes.
 function universe.draw_sky(t, sphere, light)

@@ -47,7 +47,7 @@ return {
     start()
     local l = universe.light(0)
     assert(math.abs(l.sun.direction[2] - universe.SUN_AT_START[2]) < 1e-9, "the star stands where the range arrives")
-    assert(l.sun.intensity > 0 and l.stars < 1 and l.background[3] > 0)
+    assert(l.sun.intensity > 0 and l.stars < 1 and l.atmosphere and l.atmosphere.radius > 0, "the air makes the sky")
     local night
     for t = 0, 3e5, 2000 do
       local x = universe.light(t)

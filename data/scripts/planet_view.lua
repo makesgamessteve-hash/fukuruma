@@ -121,7 +121,7 @@ function View:draw(rel, q, focal, wait, opts)
   local slice, at, s = frames.place_in_slices(rel, self.d.radius + (self.d.relief or 0))
   local scale = s
   local material = { roughness = self.d.bands and 0.6 or 0.85, slice = slice, one_sided = true }
-  if opts then for k, v in pairs(opts) do if k ~= "sun" then material[k] = v end end end
+  if opts then for k, v in pairs(opts) do if k ~= "sun" and k ~= "air" then material[k] = v end end end
   for _, c in ipairs(chosen) do
     local p = frames.rotate(q, c.centre)
     local m = frames.matrix(q, { at[1] + p[1] * scale, at[2] + p[2] * scale, at[3] + p[3] * scale }, scale)
@@ -145,6 +145,12 @@ function View:draw(rel, q, focal, wait, opts)
       tilt = frames.multiply(tilt, { 1, 0, 0, 0 }) -- rings let light through: face the lit side to the sun
     end
     fk.gfx.draw(self.rings, frames.matrix(tilt, at, scale), { roughness = 0.9, slice = slice })
+  end
+  local air = self.d.atmosphere
+  if air and (opts == nil or opts.air ~= false) then -- in scaled space the air shrinks and thickens with the planet
+    fk.gfx.atmosphere({ centre = at, radius = self.d.radius * scale, top = air.top * scale, height = air.height * scale,
+      rayleigh = { air.rayleigh[1] / scale, air.rayleigh[2] / scale, air.rayleigh[3] / scale }, mie = air.mie / scale,
+      absorb = { air.absorb[1] / scale, air.absorb[2] / scale, air.absorb[3] / scale } })
   end
   for k, c in pairs(self.chunks) do -- forget what has not been used for a while
     if self.frame - c.used > planet_view.KEEP then self.chunks[k] = nil end

@@ -65,6 +65,15 @@ typedef struct {
     float position[3], color[3], radius; /* color: linear, times intensity */
 } fk_point_light;
 
+/* The air of the world the camera is at or looking at (one per frame), for atmospheric scattering. */
+typedef struct {
+    bool on;
+    float centre[3];           /* camera-relative world space */
+    float radius, top, height; /* surface, top of the air, Rayleigh scale height */
+    float rayleigh[3], mie, absorb[3]; /* per metre at the surface */
+    float ground[3];                   /* linear albedo of the surface beyond what is drawn */
+} fk_atmosphere;
+
 typedef struct {
     float view[16], projection[16];
     float background[3];            /* linear */
@@ -89,6 +98,7 @@ typedef struct {
     const fk_texture *sky_map; /* a cube map shown where nothing is drawn, or NULL */
     float sky_strength;     /* multiplies the sky */
     float sky_rotation[9];  /* turns world directions into the sky's (column-major) */
+    fk_atmosphere atmosphere;
 } fk_frame;
 
 fk_frame *fk_frame_get(void);
