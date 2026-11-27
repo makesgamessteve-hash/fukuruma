@@ -5,4 +5,4 @@
 - [x] 3 The eleven archetypes; stars, binaries, planets, moons, rings, belts, comets, disks
 - [x] 4 Stability pass and descriptor checks
 - [x] 5 Statistical scenario over 10,000 systems with a recorded hash; unit tests
-- [ ] 6 CI green on every target; archive
+- [x] 6 CI green on every target; archive

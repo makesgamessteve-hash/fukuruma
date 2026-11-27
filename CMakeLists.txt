@@ -151,6 +151,7 @@ add_test(NAME game_physics_norender COMMAND fukuruma --no-render --scenario ${FK
 add_test(NAME game_systems_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/systems.lua)
 add_test(NAME game_navigation COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/navigation.lua)
 add_test(NAME game_navigation_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/navigation.lua)
+add_test(NAME game_planets COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/planets.lua)
 add_test(NAME game_graphics_menu COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/graphics_menu.lua)
 add_test(NAME game_graphics_menu_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/graphics_menu.lua)
 add_test(NAME game_boot_reproducible COMMAND ${CMAKE_COMMAND} -DEXE=${FK_EXE} -DSRC=${FK_SRC}
@@ -162,9 +163,10 @@ set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_
   game_systems_norender game_navigation_norender PROPERTIES LABELS unit)
 set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible game_input
   game_showcase_lighting game_showcase_materials game_showcase_skinning game_feel game_graphics_menu game_first_person
-  game_scale_ladder game_physics game_navigation PROPERTIES LABELS game)
+  game_scale_ladder game_physics game_navigation game_planets PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
+set_tests_properties(unit_lua game_planets PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
 
 if(FK_COVERAGE)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
@@ -174,7 +176,7 @@ if(FK_COVERAGE)
     COMMAND ${CMAKE_COMMAND} -E env LUA_PATH=${FK_SRC}/third_party/luacov/?.lua
       $<TARGET_FILE:fukuruma> --test ${FK_SRC}/tests/lua --coverage
     COMMAND ${Python3_EXECUTABLE} ${FK_SRC}/tools/coverage/lua_gate.py luacov.report.out 95
-    COMMAND ${FK_GCOVR} --root ${FK_SRC} --filter ${FK_SRC}/engine/src
+    COMMAND ${FK_GCOVR} --gcov-ignore-parse-errors=suspicious_hits.warn --root ${FK_SRC} --filter ${FK_SRC}/engine/src
       --print-summary --txt coverage-c.txt --html-details coverage-c.html --fail-under-line 95 ${CMAKE_BINARY_DIR}
     WORKING_DIRECTORY $<TARGET_FILE_DIR:fukuruma>
     VERBATIM)

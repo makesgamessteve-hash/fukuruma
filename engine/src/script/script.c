@@ -296,6 +296,8 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     lua_setfield(L, -2, "galaxy");
     fk_lua_noise_open(L);
     lua_setfield(L, -2, "noise");
+    fk_lua_planet_open(L);
+    lua_setfield(L, -2, "planet");
     static const luaL_Reg input[] = {{"key", l_key},       {"axis", l_axis},       {"button", l_button},
                                      {"mouse", l_mouse},   {"mouse_button", l_mouse_button},
                                      {"touches", l_touches}, {"device", l_device}, {"rumble", l_rumble}, {"capture", l_capture}, {NULL, NULL}};

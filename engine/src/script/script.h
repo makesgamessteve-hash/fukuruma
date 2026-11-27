@@ -49,6 +49,10 @@ const float *fk_lua_pose_globals(lua_State *L, int arg, const fk_model *model);
 void fk_lua_orbit_open(lua_State *L);
 /* fk.galaxy (script/lua_galaxy.c): pushes the table. */
 void fk_lua_galaxy_open(lua_State *L);
+/* Pushes an fk.mesh made from vertices and 0-based triangle indices (uploaded when rendering). */
+void fk_lua_push_mesh(lua_State *L, const fk_vertex *v, int nv, const uint32_t *idx, int ni);
+/* fk.planet (script/lua_planet.c): pushes the table. */
+void fk_lua_planet_open(lua_State *L);
 /* fk.noise (script/lua_noise.c): pushes the table. */
 void fk_lua_noise_open(lua_State *L);
 struct fk_noise *fk_lua_noise_arg(lua_State *L, int arg);

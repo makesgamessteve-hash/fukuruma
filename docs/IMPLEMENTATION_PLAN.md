@@ -598,8 +598,11 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 ### M3 — Galaxy and star systems (L)
 
 - **OpenSpec:** `add-job-system` (worker threads on desktop, time-sliced on the web; moved here from M1
-  because generation is the first background work), `add-galaxy-generation`, `add-star-systems`,
-  `add-wonder-director`, `add-navigation-maps`.
+  because generation is the first background work; done), `add-galaxy-generation` (density, sectors, star physics,
+  deterministic exp/log/atan2/pow; done), `add-star-systems` (the eleven archetypes, Hill-spaced orbits, moons, rings,
+  belts, comets, 16 classes; done), `add-wonder-director` (22 marvels, rarity within 20%; done), `add-navigation-maps`
+  (the real sky baked from the stars, the range on a world of the current system, galaxy and system maps, the jump;
+  done). The Jump Ship's own bridge and seat come with the doll chain (M6); until then the maps open from the suit.
 - **Work:** hash and PRNG hierarchy, galaxy density and sector stars, star physics, the eleven system
   archetypes, orbits, moons, rings, belts and comets, Lua archetype registry, the Wonder Director
   with at least 10 marvels, galaxy and system maps, skybox baking, the jump sequence.

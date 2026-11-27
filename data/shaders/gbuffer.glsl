@@ -32,6 +32,7 @@ uniform float u_roughness;
 uniform float u_metalness;
 uniform vec3 u_emission;
 uniform float u_normal_scale; // 0: no normal map
+uniform float u_one_sided;    // 1: keep normals on back faces (closed surfaces such as planets)
 uniform sampler2D u_base_tex;        // sRGB texture: sampled as linear
 uniform sampler2D u_metal_rough_tex; // glTF layout: green roughness, blue metalness
 uniform sampler2D u_normal_tex;
@@ -40,7 +41,7 @@ layout(location = 0) out vec4 o_base;
 layout(location = 1) out vec4 o_normal;
 layout(location = 2) out vec4 o_emission;
 void main() {
-    vec3 n = normalize(gl_FrontFacing ? v_normal : -v_normal);
+    vec3 n = normalize(gl_FrontFacing || u_one_sided > 0.5 ? v_normal : -v_normal);
     if (u_normal_scale > 0.0) {
         vec3 t = v_tangent.xyz - n * dot(n, v_tangent.xyz);
         if (dot(t, t) > 1e-8) {

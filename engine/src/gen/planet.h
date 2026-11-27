@@ -1,0 +1,42 @@
+/* Planet surfaces from space (CONCEPT 4.4, 4.5): a cube sphere split into chunks by a quadtree; a chunk's mesh is
+   built from the planet's noise graphs and fields (elevation, temperature by latitude and height, moisture, sea level,
+   ice), so the same function serves every level of detail and, in M5, the ground. Plain C, deterministic, read-only
+   inputs: chunks are built in jobs. */
+#pragma once
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "gen/noise.h"
+#include "gfx/gfx.h"
+
+enum { FK_PAL_DEEP, FK_PAL_SHALLOW, FK_PAL_BEACH, FK_PAL_LOW, FK_PAL_MID, FK_PAL_HIGH, FK_PAL_PEAK, FK_PAL_ICE,
+       FK_PAL_GRASS, FK_PAL_FOREST, FK_PAL_DESERT, FK_PAL_TUNDRA, FK_PAL_COUNT };
+
+typedef struct {
+    double radius;      /* metres, at height 0 */
+    double relief;      /* metres per unit of the height graph */
+    double sea_level;   /* height units; ocean below it when ocean is set */
+    bool ocean, life;   /* life: vegetation biomes on land */
+    bool bands;         /* gas and ice giants: coloured by latitude bands, no relief */
+    double temperature; /* kelvin at the equator, at sea level */
+    double ice_latitude;/* |y| above which the poles are ice */
+    float palette[FK_PAL_COUNT][3]; /* sRGB */
+    fk_noise height, moisture;      /* moisture.count == 0: none (dry) */
+    fk_noise clouds;                /* clouds.count == 0: none; seen from far away (levels below 8) */
+    double cloud_cover;             /* 0..1 */
+} fk_planet;
+
+#define FK_CHUNK_GRID 32 /* quads along a chunk's edge */
+#define FK_CHUNK_VERTICES ((FK_CHUNK_GRID + 1) * (FK_CHUNK_GRID + 1) + 4 * (FK_CHUNK_GRID + 1))
+#define FK_CHUNK_INDICES (FK_CHUNK_GRID * FK_CHUNK_GRID * 6 + 4 * FK_CHUNK_GRID * 6)
+
+/* The unit direction of face coordinates (u, v in -1..1) on a cube face (0..5: +x, -x, +y, -y, +z, -z), spread
+   evenly over the sphere. */
+void fk_cube_to_sphere(int face, double u, double v, double d[3]);
+/* Height (metres above the radius) and colour (sRGB) at a unit direction. */
+double fk_planet_height(const fk_planet *p, const double d[3]);
+void fk_planet_color(const fk_planet *p, const double d[3], double height, float rgb[3]);
+/* Builds chunk (face, level, x, y): vertices relative to centre (metres, planet axes), skirts included. Fills centre
+   (planet axes) and returns the chunk's bounding radius around it. */
+double fk_planet_chunk(const fk_planet *p, int face, int level, int x, int y, fk_vertex *vertices, uint32_t *indices,
+                       double centre[3]);

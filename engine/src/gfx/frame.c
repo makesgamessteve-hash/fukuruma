@@ -49,7 +49,7 @@ void fk_frame_reset(void) {
     frame.sky_rotation[0] = frame.sky_rotation[4] = frame.sky_rotation[8] = 1;
 }
 
-void fk_frame_begin(void) { frame.ndraws = frame.noverlays = frame.nlights = frame.nsprites = frame.nbones = 0; }
+void fk_frame_begin(void) { frame.ndraws = frame.noverlays = frame.nlights = frame.nsprites = frame.nbones = frame.triangles = 0; }
 
 static void *grow(void *items, int *cap, size_t size) {
     *cap = *cap ? *cap * 2 : 64;
@@ -73,6 +73,7 @@ void fk_frame_draw_skinned(const fk_mesh *mesh, const float model[16], const fk_
     d->material = *material;
     d->bone_offset = bone_offset;
     d->slice = frame.slice;
+    frame.triangles += mesh->count / 3;
 }
 
 void fk_frame_draw(const fk_mesh *mesh, const float model[16], const fk_material *material) {

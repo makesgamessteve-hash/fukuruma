@@ -67,3 +67,10 @@ and three crates it can push; new hard touches SHALL play an impact feedback bun
 - **WHEN** the Commander walks the suit into a crate for two and a half seconds
 - **THEN** the crate is pushed along with an impact, the picture matches its reference image, and the state hash
   matches the recorded one on every platform
+
+### Requirement: World gravity
+A world's gravity SHALL be settable at any time (waking every body) and SHALL be part of its saved state.
+
+#### Scenario: Another world
+- **WHEN** the range jumps to a world with stronger gravity and the game is saved and loaded
+- **THEN** bodies fall with the new world's gravity before and after loading

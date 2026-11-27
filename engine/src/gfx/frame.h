@@ -24,6 +24,7 @@ typedef struct {
     float base[4];                           /* linear colour factor; multiplies the vertex colour and texture */
     float roughness, metalness, emission[3]; /* emission: linear radiance added to the surface */
     float normal_scale;
+    bool one_sided; /* closed surfaces seen from outside: back faces keep their normals (no two-sided flip) */
     const fk_texture *base_tex, *metal_rough_tex, *normal_tex, *emission_tex; /* NULL: none */
 } fk_material;
 
@@ -84,6 +85,7 @@ typedef struct {
     int palette_size;                 /* 0: palette mode off */
     float slice_near[FK_SLICE_COUNT], slice_far[FK_SLICE_COUNT]; /* metres; FK_SLICE_LOCAL's are unused */
     int slice; /* the slice of the next draws */
+    int triangles; /* drawn this frame (budgets) */
     const fk_texture *sky_map; /* a cube map shown where nothing is drawn, or NULL */
     float sky_strength;     /* multiplies the sky */
     float sky_rotation[9];  /* turns world directions into the sky's (column-major) */

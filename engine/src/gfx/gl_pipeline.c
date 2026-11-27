@@ -324,6 +324,7 @@ static void draw_meshes(GLuint program, bool materials, unsigned slices) {
             gl.Uniform3fv(LOC("u_emission"), 1, m->emission);
             bool normal_map = m->normal_tex && m->normal_tex->id;
             gl.Uniform1f(LOC("u_normal_scale"), normal_map ? m->normal_scale : 0.0f); /* 0: no normal map */
+            gl.Uniform1f(LOC("u_one_sided"), m->one_sided ? 1.0f : 0.0f);
             const fk_texture *textures[4] = {m->base_tex, m->metal_rough_tex, m->normal_tex, m->emission_tex};
             static const char *names[4] = {"u_base_tex", "u_metal_rough_tex", "u_normal_tex", "u_emission_tex"};
             for (int t = 0; t < 4; t++) sampler(program, names[t], t, GL_TEXTURE_2D, textures[t] && textures[t]->id ? textures[t]->id : R.white);
@@ -584,6 +585,8 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
         target(R.fb_lum, LUM_W, LUM_H);
         program = use(P_LUM);
         sampler(program, "u_input", 0, GL_TEXTURE_2D, scene);
+        sampler(program, "u_depth", 1, GL_TEXTURE_2D, R.g_depth);
+        slice_uniforms(program);
         fullscreen();
         gl.BindTexture(GL_TEXTURE_2D, R.lum);
         gl.GenerateMipmap(GL_TEXTURE_2D);
