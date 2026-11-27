@@ -177,7 +177,7 @@ frames.matrix = matrix
 
 -- The depth slices' reach in metres (see fk.gfx.slices); scaled space puts celestial things at SCALED_DISTANCE.
 frames.LOCAL_FAR = 400
-frames.PLANETARY = { 500, 2e7 }
+frames.PLANETARY = { 400, 2e7 } -- it starts where the local slice ends, so the ground runs on across both
 frames.SCALED_DISTANCE = 1e8
 
 -- Where and how to draw something of bounding radius r at the camera-relative position rel: the slice, the

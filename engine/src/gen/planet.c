@@ -26,10 +26,44 @@ static double raw(const fk_planet *p, const double d[3]) {
     return p->bands ? 0 : fk_noise_eval(&p->height, d[0], d[1], d[2]);
 }
 
-double fk_planet_height(const fk_planet *p, const double d[3]) {
+static double natural(const fk_planet *p, const double d[3]) {
     double h = raw(p, d);
     if (p->ocean && h < p->sea_level) h = p->sea_level; /* the ocean's surface */
     return (h - p->sea_level) * p->relief;
+}
+
+double fk_planet_height(const fk_planet *p, const double d[3]) {
+    double h = natural(p, d);
+    if (p->site_radius > 0) {
+        double dx = d[0] - p->site[0], dy = d[1] - p->site[1], dz = d[2] - p->site[2];
+        double k = (sqrt(dx * dx + dy * dy + dz * dz) * p->radius - p->site_radius) / p->site_radius; /* 0..1: easing */
+        if (k < 1) {
+            k = k < 0 ? 0 : k * k * (3 - 2 * k);
+            h = p->site_height + (h - p->site_height) * k;
+        }
+    }
+    return h;
+}
+
+void fk_planet_flatten(fk_planet *p, const double d[3], double radius) {
+    p->site_radius = 0;
+    p->site_height = natural(p, d);
+    memcpy(p->site, d, sizeof p->site);
+    p->site_radius = radius;
+}
+
+void fk_planet_grid(const fk_planet *p, const double up[3], const double east[3], const double north[3], double x0,
+                    double z0, double cell, int n, float *heights) {
+    double base = p->radius + fk_planet_height(p, up);
+    for (int j = 0; j <= n; j++)
+        for (int i = 0; i <= n; i++) {
+            double x = x0 + i * cell, z = z0 + j * cell, d[3], l = 0;
+            for (int k = 0; k < 3; k++) d[k] = up[k] * p->radius + east[k] * x + north[k] * z, l += d[k] * d[k];
+            l = sqrt(l);
+            for (int k = 0; k < 3; k++) d[k] /= l;
+            double r = p->radius + fk_planet_height(p, d), cosine = d[0] * up[0] + d[1] * up[1] + d[2] * up[2];
+            heights[j * (n + 1) + i] = (float)(r * cosine - base);
+        }
 }
 
 static void mix(float out[3], const float a[3], const float b[3], double t) {
@@ -85,8 +119,9 @@ double fk_planet_chunk(const fk_planet *p, int face, int level, int x, int y, fk
     double step = (size + 2 * pad) / N;
     double cd[3];
     fk_cube_to_sphere(face, u0 + pad + size / 2, v0 + pad + size / 2, cd);
-    for (int k = 0; k < 3; k++) centre[k] = cd[k] * p->radius;
-    double bound = 0, skirt = p->radius * size * 0.02 + p->relief * 0.05;
+    double ground = p->radius + fk_planet_height(p, cd); /* on the surface: tight bounds, precise vertices */
+    for (int k = 0; k < 3; k++) centre[k] = cd[k] * ground;
+    double bound = 0, skirt = p->radius * size * 0.0125 + 1; /* half a quad: deep enough for the cracks */
     memset(vertices, 0, (size_t)FK_CHUNK_VERTICES * sizeof *vertices);
     for (int j = 0; j <= N; j++)
         for (int i = 0; i <= N; i++) {
@@ -105,14 +140,10 @@ double fk_planet_chunk(const fk_planet *p, int face, int level, int x, int y, fk
                 vx->normal[k] = (float)(nl != 0 ? n[k] / nl : d[k]);
             }
             fk_planet_color(p, d, h, vx->color);
-            if (p->clouds.count && level < 8) { /* the cloud layer as seen from far away, fading as one comes closer */
+            if (p->clouds.count) { /* the cloud layer as seen from far away, in u: the draw fades it (option clouds) */
                 double c = 0.5 + 0.5 * fk_noise_eval(&p->clouds, d[0], d[1], d[2]), t = (c - (1 - p->cloud_cover)) / 0.15;
-                t = t < 0 ? 0 : t > 1 ? 1 : t;
-                double fade = level <= 4 ? 1 : (8 - level) / 4.0;
-                static const float white[3] = {0.95f, 0.96f, 0.98f};
-                mix(vx->color, vx->color, white, t * fade * 0.9);
+                vx->uv[0] = (float)((t < 0 ? 0 : t > 1 ? 1 : t) * 0.9);
             }
-            vx->uv[0] = (float)i / N, vx->uv[1] = (float)j / N;
             double r2 = (pos[0] - centre[0]) * (pos[0] - centre[0]) + (pos[1] - centre[1]) * (pos[1] - centre[1]) +
                         (pos[2] - centre[2]) * (pos[2] - centre[2]);
             if (r2 > bound) bound = r2;

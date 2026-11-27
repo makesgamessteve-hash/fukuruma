@@ -6,7 +6,7 @@ local ui = require("fk.ui")
 local graphics = require("settings.graphics")
 local game -- require("game") works once main.lua has run, inside run()
 
-local ROWS = 21 -- rows of the settings menu; row 10 is Palette mode
+local ROWS = 22 -- rows of the settings menu; row 11 is Palette mode
 
 local function stored()
   return graphics.decode(fk.storage.load("graphics"), {})
@@ -55,10 +55,10 @@ return scenario {
 
     local x, width, first = ui.layout(ROWS)
     local w, h = fk.gfx.size()
-    local px, py = x + width * 0.9, first + 9 * ui.ROW + 4 -- the right half of row 10's value
+    local px, py = x + width * 0.9, first + 10 * ui.ROW + 4 -- the right half of row 11's value
     t.touch(1, px / w, py / h); t.frames(1)
     t.touch(1); t.frames(2)
-    t.expect(stored().palette == true and ui.focus() == 10, "tapping the value's right half turns the palette on")
+    t.expect(stored().palette == true and ui.focus() == 11, "tapping the value's right half turns the palette on")
     t.screenshot("menu_palette")
 
     press(t, "Escape") -- close: the controls work again

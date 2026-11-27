@@ -84,6 +84,57 @@ static int l_height(lua_State *L) {
     return 1;
 }
 
+/* planet:flatten(x, y, z, radius): levels the site around that direction (call before building chunks) */
+static int l_flatten(lua_State *L) {
+    double d[3];
+    dir_arg(L, 2, d);
+    double r = luaL_checknumber(L, 5);
+    luaL_argcheck(L, r > 0 && r < 1e6, 5, "the radius must be above 0 and below 1000 km");
+    fk_planet_flatten(planet_arg(L, 1), d, r);
+    return 0;
+}
+
+static void unit_field(lua_State *L, int t, const char *name, double d[3]) {
+    if (lua_getfield(L, t, name) != LUA_TTABLE) luaL_error(L, "grid: '%s' must be a unit vector {x, y, z}", name);
+    double l = 0;
+    for (int i = 0; i < 3; i++) {
+        lua_rawgeti(L, -1, i + 1);
+        d[i] = luaL_checknumber(L, -1), l += d[i] * d[i];
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
+    if (!(fabs(l - 1) < 1e-6)) luaL_error(L, "grid: '%s' must be a unit vector {x, y, z}", name);
+}
+
+/* planet:grid{up, east, north, origin = {x0, z0}, cell, n} -> (n + 1)^2 heights for a terrain (see fk_planet_grid) */
+static int l_grid(lua_State *L) {
+    fk_planet *p = planet_arg(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    double up[3], east[3], north[3], origin[2] = {0, 0};
+    unit_field(L, 2, "up", up);
+    unit_field(L, 2, "east", east);
+    unit_field(L, 2, "north", north);
+    if (lua_getfield(L, 2, "origin") == LUA_TTABLE)
+        for (int i = 0; i < 2; i++) {
+            lua_rawgeti(L, -1, i + 1);
+            origin[i] = luaL_checknumber(L, -1);
+            lua_pop(L, 1);
+        }
+    lua_pop(L, 1);
+    double cell = field(L, 2, "cell", 1);
+    int n = (int)field(L, 2, "n", 32);
+    luaL_argcheck(L, cell > 0 && n >= 1 && n <= 256, 2, "grid: 'cell' must be above 0 and 'n' from 1 to 256");
+    int count = (n + 1) * (n + 1);
+    float *h = lua_newuserdatauv(L, (size_t)count * sizeof *h, 0);
+    fk_planet_grid(p, up, east, north, origin[0], origin[1], cell, n, h);
+    lua_createtable(L, count, 0);
+    for (int i = 0; i < count; i++) {
+        lua_pushnumber(L, h[i]);
+        lua_rawseti(L, -2, i + 1);
+    }
+    return 1;
+}
+
 /* planet:color(x, y, z) -> r, g, b (sRGB) */
 static int l_color(lua_State *L) {
     fk_planet *p = planet_arg(L, 1);
@@ -174,7 +225,8 @@ static int l_direction(lua_State *L) { /* fk.planet.direction(face, u, v) -> x, 
 }
 
 void fk_lua_planet_open(lua_State *L) {
-    static const luaL_Reg planet[] = {{"height", l_height}, {"color", l_color}, {"chunk", l_chunk}, {NULL, NULL}};
+    static const luaL_Reg planet[] = {{"height", l_height}, {"color", l_color}, {"chunk", l_chunk},
+                                       {"flatten", l_flatten}, {"grid", l_grid}, {NULL, NULL}};
     static const luaL_Reg request[] = {{"ready", l_ready}, {"mesh", l_mesh}, {NULL, NULL}};
     luaL_newmetatable(L, "fk.planet_surface");
     luaL_newlib(L, planet);

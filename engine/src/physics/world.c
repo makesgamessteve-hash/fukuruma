@@ -44,7 +44,11 @@ struct fk_world {
     int *pairs;
     int npairs, pair_cap;
     int *island, *island_still, island_cap;
+    fk_terrain terrain;
+    fk_body ground; /* the terrain's side of its contacts (index -1): static, id 0 */
 };
+
+static fk_body *body_at(fk_world *w, int i) { return i < 0 ? &w->ground : &w->bodies[i]; }
 
 static void *grow(void *p, int *cap, int need, size_t size) {
     if (need <= *cap) return p;
@@ -61,6 +65,8 @@ fk_world *fk_world_create(const float gravity[3]) {
     if (!w) abort();
     v3_copy(w->gravity, gravity);
     w->next_id = 1;
+    w->ground.kind = FK_BODY_STATIC, w->ground.q[3] = 1, w->ground.friction = 0.8f;
+    fk_body_update(&w->ground);
     return w;
 }
 
@@ -68,6 +74,7 @@ void fk_world_destroy(fk_world *w) {
     if (!w) return;
     free(w->bodies), free(w->contacts), free(w->cache), free(w->impacts), free(w->cells), free(w->pairs);
     free(w->island), free(w->island_still);
+    fk_terrain_set(&w->terrain, 0, 0, 0, 0, NULL);
     free(w);
 }
 
@@ -77,6 +84,13 @@ void fk_world_gravity(fk_world *w, const float gravity[3]) {
 }
 
 const float *fk_world_get_gravity(const fk_world *w) { return w->gravity; }
+
+void fk_world_terrain(fk_world *w, float x0, float z0, float cell, int n, const float *heights, float friction) {
+    fk_terrain_set(&w->terrain, x0, z0, cell, n, heights);
+    w->ground.friction = friction;
+}
+
+const fk_terrain *fk_world_get_terrain(const fk_world *w) { return &w->terrain; }
 int fk_world_count(const fk_world *w) { return w->n; }
 fk_body *fk_world_bodies(fk_world *w) { return w->bodies; }
 uint32_t fk_world_next_id(const fk_world *w) { return w->next_id; }
@@ -338,7 +352,7 @@ static void update_sleep(fk_world *w) {
     }
     for (int c = 0; c < w->ncontacts; c++) {
         const contact *k = &w->contacts[c];
-        if (movable(&w->bodies[k->a]) && movable(&w->bodies[k->b])) {
+        if (k->a >= 0 && movable(&w->bodies[k->a]) && movable(&w->bodies[k->b])) {
             int ra = find(w->island, k->a), rb = find(w->island, k->b);
             if (ra != rb) w->island[ra < rb ? rb : ra] = ra < rb ? ra : rb;
         }
@@ -396,10 +410,24 @@ const fk_impact *fk_world_step(fk_world *w, float dt, float min_impulse, int *co
             v3_copy(c->normal, t[k].normal);
         }
     }
+    for (int i = 0; i < w->n; i++) { /* the terrain under awake bodies */
+        fk_body *b = &w->bodies[i];
+        if (!movable(b) || b->asleep) continue;
+        fk_touch t[4];
+        int n = fk_terrain_collide(&w->terrain, b, t);
+        w->contacts = grow(w->contacts, &w->contact_cap, w->ncontacts + n, sizeof *w->contacts);
+        for (int k = 0; k < n; k++) {
+            contact *c = &w->contacts[w->ncontacts++];
+            memset(c, 0, sizeof *c);
+            c->a = -1, c->b = i, c->key = t[k].key, c->depth = t[k].depth;
+            v3_copy(c->point, t[k].point);
+            v3_copy(c->normal, t[k].normal);
+        }
+    }
     /* Prepare and warm start. */
     for (int k = 0; k < w->ncontacts; k++) {
         contact *c = &w->contacts[k];
-        fk_body *a = &w->bodies[c->a], *b = &w->bodies[c->b];
+        fk_body *a = body_at(w, c->a), *b = body_at(w, c->b);
         v3_sub(c->ra, c->point, a->p);
         v3_sub(c->rb, c->point, b->p);
         tangents(c->normal, c->t1, c->t2);
@@ -425,7 +453,7 @@ const fk_impact *fk_world_step(fk_world *w, float dt, float min_impulse, int *co
     for (int it = 0; it < ITERATIONS; it++)
         for (int k = 0; k < w->ncontacts; k++) {
             contact *c = &w->contacts[k];
-            fk_body *a = &w->bodies[c->a], *b = &w->bodies[c->b];
+            fk_body *a = body_at(w, c->a), *b = body_at(w, c->b);
             float vrel[3];
             const float *dirs[2] = {c->t1, c->t2};
             for (int t = 0; t < 2; t++) {
@@ -460,7 +488,7 @@ const fk_impact *fk_world_step(fk_world *w, float dt, float min_impulse, int *co
     w->ncache = 0;
     for (int k = 0; k < w->ncontacts; k++) {
         const contact *c = &w->contacts[k];
-        const fk_body *a = &w->bodies[c->a], *b = &w->bodies[c->b];
+        const fk_body *a = body_at(w, c->a), *b = body_at(w, c->b);
         w->cache[w->ncache++] = (fk_cached){a->id, b->id, c->key, c->jn, {c->jt[0], c->jt[1]}};
         if (c->fresh && c->jn > min_impulse) {
             w->impacts = grow(w->impacts, &w->impact_cap, w->nimpacts + 1, sizeof *w->impacts);
@@ -497,12 +525,36 @@ static bool step_top(const fk_body *o, const float edge[3], const float normal[3
     return fk_collide(o, &probe, t) == 0;
 }
 
+/* Pushes the character out of one touch with obstacle o (normal from o to the character). */
+static void push_out(fk_world *w, fk_body *c, const fk_body *o, const fk_touch *t, const float up[3], move_result *r) {
+    float radius = c->shape.radius, half = c->shape.half[1];
+    float along = v3_dot(t->normal, up), edge[3], foot[3], sphere[3], rel[3];
+    v3_mad(edge, t->point, t->normal, 0.5f * t->depth); /* on the obstacle's surface */
+    v3_mad(sphere, c->p, up, -half);                      /* the lower end's centre */
+    v3_mad(foot, sphere, up, -radius);
+    v3_sub(rel, edge, foot);
+    float height = v3_dot(rel, up);
+    if (along >= c->slope_cos) {
+        v3_mad(c->p, c->p, up, t->depth / along);
+        r->grounded = true;
+    } else if (o != &w->ground && height > 0.01f && height <= c->step && height < 0.9f * radius &&
+               step_top(o, edge, t->normal, up)) {
+        /* onto the step: lift the lower end until the edge lies on its surface */
+        float d[3];
+        v3_sub(d, sphere, edge);
+        float du = v3_dot(d, up), disc = du * du - v3_dot(d, d) + radius * radius;
+        v3_mad(c->p, c->p, up, -du + sqrtf(disc > 0 ? disc : 0));
+        r->grounded = true;
+    } else {
+        v3_mad(c->p, c->p, t->normal, t->depth);
+    }
+}
+
 /* Pushes the character out of what it overlaps. Walkable ground lifts it straight up (no sliding down slopes),
    so do the edges of steps no higher than its step height; walls and ceilings push it along their normals.
-   Bodies light enough to push are left to the solver. */
+   Bodies light enough to push are left to the solver. The terrain counts as walkable ground or a wall. */
 static move_result resolve(fk_world *w, fk_body *c, const float up[3]) {
     move_result r = {false};
-    float radius = c->shape.radius, half = c->shape.half[1];
     for (int it = 0; it < 4; it++) {
         bool moved = false;
         float lo[3], hi[3];
@@ -520,28 +572,17 @@ static move_result resolve(fk_world *w, fk_body *c, const float up[3]) {
             int n = fk_collide(o, c, t);
             for (int k = 0; k < n; k++) {
                 if (t[k].depth <= 1e-4f) continue;
-                float along = v3_dot(t[k].normal, up), edge[3], foot[3], sphere[3], rel[3];
-                v3_mad(edge, t[k].point, t[k].normal, 0.5f * t[k].depth); /* on the obstacle's surface */
-                v3_mad(sphere, c->p, up, -half);                            /* the lower end's centre */
-                v3_mad(foot, sphere, up, -radius);
-                v3_sub(rel, edge, foot);
-                float height = v3_dot(rel, up);
-                if (along >= c->slope_cos) {
-                    v3_mad(c->p, c->p, up, t[k].depth / along);
-                    r.grounded = true;
-                } else if (height > 0.01f && height <= c->step && height < 0.9f * radius && step_top(o, edge, t[k].normal, up)) {
-                    /* onto the step: lift the lower end until the edge lies on its surface */
-                    float d[3];
-                    v3_sub(d, sphere, edge);
-                    float du = v3_dot(d, up), disc = du * du - v3_dot(d, d) + radius * radius;
-                    v3_mad(c->p, c->p, up, -du + sqrtf(disc > 0 ? disc : 0));
-                    r.grounded = true;
-                } else {
-                    v3_mad(c->p, c->p, t[k].normal, t[k].depth);
-                }
+                push_out(w, c, o, &t[k], up, &r);
                 moved = true;
                 fk_body_aabb(c, lo, hi);
             }
+        }
+        fk_touch t[4];
+        int n = fk_terrain_collide(&w->terrain, c, t);
+        for (int k = 0; k < n; k++) {
+            if (t[k].depth <= 1e-4f) continue;
+            push_out(w, c, &w->ground, &t[k], up, &r);
+            moved = true;
         }
         if (!moved) break;
     }

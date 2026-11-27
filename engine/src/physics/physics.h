@@ -44,6 +44,15 @@ typedef struct {
 
 typedef struct fk_world fk_world;
 
+/* Terrain (terrain-streaming spec): a heightfield in the world's frame (y up), (n + 1)^2 heights over n x n cells of
+   size cell with its corner at (x0, z0). Static and not part of the bodies or their saved state: it is rebuilt
+   deterministically from the world's data. */
+typedef struct {
+    float x0, z0, cell;
+    int n;
+    float *h; /* row-major: h[j * (n + 1) + i] at (x0 + i cell, z0 + j cell) */
+} fk_terrain;
+
 fk_world *fk_world_create(const float gravity[3]);
 void fk_world_destroy(fk_world *w);
 void fk_world_gravity(fk_world *w, const float gravity[3]); /* wakes every body */
@@ -68,6 +77,10 @@ const fk_cached *fk_world_cache(const fk_world *w, int *count);
 void fk_world_clear(fk_world *w, uint32_t next_id);
 bool fk_world_put(fk_world *w, const fk_body *b); /* exactly as saved; false unless ids rise and are below next_id */
 void fk_world_put_cache(fk_world *w, const fk_cached *c, int count);
+/* Replaces the world's terrain (heights copied; NULL removes it); bodies touching it collide with a static ground
+   body of id 0 and the given friction. */
+void fk_world_terrain(fk_world *w, float x0, float z0, float cell, int n, const float *heights, float friction);
+const fk_terrain *fk_world_get_terrain(const fk_world *w);
 
 /* Narrowphase, for tests and the character: contacts between two bodies (normal from a to b, depth > 0 when
    overlapping), up to 4. */
@@ -78,3 +91,9 @@ typedef struct {
 int fk_collide(const fk_body *a, const fk_body *b, fk_touch out[4]);
 void fk_body_update(fk_body *b); /* recomputes r from q */
 void fk_body_aabb(const fk_body *b, float lo[3], float hi[3]);
+
+/* Terrain queries: the ground's height and normal under (x, z) (false outside), and a body's contacts with it
+   (normals from the ground to the body). */
+void fk_terrain_set(fk_terrain *t, float x0, float z0, float cell, int n, const float *heights);
+bool fk_terrain_height(const fk_terrain *t, float x, float z, float *height, float normal[3]);
+int fk_terrain_collide(const fk_terrain *t, const fk_body *b, fk_touch out[4]);

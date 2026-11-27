@@ -38,6 +38,7 @@ return {
       tap(state, "Down"); tap(state, "Right"); assert(state.shadow_size == 2048)
       tap(state, "Down"); tap(state, "Right"); assert(state.ao == 6)
       tap(state, "Down"); tap(state, "Right"); assert(state.lights == 8)
+      tap(state, "Down"); tap(state, "Right"); assert(state.terrain == 6, "terrain detail")
       tap(state, "Down"); tap(state, "Right"); assert(state.dither == false)
       tap(state, "Down"); tap(state, "Right"); assert(state.palette == true)
       assert(graphics.decode(fk.storage.load("graphics"), {}).palette == true, "saved")

@@ -330,6 +330,7 @@ static void draw_meshes(GLuint program, bool materials, unsigned slices) {
             gl.Uniform1f(LOC("u_normal_scale"), normal_map ? m->normal_scale : 0.0f); /* 0: no normal map */
             gl.Uniform1f(LOC("u_one_sided"), m->one_sided ? 1.0f : 0.0f);
             gl.Uniform1f(LOC("u_emissive_colors"), m->emissive_colors ? 1.0f : 0.0f);
+            gl.Uniform1f(LOC("u_clouds"), m->clouds);
             const fk_texture *textures[4] = {m->base_tex, m->metal_rough_tex, m->normal_tex, m->emission_tex};
             static const char *names[4] = {"u_base_tex", "u_metal_rough_tex", "u_normal_tex", "u_emission_tex"};
             for (int t = 0; t < 4; t++) sampler(program, names[t], t, GL_TEXTURE_2D, textures[t] && textures[t]->id ? textures[t]->id : R.white);

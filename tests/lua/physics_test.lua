@@ -5,6 +5,28 @@ local function fails(fn, text)
 end
 
 return {
+  ["terrain carries bodies and characters"] = function()
+    local w = fk.physics.world({ gravity = { 0, -9.81, 0 } })
+    local heights = {}
+    for j = 0, 8 do
+      for i = 0, 8 do heights[#heights + 1] = i > 4 and (i - 4) * 0.5 or 0 end
+    end
+    w:terrain({ origin = { -4, -4 }, cell = 1, heights = heights, friction = 0.9 })
+    local h, nx, ny = w:height(2, 0)
+    assert(math.abs(h - 1) < 1e-6 and nx < 0 and ny > 0.8)
+    assert(w:height(9, 0) == nil, "outside the terrain")
+    local ball = w:add({ shape = "sphere", radius = 0.5, mass = 1, position = { -2, 2, 2.5 } })
+    for _ = 1, 120 do w:step(1 / 60) end
+    assert(math.abs(w:get(ball).position[2] - 0.5) < 0.05, "it rests on the ground")
+    local c = w:character({ radius = 0.4, height = 1.8, position = { -3, 0.9, 0 } })
+    local p, grounded
+    for _ = 1, 120 do p, grounded = w:move(c, { 0.05, -0.05, 0 }, 1 / 60) end
+    assert(grounded and p[2] > 1.5, "it walks up the slope")
+    assert(not pcall(w.terrain, w, { heights = { 1, 2, 3 } }), "heights must be square")
+    assert(not pcall(w.terrain, w, { heights = 5 }))
+    w:terrain(nil)
+    assert(w:height(0, 0) == nil)
+  end,
   ["bodies fall, land and report the touch"] = function()
     local w = fk.physics.world({ gravity = { 0, -10, 0 } })
     w:add({ shape = "box", size = { 20, 1, 20 }, position = { 0, -0.5, 0 } })

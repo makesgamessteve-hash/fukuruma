@@ -62,6 +62,7 @@ function menu.draw(state, dt)
     option(state, "Shadow detail", "shadow_size", { "1024", "2048" }, level_option("shadow_size")),
     option(state, "Ambient occlusion", "ao", { "Off", "6", "10", "16" }, level_option("ao")),
     option(state, "Point lights", "lights", { "4", "8", "16", "32" }, level_option("lights")),
+    option(state, "Terrain detail", "terrain", { "Coarse", "Medium", "Fine", "Finest" }, level_option("terrain")),
     option(state, "Dithering", "dither", { "On", "Off" }, plain("dither")),
     option(state, "Palette mode", "palette", { "Off", "On" }, plain("palette")),
   }

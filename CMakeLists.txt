@@ -61,6 +61,12 @@ add_library(fk_engine STATIC ${FK_ENGINE_SRC})
 target_include_directories(fk_engine PUBLIC engine/src)
 target_link_libraries(fk_engine PUBLIC fk_third_party SDL3::SDL3-static)
 fk_settings(fk_engine)
+if(NOT MSVC AND NOT FK_COVERAGE AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  # The generators' hot loops (noise, planet chunks, galaxy) stay quick in debug builds; -ffp-contract=off keeps their
+  # results identical.
+  file(GLOB FK_GEN_SRC ${CMAKE_SOURCE_DIR}/engine/src/gen/*.c)
+  set_source_files_properties(${FK_GEN_SRC} PROPERTIES COMPILE_OPTIONS -O2)
+endif()
 
 add_executable(fukuruma engine/src/platform/main.c)
 target_link_libraries(fukuruma PRIVATE fk_engine)
@@ -152,6 +158,7 @@ add_test(NAME game_systems_norender COMMAND fukuruma --no-render --scenario ${FK
 add_test(NAME game_navigation COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/navigation.lua)
 add_test(NAME game_navigation_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/navigation.lua)
 add_test(NAME game_planets COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/planets.lua)
+add_test(NAME game_descent COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/descent.lua)
 add_test(NAME game_stars COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/stars.lua)
 add_test(NAME game_graphics_menu COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/graphics_menu.lua)
 add_test(NAME game_graphics_menu_norender COMMAND fukuruma --no-render --scenario ${FK_SRC}/tests/game/graphics_menu.lua)
@@ -164,10 +171,10 @@ set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_
   game_systems_norender game_navigation_norender PROPERTIES LABELS unit)
 set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible game_input
   game_showcase_lighting game_showcase_materials game_showcase_skinning game_feel game_graphics_menu game_first_person
-  game_scale_ladder game_physics game_navigation game_planets game_stars PROPERTIES LABELS game)
+  game_scale_ladder game_physics game_navigation game_planets game_stars game_descent PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
-set_tests_properties(unit_lua game_planets PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
+set_tests_properties(unit_lua game_planets game_descent PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
 
 if(FK_COVERAGE)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)

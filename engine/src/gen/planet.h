@@ -22,8 +22,10 @@ typedef struct {
     double ice_latitude;/* |y| above which the poles are ice */
     float palette[FK_PAL_COUNT][3]; /* sRGB */
     fk_noise height, moisture;      /* moisture.count == 0: none (dry) */
-    fk_noise clouds;                /* clouds.count == 0: none; seen from far away (levels below 8) */
+    fk_noise clouds;                /* clouds.count == 0: none; stored in the vertices' u for the draw to fade */
     double cloud_cover;             /* 0..1 */
+    double site[3], site_radius;    /* a levelled site (the range's pad): flat within site_radius metres of the */
+    double site_height;             /* unit direction site, easing back to the land over as far again; radius 0: none */
 } fk_planet;
 
 #define FK_CHUNK_GRID 32 /* quads along a chunk's edge */
@@ -38,5 +40,12 @@ double fk_planet_height(const fk_planet *p, const double d[3]);
 void fk_planet_color(const fk_planet *p, const double d[3], double height, float rgb[3]);
 /* Builds chunk (face, level, x, y): vertices relative to centre (metres, planet axes), skirts included. Fills centre
    (planet axes) and returns the chunk's bounding radius around it. */
+/* Levels the ground within radius metres of unit direction d to its height there (before any chunk is built). */
+void fk_planet_flatten(fk_planet *p, const double d[3], double radius);
+/* Heights for a terrain grid in a local frame on the surface (y along up, x along east, z along north, unit vectors,
+   origin on the surface at up): (n + 1)^2 heights, row by row from (x0, z0), relative to the ground at the origin,
+   following the curvature. */
+void fk_planet_grid(const fk_planet *p, const double up[3], const double east[3], const double north[3], double x0,
+                    double z0, double cell, int n, float *heights);
 double fk_planet_chunk(const fk_planet *p, int face, int level, int x, int y, fk_vertex *vertices, uint32_t *indices,
                        double centre[3]);

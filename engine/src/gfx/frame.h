@@ -26,6 +26,7 @@ typedef struct {
     float normal_scale;
     bool one_sided; /* closed surfaces seen from outside: back faces keep their normals (no two-sided flip) */
     bool emissive_colors; /* the vertex colours tint the emission (stars) */
+    float clouds; /* 0..1: how much of the cloud cover stored in the vertices' u shows (planet chunks) */
     const fk_texture *base_tex, *metal_rough_tex, *normal_tex, *emission_tex; /* NULL: none */
 } fk_material;
 

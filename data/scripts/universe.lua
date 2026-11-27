@@ -131,6 +131,8 @@ local function offset_from(sys, place, i, t)
   return { s[1] - p[1], s[2] - p[2], s[3] - p[3] }
 end
 
+local choose_ground -- below
+
 local function rebuild(u)
   local star = universe.star(u.sector, u.seed)
   local sys = systems.generate(star)
@@ -147,9 +149,42 @@ local function rebuild(u)
     else view.rate = 0 end
     local to_star = sys.stars[1] and normalize(offset_from(sys, view.place, 1, 0)) or nil
     view.start = to_star and arc(universe.SUN_AT_START, to_star) or { 0, 0, 0, 1 }
+    view.ground = choose_ground(view, b, to_star) or false
   else
     view.axis, view.rate, view.start = { 0, 1, 0 }, 0, { 0, 0, 0, 1 }
   end
+end
+
+universe.SITE = 140 -- metres: the levelled site around the range's pad
+
+-- The ground of the range's world (terrain-streaming spec): its surface (fk.planet) with the range's site levelled,
+-- and the fixed rotation from the world's own axes into the range's local axes. The range turns with its world, so
+-- in local axes the ground never moves. Two turns are free: the world's about its own axis at the start, and the
+-- range's about the direction of the star (which keeps the star where it stands on arrival). The first pair that puts
+-- the site on land is taken; a world without land keeps the first.
+function choose_ground(v, b, to_star)
+  local desc = planets.describe(b)
+  if not desc.surface or desc.bands then return nil end
+  local tilt = arc({ 0, 1, 0 }, v.axis)
+  local first, found
+  for p = 0, to_star and 15 or 0 do
+    local start = to_star and frames.multiply(axis_angle(to_star, p * TAU / 16), v.start) or v.start
+    for k = 0, 63 do
+      local b0 = frames.multiply(tilt, axis_angle({ 0, 1, 0 }, k * TAU / 64))
+      local to_body = frames.multiply(frames.conjugate(b0), start) -- local axes into the world's
+      local up = frames.rotate(to_body, { 0, 1, 0 })
+      first = first or { start = start, to_body = to_body, up = up }
+      if desc.surface:height(up[1], up[2], up[3]) > 20 then found = { start = start, to_body = to_body, up = up } break end
+    end
+    if found then break end
+  end
+  local site = found or first
+  local up, to_body = site.up, site.to_body
+  v.start = site.start
+  desc.surface:flatten(up[1], up[2], up[3], universe.SITE)
+  return { desc = desc, surface = desc.surface, radius = b.radius, up = up, east = frames.rotate(to_body, { 1, 0, 0 }),
+    north = frames.rotate(to_body, { 0, 0, 1 }), to_local = frames.conjugate(to_body),
+    centre = { 0, -(b.radius + desc.surface:height(up[1], up[2], up[3])) - 0.05, 0 } } -- drawn just under the deck
 end
 
 -- The current view of the universe, rebuilt after a jump or a load.
@@ -158,6 +193,9 @@ function universe.view()
   if view.seed ~= u.seed or (view.place or 0) ~= u.place then rebuild(u) end
   return view
 end
+
+-- The range's ground (see ground above), or nil where there is none to stand on (gas giants, no world).
+function universe.ground() return universe.view().ground or nil end
 
 -- The range's orientation at time t: local axes (y up) into system axes.
 local function orientation(v, t)
@@ -211,7 +249,8 @@ function universe.light(t)
   if v.optics then
     local o, R = v.optics, sys.bodies[v.place].radius
     local ground = PALETTE[sys.bodies[v.place].class] or PALETTE.barren
-    out.atmosphere = { centre = { 0, -R, 0 }, radius = R, top = o.top, height = o.height, rayleigh = o.rayleigh, mie = o.mie,
+    local g = universe.ground()
+    out.atmosphere = { centre = g and g.centre or { 0, -R, 0 }, radius = R, top = o.top, height = o.height, rayleigh = o.rayleigh, mie = o.mie,
       absorb = o.absorb, ground = ground }
   end
   out.ambient = { sky = { 0.02 + 0.33 * k, 0.02 + 0.43 * k, 0.03 + 0.67 * k }, ground = { 0.02 + 0.26 * day, 0.02 + 0.2 * day, 0.02 + 0.14 * day } }

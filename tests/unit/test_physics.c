@@ -430,3 +430,88 @@ UTEST(character, falls_and_lands_with_its_own_gravity) {
     EXPECT_FALSE(loose->grounded);
     fk_world_destroy(w);
 }
+
+/* Terrain ------------------------------------------------------------------------------------------- */
+
+/* A 16 x 16 cell heightfield (1 m cells, corner at -8, -8): flat at 0 for x < 0, rising 0.5 m per metre beyond. */
+static fk_world *with_terrain(void) {
+    fk_world *w = fk_world_create(G);
+    float h[17 * 17];
+    for (int j = 0; j <= 16; j++)
+        for (int i = 0; i <= 16; i++) h[j * 17 + i] = i > 8 ? 0.5f * (float)(i - 8) : 0;
+    fk_world_terrain(w, -8, -8, 1, 16, h, 0.9f);
+    return w;
+}
+
+UTEST(terrain, heights_normals_and_edges) {
+    fk_world *w = with_terrain();
+    const fk_terrain *t = fk_world_get_terrain(w);
+    float h, n[3];
+    ASSERT_TRUE(fk_terrain_height(t, -3, 2, &h, n));
+    EXPECT_NEAR(h, 0, 1e-6f);
+    EXPECT_NEAR(n[1], 1, 1e-6f);
+    ASSERT_TRUE(fk_terrain_height(t, 2.25f, 0.5f, &h, n)); /* the lower triangle of its cell */
+    EXPECT_NEAR(h, 1.125f, 1e-5f);
+    EXPECT_LT(n[0], -0.4f);
+    ASSERT_TRUE(fk_terrain_height(t, 2.75f, 0.75f, &h, n)); /* the upper one */
+    EXPECT_NEAR(h, 1.375f, 1e-5f);
+    EXPECT_TRUE(fk_terrain_height(t, 8, 8, &h, NULL)); /* the far corner belongs to the last cell */
+    EXPECT_NEAR(h, 4, 1e-5f);
+    EXPECT_FALSE(fk_terrain_height(t, 9, 0, &h, n));
+    EXPECT_FALSE(fk_terrain_height(t, 0, -9, &h, n));
+    fk_world_terrain(w, 0, 0, 1, 0, NULL, 0.5f); /* removed */
+    EXPECT_FALSE(fk_terrain_height(fk_world_get_terrain(w), 0, 0, &h, n));
+    fk_body b = ball(FK_BODY_DYNAMIC, 0.5f, 0, 0, 0);
+    fk_body_update(&b);
+    fk_touch touch[4];
+    EXPECT_EQ(fk_terrain_collide(fk_world_get_terrain(w), &b, touch), 0);
+    fk_world_destroy(w);
+}
+
+UTEST(terrain, bodies_rest_on_it) {
+    fk_world *w = with_terrain();
+    fk_body s = ball(FK_BODY_DYNAMIC, 0.5f, -4, 2, 0);
+    fk_body c = shape(FK_BODY_DYNAMIC, FK_SHAPE_CAPSULE, 0.3f, 0, 0.5f, 0, -2, 2, 3);
+    turn(&c, 0, 0, 1, 1.5707963f); /* lying down */
+    fk_body b = box(FK_BODY_DYNAMIC, 0.5f, 0.5f, 0.5f, -5, 3, -4);
+    turn(&b, 1, 0, 0, 0.3f);
+    uint32_t ids[3] = {fk_world_add(w, &s, 1), fk_world_add(w, &c, 1), fk_world_add(w, &b, 1)};
+    run(w, 300);
+    EXPECT_NEAR(fk_world_body(w, ids[0])->p[1], 0.5f, 0.03f);
+    EXPECT_NEAR(fk_world_body(w, ids[1])->p[1], 0.3f, 0.03f);
+    EXPECT_NEAR(fk_world_body(w, ids[2])->p[1], 0.5f, 0.03f);
+    for (int i = 0; i < 3; i++) EXPECT_TRUE(fk_world_body(w, ids[i])->asleep);
+    fk_body r = ball(FK_BODY_DYNAMIC, 0.5f, 3, 6, 0); /* onto the slope: friction holds a gentle one */
+    uint32_t on_slope = fk_world_add(w, &r, 1);
+    run(w, 120);
+    float h;
+    fk_terrain_height(fk_world_get_terrain(w), fk_world_body(w, on_slope)->p[0], 0, &h, NULL);
+    EXPECT_GT(fk_world_body(w, on_slope)->p[1], h);
+    fk_world_destroy(w);
+}
+
+UTEST(terrain, characters_walk_up_it) {
+    fk_world *w = with_terrain();
+    uint32_t id = character(w, -4, 0)->id;
+    walk(w, id, 0.05f, 0, 160); /* 8 m: up the slope (27 degrees, walkable) */
+    fk_body *c = fk_world_body(w, id);
+    float h;
+    ASSERT_TRUE(fk_terrain_height(fk_world_get_terrain(w), c->p[0], c->p[2], &h, NULL));
+    EXPECT_TRUE(c->grounded);
+    EXPECT_GT(c->p[0], 3.5f);
+    EXPECT_GT(c->p[1], h + 0.5f);
+    EXPECT_LT(c->p[1], h + 1.6f);
+    fk_world_destroy(w);
+}
+
+UTEST(terrain, steep_terrain_is_a_wall) {
+    fk_world *w = fk_world_create(G);
+    float h[9 * 9];
+    for (int j = 0; j <= 8; j++)
+        for (int i = 0; i <= 8; i++) h[j * 9 + i] = i > 4 ? 3.0f * (float)(i - 4) : 0; /* 72 degrees */
+    fk_world_terrain(w, -4, -4, 1, 8, h, 0.8f);
+    uint32_t id = character(w, -2, 0)->id;
+    walk(w, id, 0.05f, 0, 120);
+    EXPECT_LT(fk_world_body(w, id)->p[0], 0.8f);
+    fk_world_destroy(w);
+}

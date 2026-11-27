@@ -33,6 +33,7 @@ uniform float u_metalness;
 uniform vec3 u_emission;
 uniform float u_emissive_colors; // 1: the vertex colours tint the emission (stars), not the base colour
 uniform float u_normal_scale; // 0: no normal map
+uniform float u_clouds;       // planet chunks: how much of the cloud cover in v_uv.x shows (fades as one comes closer)
 uniform float u_one_sided;    // 1: keep normals on back faces (closed surfaces such as planets)
 uniform sampler2D u_base_tex;        // sRGB texture: sampled as linear
 uniform sampler2D u_metal_rough_tex; // glTF layout: green roughness, blue metalness
@@ -53,6 +54,7 @@ void main() {
         }
     }
     vec3 base = srgb_to_linear(v_color) * u_base.rgb * texture(u_base_tex, v_uv).rgb; // shortcut: alpha is ignored (opaque)
+    if (u_clouds > 0.0) base = mix(base, vec3(0.89, 0.91, 0.95), v_uv.x * u_clouds); // the cloud layer from afar
     vec4 mr = texture(u_metal_rough_tex, v_uv);
     o_base = vec4(linear_to_srgb(base), u_metalness * mr.b); // sRGB colour: better precision in 8 bits than linear
     o_normal = vec4(encode_normal(n), u_roughness * mr.g, 1.0);

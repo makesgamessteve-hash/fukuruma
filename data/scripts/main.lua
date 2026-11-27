@@ -31,6 +31,7 @@ local hud = require("hud")
 local frames = require("fk.frames")
 local universe = require("universe")
 local navmap = require("navmap")
+local terrain = require("terrain")
 
 local game = {}
 
@@ -78,13 +79,11 @@ function game.init()
   game.spheres = fk.gfx.model("models/showcase_materials.glb")
   touch_view.init()
 
-  -- The physics world: the deck, walls along its edges, the beacon tower, the crates and the suit.
+  -- The physics world: the deck, the beacon tower, the crates and the suit; beyond the deck, the world's own ground
+  -- (terrain.follow).
   game.world = fk.physics.world({ gravity = { 0, -9.81, 0 } })
-  local half = GROUND_SIZE / 2
   game.world:add({ shape = "box", size = { GROUND_SIZE, 1, GROUND_SIZE }, position = { 0, -0.5, 0 }, friction = 0.8 })
-  for _, wall in ipairs({ { half, 0, 1, GROUND_SIZE }, { -half, 0, 1, GROUND_SIZE }, { 0, half, GROUND_SIZE, 1 }, { 0, -half, GROUND_SIZE, 1 } }) do
-    game.world:add({ shape = "box", size = { wall[3], 8, wall[4] }, position = { wall[1], 4, wall[2] } })
-  end
+  game.ground_tile, game.ground_view = {}, {}
   game.world:add({ shape = "box", size = { 0.8, 6, 0.8 }, position = { 6, 3, 4 } })
   game.crates = {}
   for i, p in ipairs(CRATES) do
@@ -227,6 +226,8 @@ end
 -- made. Then the world steps, and new hard touches become impact events.
 function game.tick()
   local dt = sim.dt
+  local suit = sim.get(game.suit, "suit")
+  terrain.follow(game.ground_tile, game.world, universe.ground(), suit.x, suit.z)
   for _, b in sim.each("suit") do
     local dx, dz = b.wx - b.vx, b.wz - b.vz
     local d = math.sqrt(dx * dx + dz * dz)
@@ -333,6 +334,9 @@ function game.draw(alpha, dt)
   fk.gfx.camera(view, projection)
   local inv_x, inv_y, inv_z = -(view[1] * view[13] + view[2] * view[14] + view[3] * view[15]),
     -(view[5] * view[13] + view[6] * view[14] + view[7] * view[15]), -(view[9] * view[13] + view[10] * view[14] + view[11] * view[15])
+  local half_fov = math.rad(game.view == "drone" and game.drone.fov or comfort.current.fov) / 2
+  terrain.draw(game.ground_view, universe.ground(), { inv_x, inv_y, inv_z }, { -view[3], -view[7], -view[11] },
+    math.atan(math.tan(half_fov) * math.sqrt(1 + (w / h) ^ 2)), h / (2 * math.tan(half_fov)))
   fk.audio.listener({ position = { inv_x, inv_y, inv_z }, right = { view[1], view[5], view[9] } })
   reverb.update(game.suit_position())
   if music.current == "discovery" and feel.time > game.discovery_until then music.play("surface", 6) end

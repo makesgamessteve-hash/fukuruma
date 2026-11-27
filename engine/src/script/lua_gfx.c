@@ -283,6 +283,7 @@ static int l_draw(lua_State *L) {
         lua_getfield(L, 3, "emissive_colors");
         mat.emissive_colors = lua_toboolean(L, -1);
         lua_pop(L, 2);
+        mat.clouds = field_number(L, 3, "clouds", 0, 0, 1, "draw");
         field_vec3(L, 3, "color", color, ONE, 0, 1, "draw"); /* sRGB, multiplies the vertex colours */
         for (int i = 0; i < 3; i++) mat.base[i] = fk_srgb_to_linear(color[i]);
         if (lua_getfield(L, 3, "texture") != LUA_TNIL) {

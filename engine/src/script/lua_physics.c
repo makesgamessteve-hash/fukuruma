@@ -388,11 +388,47 @@ static int l_restore(lua_State *L) {
     return 0;
 }
 
+/* world:terrain{origin = {x0, z0}, cell, heights = {(n + 1)^2 numbers, row by row from origin}, friction} sets the
+   ground (terrain-streaming spec); world:terrain(nil) removes it. Not part of world:state(): rebuild it after a load. */
+static int l_terrain(lua_State *L) {
+    fk_world *w = world_arg(L);
+    if (lua_isnoneornil(L, 2)) {
+        fk_world_terrain(w, 0, 0, 0, 0, NULL, 0.8f);
+        return 0;
+    }
+    luaL_checktype(L, 2, LUA_TTABLE);
+    float origin[2] = {0, 0};
+    vec(L, 2, "origin", origin, 2);
+    float cell = positive(L, 2, "cell", 1), friction = opt(L, 2, "friction", 0.8f);
+    if (lua_getfield(L, 2, "heights") != LUA_TTABLE) return luaL_error(L, "physics: terrain 'heights' must be a table");
+    int count = (int)luaL_len(L, -1), n = (int)sqrt((double)count) - 1;
+    if (n < 1 || (n + 1) * (n + 1) != count) return luaL_error(L, "physics: terrain 'heights' must hold (n + 1)^2 numbers, n >= 1");
+    float *h = lua_newuserdatauv(L, (size_t)count * sizeof *h, 0); /* freed by the collector */
+    for (int i = 0; i < count; i++) {
+        lua_rawgeti(L, -2, i + 1);
+        h[i] = num(L, -1, "heights");
+        lua_pop(L, 1);
+    }
+    fk_world_terrain(w, origin[0], origin[1], cell, n, h, friction);
+    return 0;
+}
+
+/* world:height(x, z) -> the terrain's height and normal (h, nx, ny, nz) there, or nil outside it */
+static int l_height(lua_State *L) {
+    fk_world *w = world_arg(L);
+    float h, n[3];
+    if (!fk_terrain_height(fk_world_get_terrain(w), (float)luaL_checknumber(L, 2), (float)luaL_checknumber(L, 3), &h, n)) return 0;
+    lua_pushnumber(L, h);
+    for (int i = 0; i < 3; i++) lua_pushnumber(L, n[i]);
+    return 4;
+}
+
 void fk_lua_physics_open(lua_State *L) {
     static const luaL_Reg methods[] = {{"add", l_add},       {"character", l_character}, {"remove", l_remove},
                                        {"get", l_get},       {"set", l_set},             {"move", l_move},
                                        {"step", l_step},     {"count", l_count},         {"gravity", l_gravity},         {"state", l_state},
-                                       {"restore", l_restore}, {NULL, NULL}};
+                                       {"restore", l_restore}, {"terrain", l_terrain},   {"height", l_height},
+                                       {NULL, NULL}};
     luaL_newmetatable(L, "fk.world");
     lua_pushcfunction(L, l_gc);
     lua_setfield(L, -2, "__gc");

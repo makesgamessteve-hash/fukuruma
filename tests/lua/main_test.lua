@@ -32,7 +32,8 @@ return {
     assert(math.abs(s.vx + 2.6) < 1e-3 and s.x < -1.5, "reaches walking speed within a second")
     assert(s.fx < -0.9, "faces where the Commander looks")
     for _ = 1, 3000 do sim.step(game) end
-    assert(math.abs(s.x + 78.7) < 0.01 and math.abs(s.vx) < 0.2, "stops at the wall along the edge of the ground")
+    local h = game.world:height(s.x, s.z)
+    assert(s.x < -120 and h and math.abs(s.y - h) < 0.05, "walks off the deck onto the world's own ground")
   end,
   ["the suit pushes crates, stops at the tower and the crates thud"] = function()
     local s = start()
