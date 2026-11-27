@@ -7,6 +7,7 @@
 
 #include "core/jobs.h"
 #include "gen/dig.h"
+#include "gen/hydro.h"
 #include "gen/planet.h"
 #include "lauxlib.h"
 #include "script/script.h"
@@ -32,7 +33,7 @@ static bool flag(lua_State *L, int t, const char *name) {
    height = graph, moisture = graph} */
 static int l_new(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
-    fk_planet *p = lua_newuserdatauv(L, sizeof *p, 0);
+    fk_planet *p = lua_newuserdatauv(L, sizeof *p, 1); /* its user value: the water courses' memory */
     memset(p, 0, sizeof *p);
     luaL_setmetatable(L, "fk.planet_surface");
     p->radius = field(L, 1, "radius", 6.371e6);
@@ -200,6 +201,81 @@ static int l_dig_mesh(lua_State *L) {
     return 1;
 }
 
+/* planet:waters{up, east, north, n = 256, cell = 16, keep = 0} -> {rivers, lakes, river = {x, z, dx, dz},
+   lake = {x, z, dx, dz}, fall = {x, z, dx, dz}} (dx, dz: the way the water runs on): builds the rivers and lakes of the square of n x n cells around up (rivers-and-lakes spec) and carves
+   the rivers into the ground (after flatten, before any chunk). keep: metres around up left as they are. The places:
+   the river with the most flow, the highest lake, the highest fall (nil where there is none). */
+static void place(lua_State *L, const fk_hydro *h, int c, const char *name) {
+    if (c < 0) return;
+    lua_createtable(L, 2, 0);
+    double half = h->n * h->cell / 2;
+    lua_pushnumber(L, -half + (c % (h->n + 1)) * h->cell);
+    lua_rawseti(L, -2, 1);
+    lua_pushnumber(L, -half + (c / (h->n + 1)) * h->cell);
+    lua_rawseti(L, -2, 2);
+    int t = h->to[c], row = h->n + 1;
+    if (t >= 0) { /* the way the water runs from there */
+        double dx = t % row - c % row, dz = t / row - c / row, l = sqrt(dx * dx + dz * dz);
+        lua_pushnumber(L, dx / l);
+        lua_rawseti(L, -2, 3);
+        lua_pushnumber(L, dz / l);
+        lua_rawseti(L, -2, 4);
+    }
+    lua_setfield(L, -2, name);
+}
+
+static int l_waters(lua_State *L) {
+    fk_planet *p = planet_arg(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    double up[3], east[3], north[3];
+    unit_field(L, 2, "up", up);
+    unit_field(L, 2, "east", east);
+    unit_field(L, 2, "north", north);
+    int n = (int)field(L, 2, "n", 256);
+    double cell = field(L, 2, "cell", 16), keep = field(L, 2, "keep", 0);
+    luaL_argcheck(L, n >= 2 && n <= 1024 && cell > 0 && keep >= 0, 2, "waters: 'n' from 2 to 1024, 'cell' above 0");
+    fk_hydro *h = lua_newuserdatauv(L, sizeof *h + fk_hydro_size(n), 0);
+    p->hydro = NULL;
+    int rivers = fk_hydro_build(h, h + 1, p, up, east, north, n, cell, keep);
+    lua_setiuservalue(L, 1, 1); /* the planet keeps the memory */
+    p->hydro = h;
+    int count = (n + 1) * (n + 1), lakes = 0, river = -1, lake = -1, fall = -1;
+    float best_flow = 0, best_drop = 0;
+    for (int c = 0; c < count; c++) {
+        if (h->kind[c] == FK_WATER_LAKE) {
+            lakes++;
+            if (lake < 0 || h->water[c] > h->water[lake]) lake = c;
+        } else if (h->kind[c] == FK_WATER_RIVER) {
+            if (h->flow[c] > best_flow) best_flow = h->flow[c], river = c;
+            int t = h->to[c];
+            float drop = h->kind[t] ? h->water[c] - h->water[t] : h->water[t] < 0 ? h->water[c] : 0; /* (0: the sea) */
+            if (drop > best_drop) best_drop = drop, fall = c;
+        }
+    }
+    lua_createtable(L, 0, 5);
+    lua_pushinteger(L, rivers);
+    lua_setfield(L, -2, "rivers");
+    lua_pushinteger(L, lakes);
+    lua_setfield(L, -2, "lakes");
+    place(L, h, river, "river");
+    place(L, h, lake, "lake");
+    place(L, h, best_drop > 1.2f ? fall : -1, "fall");
+    return 1;
+}
+
+/* planet:water_mesh() -> the rivers' and lakes' water surfaces in the range's local frame (see waters), or nil */
+static int l_water_mesh(lua_State *L) {
+    fk_planet *p = planet_arg(L, 1);
+    if (!p->hydro) return 0;
+    int nv = fk_hydro_mesh(p->hydro, p, NULL, NULL);
+    if (!nv) return 0;
+    fk_vertex *v = lua_newuserdatauv(L, (size_t)nv * sizeof *v, 0);
+    uint32_t *idx = lua_newuserdatauv(L, (size_t)nv * sizeof *idx, 0);
+    fk_hydro_mesh(p->hydro, p, v, idx);
+    fk_lua_push_mesh(L, v, nv, idx, nv);
+    return 1;
+}
+
 /* planet:color(x, y, z) -> r, g, b (sRGB) */
 static int l_color(lua_State *L) {
     fk_planet *p = planet_arg(L, 1);
@@ -291,7 +367,7 @@ static int l_direction(lua_State *L) { /* fk.planet.direction(face, u, v) -> x, 
 
 void fk_lua_planet_open(lua_State *L) {
     static const luaL_Reg planet[] = {{"height", l_height}, {"color", l_color}, {"chunk", l_chunk},
-                                       {"flatten", l_flatten}, {"grid", l_grid}, {"dig_mesh", l_dig_mesh},
+                                       {"flatten", l_flatten}, {"grid", l_grid}, {"dig_mesh", l_dig_mesh}, {"waters", l_waters}, {"water_mesh", l_water_mesh},
                                        {NULL, NULL}};
     static const luaL_Reg request[] = {{"ready", l_ready}, {"mesh", l_mesh}, {NULL, NULL}};
     luaL_newmetatable(L, "fk.planet_surface");

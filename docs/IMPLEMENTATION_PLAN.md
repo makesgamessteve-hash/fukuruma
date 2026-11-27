@@ -628,9 +628,10 @@ and the showcase scenes are reviewed on desktop, phone and VR.
   `add-terrain-materials` (done), `add-biomes-and-scatter` (done), `add-voxel-terrain` (done: dug spheres the
   physics and the ground share, saved; `fix-dig-tunnels`: tunnels of any length, lit by the helmet lamp), `add-volumetric-clouds-and-fog` (done), `add-water` (done: the sea, its floor
   and caustics), `add-weather` (done).
-- **Still open in M5:** rivers, waterfalls and lakes above sea level (they need water courses in the world's data),
-  impostors for distant flora, debris from digging, time-sliced generation on the web, and the showcase scenes for
-  rivers and light shafts. Known rough edges: the dug walls are smooth and untextured, and cloud edges are grainy
+- **Rivers and lakes:** `add-rivers-and-lakes` (water courses worked out in a 4 km square around the range; not seen
+  from orbit).
+- **Still open in M5:** impostors for distant flora, debris from digging, time-sliced generation on the web, and the showcase scene for
+  light shafts. Known rough edges: the dug walls are smooth and untextured, and cloud edges are grainy
   without TAA.
 - **Work:** quadtree chunk streaming from orbit to the ground without cracks, regional detail,
   triplanar terrain materials with wetness, snow and dust layers; biome scatter (instanced detailed

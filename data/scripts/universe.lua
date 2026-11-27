@@ -156,6 +156,7 @@ local function rebuild(u)
 end
 
 universe.SITE = 140 -- metres: the levelled site around the range's pad
+universe.WATERS_N, universe.WATERS_CELL = 256, 16 -- the square of rivers and lakes around the range (4 km)
 universe.CLOUD_STEPS = 24 -- samples through the cloud layer (graphics levels; 0: no clouds)
 
 -- The ground of the range's world (terrain-streaming spec): its surface (fk.planet) with the range's site levelled,
@@ -183,8 +184,11 @@ function choose_ground(v, b, to_star)
   local up, to_body = site.up, site.to_body
   v.start = site.start
   desc.surface:flatten(up[1], up[2], up[3], universe.SITE)
-  return { desc = desc, surface = desc.surface, radius = b.radius, up = up, east = frames.rotate(to_body, { 1, 0, 0 }),
-    north = frames.rotate(to_body, { 0, 0, 1 }), to_local = frames.conjugate(to_body),
+  local east, north = frames.rotate(to_body, { 1, 0, 0 }), frames.rotate(to_body, { 0, 0, 1 })
+  local waters = desc.ocean and desc.surface:waters({ up = up, east = east, north = north, n = universe.WATERS_N,
+    cell = universe.WATERS_CELL, keep = 2 * universe.SITE }) or nil -- rivers and lakes around the range
+  return { desc = desc, surface = desc.surface, radius = b.radius, up = up, east = east, north = north, waters = waters,
+    to_local = frames.conjugate(to_body),
     centre = { 0, -(b.radius + desc.surface:height(up[1], up[2], up[3])) - 0.05, 0 } } -- drawn just under the deck
 end
 

@@ -12,7 +12,7 @@
 enum { FK_PAL_DEEP, FK_PAL_SHALLOW, FK_PAL_BEACH, FK_PAL_LOW, FK_PAL_MID, FK_PAL_HIGH, FK_PAL_PEAK, FK_PAL_ICE,
        FK_PAL_GRASS, FK_PAL_FOREST, FK_PAL_DESERT, FK_PAL_TUNDRA, FK_PAL_COUNT };
 
-typedef struct {
+typedef struct fk_planet {
     double radius;      /* metres, at height 0 */
     double relief;      /* metres per unit of the height graph */
     double sea_level;   /* height units; ocean below it when ocean is set */
@@ -26,6 +26,7 @@ typedef struct {
     double cloud_cover;             /* 0..1 */
     double site[3], site_radius;    /* a levelled site (the range's pad): flat within site_radius metres of the */
     double site_height;             /* unit direction site, easing back to the land over as far again; radius 0: none */
+    const struct fk_hydro *hydro;   /* rivers carved into the ground around the range (rivers-and-lakes spec), or NULL */
 } fk_planet;
 
 #define FK_CHUNK_GRID 32 /* quads along a chunk's edge */

@@ -364,6 +364,11 @@ function game.draw(alpha, dt)
       dust = game.now and game.now.look.dust })
   dig.draw(game.dug, universe.ground())
   dig.lamp(game.world, { inv_x, inv_y, inv_z })
+  local g0 = universe.ground() -- rivers and lakes (rivers-and-lakes spec): meshed once per world
+  if game.waters_for ~= g0 then game.waters_for, game.water_mesh = g0, g0 and g0.waters and g0.surface:water_mesh() end
+  if game.water_mesh then
+    fk.gfx.draw(game.water_mesh, { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -0.05, 0, 1 }, { roughness = 0.06, one_sided = true })
+  end
   fk.gfx.wind({ direction = { 0.8, 0.35 }, strength = 1, time = feel.time })
   local g = universe.ground()
   if g and g.desc.ocean then fk.gfx.water({ centre = g.centre, radius = g.radius, time = feel.time, waves = 0.5 }) end

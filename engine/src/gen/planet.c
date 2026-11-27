@@ -1,6 +1,7 @@
 #include "gen/planet.h"
 
 #include "core/dmath.h"
+#include "gen/hydro.h"
 
 #include <math.h>
 #include <string.h>
@@ -42,6 +43,7 @@ double fk_planet_height(const fk_planet *p, const double d[3]) {
             h = p->site_height + (h - p->site_height) * k;
         }
     }
+    if (p->hydro) h -= fk_hydro_carve(p->hydro, p->radius, d);
     return h;
 }
 

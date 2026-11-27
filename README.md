@@ -35,8 +35,8 @@ surface from noise graphs (continents, ridges, dunes, craters, ice, banded giant
 cube-sphere chunks, air that scatters its star's light into its own skies and sunsets, and stars that glow in their
 own colours; binaries light worlds twice and pulsars sweep their beams. In M5 the descent from orbit to the ground is seamless:
 terrain materials and wind-blown flora, pits and tunnels the suit can dig, volumetric clouds with their shadows and
-fog, the sea with waves, reflections and caustics, and weather (rain, storms with lightning, snow, sandstorms). Rivers,
-waterfalls and lakes above sea level are still to come.
+fog, the sea with waves, reflections and caustics, and weather (rain, storms with lightning, snow, sandstorms). Around the
+range, rivers run in carved channels to lakes and the sea, white where they fall.
 
 - [Game concept](docs/CONCEPT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
