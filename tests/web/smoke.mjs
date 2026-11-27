@@ -140,7 +140,7 @@ await test('the menu opens with a tap and stored settings survive a reload', asy
   const first = await page.locator('canvas').screenshot({ timeout: 120000 });
   await page.waitForTimeout(500);
   assert(!first.equals(await page.locator('canvas').screenshot({ timeout: 120000 })), 'the picture froze after the settings changed');
-  await page.reload();
+  await page.reload({ timeout: 120000 }); // the page is slow at Medium on the software renderer
   await page.waitForFunction(() => document.getElementById('message').hidden, null, { timeout: 60000 });
   await page.waitForTimeout(1000); // a failed load would store the defaults again by now
   const text = await storedGraphics(page);

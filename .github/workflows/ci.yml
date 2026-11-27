@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES && pipx install gcovr==8.8
+      - run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES libxml2-dev libxslt1-dev && pipx install gcovr==8.8 # lxml may build from source
       - run: cmake --preset linux-coverage
       - run: cmake --build --preset linux-coverage
       - name: Tests and coverage gates (C and Lua >= 95%)
