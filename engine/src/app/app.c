@@ -7,7 +7,7 @@
 #include "app/cli.h"
 #include "app/golden.h"
 
-#define FK_SCENARIO_JOBS 8 /* background jobs run per frame in test scenarios */
+#define FK_SCENARIO_JOBS 2 /* background jobs run per frame in test scenarios */
 #include "assets/vfs.h"
 #include "assets/watch.h"
 #include "audio/mixer.h"

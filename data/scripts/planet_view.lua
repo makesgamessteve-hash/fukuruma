@@ -79,16 +79,18 @@ end
 function View:select(cam, focal, wait, look)
   local R = self.d.radius
   local dist_c = math.sqrt(cam[1] * cam[1] + cam[2] * cam[2] + cam[3] * cam[3])
+  local peak = R + (self.d.relief or 0) + 1000
+  local reach = math.acos(math.min(1, R / dist_c)) + math.acos(R / peak) -- presentation: math.acos is fine here
   local out = {}
   local function visit(f, l, x, y)
     local c = self:request(f, l, x, y)
     local size = 2 / (1 << l)
     local dx, dy, dz = fk.planet.direction(f, -1 + (x + 0.5) * size, -1 + (y + 0.5) * size)
     local extent = R * size * 0.8 + math.min(self.d.relief or 0, R * size) -- a chunk's heights span at most its size
-    -- behind the horizon: the chunk's nearest point faces away by more than the horizon angle allows
-    local cosa = (dx * cam[1] + dy * cam[2] + dz * cam[3]) / dist_c
-    local horizon = R / math.max(dist_c, R)
-    if cosa < horizon - size * 1.2 - 0.02 then return end
+    -- beyond the horizon: the chunk's nearest edge lies further round the world than the camera can see, even to the
+    -- highest peak (the angle to the horizon plus the angle a peak of the world's relief rises above it)
+    local phi = math.acos(math.max(-1, math.min(1, (dx * cam[1] + dy * cam[2] + dz * cam[3]) / dist_c)))
+    if phi - size * 0.7 > reach then return end
     local px, py, pz, bound
     if c.mesh then -- built: its real centre and bound
       px, py, pz, bound = c.centre[1] - cam[1], c.centre[2] - cam[2], c.centre[3] - cam[3], c.bound

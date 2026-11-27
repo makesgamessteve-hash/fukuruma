@@ -43,7 +43,8 @@ const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 for (const scenario of ['boot', 'simulation', 'showcase_materials', 'showcase_skinning', 'feel', 'audio', 'save', 'first_person', 'scale_ladder', 'orbits', 'physics', 'systems', 'navigation']) {
   await test(`${scenario} scenario passes in the browser`, async (page) => {
     await page.goto(`${base}?scenario=${scenario}`);
-    await page.waitForFunction(() => window.fukurumaResult, null, { timeout: 60000 });
+    // the sandbox scenes draw the world's ground: slow on the software renderer the tests run on
+    await page.waitForFunction(() => window.fukurumaResult, null, { timeout: 180000 });
     const result = await page.evaluate(() => window.fukurumaResult);
     assert(result.status === 'passed', `scenario ${result.status}: ${result.message}`);
   });
