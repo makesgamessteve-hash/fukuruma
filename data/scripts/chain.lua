@@ -347,23 +347,44 @@ function chain.matrix(d, y_offset)
   return { c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, d.x, d.y + (y_offset or 0), d.z, 1 }
 end
 
+chain.EMERGE = 3 -- seconds a newly deployed doll takes to ease out of its parent (presentation)
+
+-- Where doll d is drawn at presentation time now: easing out of its parent for chain.EMERGE seconds after it first
+-- appears (a deploy), else where it is.
+local function shown(state, d, now)
+  local e = state.emerging[d.id]
+  if not e then
+    local p = state.started and d.parent and chain.find(d.parent)
+    e = { from = p and { p.x, p.y, p.z } or false, at = now }
+    state.emerging[d.id] = e
+  end
+  local k = e.from and math.min(1, (now - e.at) / chain.EMERGE) or 1
+  if k >= 1 then return d end
+  k = k * k * (3 - 2 * k)
+  return { x = e.from[1] + (d.x - e.from[1]) * k, y = e.from[2] + (d.y - e.from[2]) * k,
+    z = e.from[3] + (d.z - e.from[3]) * k, yaw = d.yaw }
+end
+
 -- Draws every doll out in the world but the Exosuit (presentation): hulls built once per kind, in the depth slice
--- their distance from the eye needs.
-function chain.draw(state, eye)
-  state.meshes = state.meshes or {}
+-- their distance from the eye needs; a newly deployed one eases out of its parent (now: presentation time).
+function chain.draw(state, eye, now)
+  state.meshes, state.emerging, now = state.meshes or {}, state.emerging or {}, now or 0
   local n = 0
-  for _, d in ipairs(chain.state().dolls) do
-    if d.kind ~= "exosuit" then
-      local def = dolls.by_id[d.kind]
-      state.meshes[d.kind] = state.meshes[d.kind] or fk.gfx.mesh(hull.build(def.hull, def.size_m))
+  for _, real in ipairs(chain.state().dolls) do
+    local d = shown(state, real, now)
+    if real.kind ~= "exosuit" then
+      local def = dolls.by_id[real.kind]
+      state.meshes[real.kind] = state.meshes[real.kind] or fk.gfx.mesh(hull.build(def.hull, def.size_m))
       local dx, dy, dz = d.x - eye[1], d.y - eye[2], d.z - eye[3]
       local far = math.sqrt(dx * dx + dy * dy + dz * dz)
-      local slice = far < 2e4 and "local" or far < 2e7 and "planetary" or "celestial"
-      fk.gfx.draw(state.meshes[d.kind], chain.matrix(d, -0.05),
+      -- the local slice reaches 400 m: a doll goes there only if all of it is nearer
+      local slice = far + def.size_m * 0.75 < 400 and "local" or far < 2e7 and "planetary" or "celestial"
+      fk.gfx.draw(state.meshes[real.kind], chain.matrix(d, -0.05),
         { roughness = def.roughness or 0.6, metalness = def.metalness or 0, slice = slice })
       n = n + 1
     end
   end
+  state.started = true -- dolls that appear from now on were deployed
   return n
 end
 

@@ -37,6 +37,7 @@ local dig = require("dig")
 local chain = require("chain")
 local cockpit = require("dolls.cockpit")
 local dolls = require("dolls")
+local ship_ai = require("ship_ai")
 local weather = require("weather")
 
 local game = {}
@@ -129,6 +130,11 @@ function game.init()
     teleport = feedback.teleport, autopilot = feedback.autopilot, arrived = feedback.arrived },
     function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
+  game.ai = {}
+  ship_ai.listen(sim, game.ai, function() return feel.time end, function(id)
+    local d = chain.find(id)
+    return d and d.kind
+  end)
   sim.listen("scan", function() -- a scan swells the discovery theme for a while
     music.play("discovery", 2)
     game.discovery_until = feel.time + 25
@@ -391,7 +397,14 @@ function game.draw(alpha, dt)
   local w, h = fk.gfx.size()
   local view, projection
   if game.view == "drone" then
-    view, projection = game.drone:matrices({ model[13], model[14], model[15] }, w / h)
+    local seated, target = not chain.on_foot() and chain.current(), { model[13], model[14], model[15] }
+    if seated then -- the drone circles the doll the Commander sits in, at a distance scaled to its size
+      local size = dolls.by_id[seated.kind].size_m
+      target, game.drone.distance, game.drone.height = { seated.x, seated.y, seated.z }, size * 1.8, size * 0.4
+    else
+      game.drone.distance, game.drone.height = 12, 2
+    end
+    view, projection = game.drone:matrices(target, w / h)
   else
     game.helmet.fov = comfort.current.fov
     local seated = not chain.on_foot() and chain.current()
@@ -414,7 +427,7 @@ function game.draw(alpha, dt)
   dig.draw(game.dug, universe.ground())
   dig.lamp(game.world, { inv_x, inv_y, inv_z })
   game.chain_view = game.chain_view or {}
-  chain.draw(game.chain_view, { inv_x, inv_y, inv_z })
+  chain.draw(game.chain_view, { inv_x, inv_y, inv_z }, feel.time)
   game.cockpits = game.cockpits or {}
   game.cockpit_now = game.view == "helmet" and not chain.on_foot()
     and cockpit.draw(game.cockpits, dolls.by_id[chain.current().kind], game.eye, chain.current().yaw) or nil
@@ -431,6 +444,7 @@ function game.draw(alpha, dt)
   reverb.update(game.suit_position())
   if music.current == "discovery" and feel.time > game.discovery_until then music.play("surface", 6) end
   feel.draw()
+  ship_ai.draw(game.ai, feel.time, w, h)
   if game.view == "drone" then hud.drone(feel.time)
   elseif game.cockpit_now then -- at a doll's controls: its screens instead of the visor
     cockpit.text(game.cockpit_now, game.eye, chain.screens(), view, projection, w, h, { 1, 0.75, 0.3 }, chain.current().yaw)
