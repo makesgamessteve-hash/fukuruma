@@ -89,6 +89,18 @@ uniform mat4 u_slice_inv_proj[4];
 
 bool is_sky(float d) { return d >= u_slice_hi.w; } // nothing drawn: beyond the last slice
 
+// Dug ground (voxel-terrain spec): terrain pixels inside a dig are left out (its walls are their own mesh).
+uniform int u_ndigs;
+uniform vec4 u_digs[16]; // draw axes: centre and radius
+bool dug(vec3 world) {
+    for (int i = 0; i < 16; i++) {
+        if (i >= u_ndigs) break;
+        vec3 d = world - u_digs[i].xyz;
+        if (dot(d, d) < u_digs[i].w * u_digs[i].w) return true;
+    }
+    return false;
+}
+
 int depth_slice(float d) { return d < u_slice_hi.x ? 0 : d < u_slice_hi.y ? 1 : d < u_slice_hi.z ? 2 : 3; }
 
 vec3 view_position(vec2 uv, float d) {

@@ -342,6 +342,16 @@ static int l_draw(lua_State *L) {
             mat.weather[0] = field_number(L, t, "wet", 0, 0, 1, "draw terrain");
             mat.weather[1] = field_number(L, t, "snow", 0, 0, 1, "draw terrain");
             mat.weather[2] = field_number(L, t, "dust", 0, 0, 1, "draw terrain");
+            if (lua_getfield(L, t, "digs") == LUA_TTABLE) { /* {x, y, z, r, ...}: the first 16 */
+                int n = (int)luaL_len(L, -1) / 4;
+                mat.ndigs = n > 16 ? 16 : n;
+                for (int i = 0; i < 4 * mat.ndigs; i++) {
+                    lua_rawgeti(L, -1, i + 1);
+                    mat.digs[i / 4][i % 4] = (float)luaL_checknumber(L, -1);
+                    lua_pop(L, 1);
+                }
+            }
+            lua_pop(L, 1);
         }
         lua_pop(L, 1);
         field_vec3(L, 3, "color", color, ONE, 0, 1, "draw"); /* sRGB, multiplies the vertex colours */

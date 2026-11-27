@@ -33,6 +33,7 @@ local universe = require("universe")
 local navmap = require("navmap")
 local terrain = require("terrain")
 local scatter = require("scatter")
+local dig = require("dig")
 
 local game = {}
 
@@ -84,7 +85,7 @@ function game.init()
   -- (terrain.follow).
   game.world = fk.physics.world({ gravity = { 0, -9.81, 0 } })
   game.world:add({ shape = "box", size = { GROUND_SIZE, 1, GROUND_SIZE }, position = { 0, -0.5, 0 }, friction = 0.8 })
-  game.ground_tile, game.ground_view, game.plants = {}, {}, {}
+  game.ground_tile, game.ground_view, game.plants, game.dug = {}, {}, {}, {}
   game.world:add({ shape = "box", size = { 0.8, 6, 0.8 }, position = { 6, 3, 4 } })
   game.crates = {}
   for i, p in ipairs(CRATES) do
@@ -106,13 +107,15 @@ function game.init()
     local body = sim.get(game.suit, "suit")
     body.wx, body.wz, body.lx, body.lz = args.x, args.z, args.fx, args.fz
   end)
+  dig.install(game.world, function() return sim.get(game.suit, "suit") end)
   sim.on("scan", function()
     local body = sim.get(game.suit, "suit")
     if sim.tick < body.scan_at then return end
     body.scan_at = sim.tick + SCAN_COOLDOWN
     sim.emit("scan", { position = { body.x, 0, body.z } })
   end)
-  feel.listen(sim, { scan = feedback.scan, impact = feedback.impact, jump = feedback.jump }, function() return game.listener() end)
+  feel.listen(sim, { scan = feedback.scan, impact = feedback.impact, jump = feedback.jump, dig = feedback.dig },
+    function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
   sim.listen("scan", function() -- a scan swells the discovery theme for a while
     music.play("discovery", 2)
@@ -123,6 +126,7 @@ function game.init()
   actions.define("move_y", { kind = "axis", negative = { "W", "Up" }, positive = { "S", "Down" }, gamepad = "lefty", touch = "stick_y" })
   actions.define("sprint", { kind = "button", keys = { "Left Shift", "Right Shift" }, gamepad = { "a" }, touch = "sprint" })
   actions.define("scan", { kind = "button", keys = { "E" }, gamepad = { "x" }, touch = "scan" })
+  actions.define("dig", { kind = "button", keys = { "G" }, gamepad = { "rightshoulder" }, touch = "dig" })
   actions.define("look_x", { kind = "axis", gamepad = "rightx" })
   actions.define("look_y", { kind = "axis", gamepad = "righty" })
   actions.define("view", { kind = "button", keys = { "V" }, gamepad = { "back" }, touch = "view" })
@@ -133,6 +137,7 @@ function game.init()
   menu.actions = { save = function() game.save() end, load = function() game.load() end }
   actions.touch_button("sprint", 0.86, 0.72, 0.09)
   actions.touch_button("scan", 0.72, 0.84, 0.07)
+  actions.touch_button("dig", 0.6, 0.9, 0.06)
   actions.touch_button("menu", 0.94, 0.1, 0.06)
   actions.touch_button("view", 0.94, 0.27, 0.05)
   actions.touch_button("map", 0.94, 0.42, 0.05)
@@ -220,6 +225,7 @@ function game.input()
     sim.send("move", { x = wx, z = wz, fx = fx, fz = fz })
   end
   if actions.pressed("scan") and not busy and game.view == "helmet" then sim.send("scan", {}) end
+  if actions.pressed("dig") and not busy and game.view == "helmet" then sim.send("dig", {}) end
 end
 
 -- The suit accelerates towards the wanted velocity and turns to face where the Commander looks; the physics
@@ -229,6 +235,8 @@ function game.tick()
   local dt = sim.dt
   local suit = sim.get(game.suit, "suit")
   terrain.follow(game.ground_tile, game.world, universe.ground(), suit.x, suit.z)
+  local u = universe.state()
+  dig.tick(game.world, u.seed .. "/" .. u.place)
   for _, b in sim.each("suit") do
     local dx, dz = b.wx - b.vx, b.wz - b.vz
     local d = math.sqrt(dx * dx + dz * dz)
@@ -337,7 +345,9 @@ function game.draw(alpha, dt)
     -(view[5] * view[13] + view[6] * view[14] + view[7] * view[15]), -(view[9] * view[13] + view[10] * view[14] + view[11] * view[15])
   local half_fov = math.rad(game.view == "drone" and game.drone.fov or comfort.current.fov) / 2
   terrain.draw(game.ground_view, universe.ground(), { inv_x, inv_y, inv_z }, { -view[3], -view[7], -view[11] },
-    math.atan(math.tan(half_fov) * math.sqrt(1 + (w / h) * (w / h))), h / (2 * math.tan(half_fov)))
+    math.atan(math.tan(half_fov) * math.sqrt(1 + (w / h) * (w / h))), h / (2 * math.tan(half_fov)), false,
+    { digs = dig.nearest({ inv_x, inv_y, inv_z }) })
+  dig.draw(game.dug, universe.ground())
   fk.gfx.wind({ direction = { 0.8, 0.35 }, strength = 1, time = feel.time })
   scatter.draw(game.plants, universe.ground(), { inv_x, inv_y, inv_z })
   fk.audio.listener({ position = { inv_x, inv_y, inv_z }, right = { view[1], view[5], view[9] } })

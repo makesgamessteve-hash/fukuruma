@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "core/jobs.h"
+#include "gen/dig.h"
 #include "gen/planet.h"
 #include "lauxlib.h"
 #include "script/script.h"
@@ -145,6 +146,60 @@ static int l_grid(lua_State *L) {
     return 2;
 }
 
+static void vec3_field(lua_State *L, int t, const char *name, double out[3], const double def[3]) {
+    if (lua_getfield(L, t, name) == LUA_TTABLE) {
+        for (int i = 0; i < 3; i++) {
+            lua_rawgeti(L, -1, i + 1);
+            out[i] = luaL_checknumber(L, -1);
+            lua_pop(L, 1);
+        }
+    } else {
+        memcpy(out, def, 3 * sizeof *out);
+    }
+    lua_pop(L, 1);
+}
+
+/* planet:dig_mesh{up, east, north, digs = {x, y, z, r, ...}, lo = {x, y, z}, cell, n, soil = {r, g, b}, rock} -> the
+   mesh of the dug walls in that cube of the range's local frame (voxel-terrain spec), or nil when there are none */
+static int l_dig_mesh(lua_State *L) {
+    fk_planet *p = planet_arg(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    fk_dig_field f;
+    memset(&f, 0, sizeof f);
+    f.planet = p;
+    unit_field(L, 2, "up", f.up);
+    unit_field(L, 2, "east", f.east);
+    unit_field(L, 2, "north", f.north);
+    f.base = p->radius + fk_planet_height(p, f.up);
+    if (lua_getfield(L, 2, "digs") != LUA_TTABLE) return luaL_error(L, "dig_mesh: 'digs' must be a table");
+    int nd = (int)luaL_len(L, -1);
+    luaL_argcheck(L, nd % 4 == 0 && nd / 4 <= 4096, 2, "dig_mesh: 'digs' needs x, y, z, radius each");
+    float *digs = lua_newuserdatauv(L, (size_t)(nd ? nd : 1) * sizeof *digs, 0);
+    for (int i = 0; i < nd; i++) {
+        lua_rawgeti(L, -2, i + 1);
+        digs[i] = (float)luaL_checknumber(L, -1);
+        lua_pop(L, 1);
+    }
+    f.digs = digs, f.ndigs = nd / 4;
+    static const double ZERO3[3] = {0, 0, 0}, SOIL[3] = {0.4, 0.3, 0.2}, ROCK[3] = {0.35, 0.33, 0.31};
+    double lo[3], soil_d[3], rock_d[3];
+    vec3_field(L, 2, "lo", lo, ZERO3);
+    vec3_field(L, 2, "soil", soil_d, SOIL);
+    vec3_field(L, 2, "rock", rock_d, ROCK);
+    double cell = field(L, 2, "cell", 0.5);
+    int n = (int)field(L, 2, "n", 16);
+    luaL_argcheck(L, cell > 0 && n >= 1 && n <= FK_DIG_MAX_N, 2, "dig_mesh: 'cell' must be above 0 and 'n' from 1 to 24");
+    float soil[3], rock[3];
+    for (int i = 0; i < 3; i++) soil[i] = (float)soil_d[i], rock[i] = (float)rock_d[i];
+    int max = 36 * 6 * n * n; /* walls are surfaces: about six faces of n x n cubes, 36 vertices each at most */
+    fk_vertex *v = lua_newuserdatauv(L, (size_t)max * sizeof *v, 0);
+    uint32_t *idx = lua_newuserdatauv(L, (size_t)max * sizeof *idx, 0);
+    int ni = fk_dig_mesh(&f, lo, cell, n, soil, rock, v, max, idx, max);
+    if (ni == 0) return 0;
+    fk_lua_push_mesh(L, v, ni, idx, ni);
+    return 1;
+}
+
 /* planet:color(x, y, z) -> r, g, b (sRGB) */
 static int l_color(lua_State *L) {
     fk_planet *p = planet_arg(L, 1);
@@ -236,7 +291,8 @@ static int l_direction(lua_State *L) { /* fk.planet.direction(face, u, v) -> x, 
 
 void fk_lua_planet_open(lua_State *L) {
     static const luaL_Reg planet[] = {{"height", l_height}, {"color", l_color}, {"chunk", l_chunk},
-                                       {"flatten", l_flatten}, {"grid", l_grid}, {NULL, NULL}};
+                                       {"flatten", l_flatten}, {"grid", l_grid}, {"dig_mesh", l_dig_mesh},
+                                       {NULL, NULL}};
     static const luaL_Reg request[] = {{"ready", l_ready}, {"mesh", l_mesh}, {NULL, NULL}};
     luaL_newmetatable(L, "fk.planet_surface");
     luaL_newlib(L, planet);

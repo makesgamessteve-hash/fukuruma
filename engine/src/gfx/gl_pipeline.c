@@ -320,6 +320,8 @@ static void draw_meshes(GLuint program, bool materials, unsigned slices) {
         if (!(slices & 1u << d->slice)) continue;
         gl.UniformMatrix4fv(LOC("u_model"), 1, GL_FALSE, d->model);
         gl.Uniform1i(LOC("u_bone_offset"), d->bone_offset);
+        gl.Uniform1i(LOC("u_ndigs"), d->material.terrain ? d->material.ndigs : 0); /* in the shadows as well */
+        if (d->material.terrain && d->material.ndigs) gl.Uniform4fv(LOC("u_digs"), d->material.ndigs, d->material.digs[0]);
         if (materials) {
             const fk_material *m = &d->material;
             gl.Uniform4fv(LOC("u_base"), 1, m->base);

@@ -32,6 +32,8 @@ typedef struct {
     float terrain_origin[3]; /* the chunk's centre (planet axes, metres) wrapped to the detail's period */
     float terrain_up[3];     /* the world's up at the chunk, in draw axes */
     float weather[3];        /* extra wetness, snow and dust from the weather, 0..1 */
+    float digs[16][4];       /* terrain: dug spheres (draw axes; x, y, z, radius) whose inside is left out */
+    int ndigs;
     const fk_instances *instances; /* NULL: one; else the mesh is drawn once per instance */
     const fk_texture *base_tex, *metal_rough_tex, *normal_tex, *emission_tex; /* NULL: none */
 } fk_material;

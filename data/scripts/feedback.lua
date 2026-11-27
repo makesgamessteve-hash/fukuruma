@@ -19,6 +19,21 @@ return {
     rumble = { 0.45, 0.2, 0.12 },
     sound = "impact",
   },
+  -- The suit's excavator blasting a hole: a fountain of earth and stones, an orange flash, a heavy jolt and rumble.
+  dig = {
+    particles = {
+      { count = 60, radius = 1.2, direction = { 0, 1, 0 }, spread = 0.9, speed_min = 3, speed_max = 9, life_min = 0.8,
+        life_max = 1.6, size = 0.35, size_end = 0.8, gravity = 9, drag = 0.8, color = { 0.42, 0.34, 0.26 }, alpha = 0.9,
+        alpha_end = 0 },
+      { count = 30, radius = 1.5, direction = { 0, 1, 0 }, spread = 1.4, speed_min = 0.5, speed_max = 2, life_min = 1.2,
+        life_max = 2.4, size = 0.8, size_end = 2.4, gravity = -0.2, drag = 1.5, color = { 0.55, 0.5, 0.44 }, alpha = 0.5,
+        alpha_end = 0 },
+    },
+    light = { color = { 1, 0.6, 0.25 }, intensity = 40, radius = 12, duration = 0.35, offset = { 0, 1, 0 } },
+    trauma = 0.35,
+    rumble = { 0.9, 0.5, 0.3 },
+    sound = "dig",
+  },
   -- The Jump Ship's drive: a long, deep shake and rumble with the jump's roar.
   jump = { trauma = 0.6, rumble = { 0.8, 0.6, 0.9 }, sound = "jump" },
   -- The suit's sensor pulse: a ring of light racing over the ground, a cyan flash, a ping.

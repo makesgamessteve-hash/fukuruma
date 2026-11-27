@@ -51,6 +51,8 @@ typedef struct {
     float x0, z0, cell;
     int n;
     float *h; /* row-major: h[j * (n + 1) + i] at (x0 + i cell, z0 + j cell) */
+    float *digs; /* x, y, z, radius per dug sphere (voxel-terrain spec): the ground is open inside them */
+    int ndigs;
 } fk_terrain;
 
 fk_world *fk_world_create(const float gravity[3]);
@@ -81,6 +83,9 @@ void fk_world_put_cache(fk_world *w, const fk_cached *c, int count);
    body of id 0 and the given friction. */
 void fk_world_terrain(fk_world *w, float x0, float z0, float cell, int n, const float *heights, float friction);
 const fk_terrain *fk_world_get_terrain(const fk_world *w);
+/* Replaces the dug spheres (x, y, z, radius each; copied); wake: wake every body, whose ground may have gone (a new
+   dig; not when the same digs come back with a load, whose bodies keep their saved sleep). */
+void fk_world_digs(fk_world *w, const float *digs, int n, bool wake);
 
 /* Narrowphase, for tests and the character: contacts between two bodies (normal from a to b, depth > 0 when
    overlapping), up to 4. */
@@ -96,4 +101,6 @@ void fk_body_aabb(const fk_body *b, float lo[3], float hi[3]);
    (normals from the ground to the body). */
 void fk_terrain_set(fk_terrain *t, float x0, float z0, float cell, int n, const float *heights);
 bool fk_terrain_height(const fk_terrain *t, float x, float z, float *height, float normal[3]);
+/* The ground with its digs as a solid: negative inside, positive in the open, about the distance to its surface. */
+float fk_terrain_solid(const fk_terrain *t, const float p[3]);
 int fk_terrain_collide(const fk_terrain *t, const fk_body *b, fk_touch out[4]);

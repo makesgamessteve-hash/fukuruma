@@ -75,6 +75,7 @@ void fk_world_destroy(fk_world *w) {
     free(w->bodies), free(w->contacts), free(w->cache), free(w->impacts), free(w->cells), free(w->pairs);
     free(w->island), free(w->island_still);
     fk_terrain_set(&w->terrain, 0, 0, 0, 0, NULL);
+    free(w->terrain.digs);
     free(w);
 }
 
@@ -91,6 +92,19 @@ void fk_world_terrain(fk_world *w, float x0, float z0, float cell, int n, const 
 }
 
 const fk_terrain *fk_world_get_terrain(const fk_world *w) { return &w->terrain; }
+
+void fk_world_digs(fk_world *w, const float *digs, int n, bool wake) {
+    free(w->terrain.digs);
+    w->terrain.digs = NULL, w->terrain.ndigs = 0;
+    if (n > 0) {
+        w->terrain.digs = malloc((size_t)n * 4 * sizeof(float));
+        if (!w->terrain.digs) abort();
+        memcpy(w->terrain.digs, digs, (size_t)n * 4 * sizeof(float));
+        w->terrain.ndigs = n;
+    }
+    if (wake)
+        for (int i = 0; i < w->n; i++) w->bodies[i].asleep = false, w->bodies[i].still = 0;
+}
 int fk_world_count(const fk_world *w) { return w->n; }
 fk_body *fk_world_bodies(fk_world *w) { return w->bodies; }
 uint32_t fk_world_next_id(const fk_world *w) { return w->next_id; }

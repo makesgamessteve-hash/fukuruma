@@ -35,6 +35,7 @@ return {
     assert(ignored.level == "high" and ignored.ao == 10 and ignored.fill == false)
   end,
   ["load stores the defaults the first time"] = function()
+    fk.storage.save("graphics", "") -- (other tests may have started the game, which stores its settings)
     local first = graphics.load(desktop)
     assert(first.level == "high" and fk.storage.load("graphics"))
     first.level = "ultra"

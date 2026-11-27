@@ -31,8 +31,8 @@ function terrain.follow(state, world, g, x, z)
 end
 
 -- Draws ground g's world seen from eye (local axes, metres) looking along forward within half_angle (radians, to the
--- view's corners). weather (optional): {wet, snow, dust}, 0..1, over the ground's own layers. Returns the number of
--- chunks drawn.
+-- view's corners). weather (optional): {wet, snow, dust}, 0..1, over the ground's own layers, and digs: the dug spheres
+-- {x, y, z, r, ...} (local axes) whose inside the ground leaves out. Returns the number of chunks drawn.
 function terrain.draw(state, g, eye, forward, half_angle, focal, wait, weather)
   if not g or (not wait and fk.gfx.device().renderer == "none") then return 0 end -- nothing to see: build nothing
   if state.view_of ~= g then state.view, state.view_of = planet_view.new(g.desc, 0), g end

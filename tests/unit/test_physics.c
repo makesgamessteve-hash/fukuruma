@@ -515,3 +515,32 @@ UTEST(terrain, steep_terrain_is_a_wall) {
     EXPECT_LT(fk_world_body(w, id)->p[0], 0.8f);
     fk_world_destroy(w);
 }
+
+/* Digs ------------------------------------------------------------------------------------------------ */
+
+UTEST(terrain, digs_open_pits_and_tunnels) {
+    fk_world *w = fk_world_create(G);
+    float h[17 * 17];
+    for (int i = 0; i < 17 * 17; i++) h[i] = 0;
+    fk_world_terrain(w, -8, -8, 1, 16, h, 0.9f);
+    const float digs[8] = {0, -1.5f, 0, 2.5f, 3, -2.5f, 0, 2.5f}; /* a pit and, overlapping it, a deeper hole */
+    fk_world_digs(w, digs, 2, true);
+    const fk_terrain *t = fk_world_get_terrain(w);
+    EXPECT_GT(fk_terrain_solid(t, (float[3]){0, 0.5f, 0}), 0.6f); /* over the opening: no ground at its old level */
+    EXPECT_NEAR(fk_terrain_solid(t, (float[3]){6, 0.5f, 0}), 0.5f, 1e-4f); /* away from the digs: the ground */
+    EXPECT_LT(fk_terrain_solid(t, (float[3]){-6, -1, 0}), 0);              /* inside the solid */
+    EXPECT_GT(fk_terrain_solid(t, (float[3]){1.5f, -2.5f, 0}), 0.9f);      /* where the holes overlap: open */
+    fk_body b = ball(FK_BODY_DYNAMIC, 0.5f, 0, 1, 0);
+    uint32_t id = fk_world_add(w, &b, 1);
+    run(w, 300);
+    EXPECT_LT(fk_world_body(w, id)->p[1], -3.0f); /* fell into the pit and rests on its floor */
+    EXPECT_GT(fk_world_body(w, id)->p[1], -4.6f);
+    uint32_t c = character(w, -5, 0)->id;
+    walk(w, c, 0.04f, 0, 260); /* into the pit and on into the deeper hole */
+    fk_body *ch = fk_world_body(w, c);
+    EXPECT_GT(ch->p[0], 2.0f);
+    EXPECT_LT(ch->p[1], -2.5f);
+    fk_world_digs(w, NULL, 0, false);
+    EXPECT_EQ(fk_world_get_terrain(w)->ndigs, 0);
+    fk_world_destroy(w);
+}

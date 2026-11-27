@@ -413,6 +413,25 @@ static int l_terrain(lua_State *L) {
     return 0;
 }
 
+/* world:digs({x, y, z, radius, ...}[, wake]): the dug spheres (voxel-terrain spec), replacing any before; wake: wake
+   every body (a new dig) */
+static int l_digs(lua_State *L) {
+    fk_world *w = world_arg(L);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    bool wake = lua_toboolean(L, 3); /* (before the scratch buffer goes onto the stack) */
+    int n = (int)luaL_len(L, 2);
+    if (n % 4 || n / 4 > 4096) return luaL_error(L, "physics: digs need x, y, z, radius each (at most 4096)");
+    float *d = lua_newuserdatauv(L, (size_t)(n ? n : 1) * sizeof *d, 0);
+    for (int i = 0; i < n; i++) {
+        lua_rawgeti(L, 2, i + 1);
+        d[i] = num(L, -1, "digs");
+        lua_pop(L, 1);
+        if (i % 4 == 3 && !(d[i] > 0)) return luaL_error(L, "physics: a dig's radius must be above 0");
+    }
+    fk_world_digs(w, d, n / 4, wake);
+    return 0;
+}
+
 /* world:height(x, z) -> the terrain's height and normal (h, nx, ny, nz) there, or nil outside it */
 static int l_height(lua_State *L) {
     fk_world *w = world_arg(L);
@@ -428,6 +447,7 @@ void fk_lua_physics_open(lua_State *L) {
                                        {"get", l_get},       {"set", l_set},             {"move", l_move},
                                        {"step", l_step},     {"count", l_count},         {"gravity", l_gravity},         {"state", l_state},
                                        {"restore", l_restore}, {"terrain", l_terrain},   {"height", l_height},
+                                       {"digs", l_digs},
                                        {NULL, NULL}};
     luaL_newmetatable(L, "fk.world");
     lua_pushcfunction(L, l_gc);

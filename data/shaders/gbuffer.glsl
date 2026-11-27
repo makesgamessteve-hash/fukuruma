@@ -13,6 +13,7 @@ out vec2 v_uv;
 out vec4 v_tangent;
 out vec3 v_object; // the vertex in the mesh's own space (terrain: metres from the chunk's centre, planet axes)
 out vec2 v_layers; // terrain: snow and wetness (planet chunks keep them in the tangent, which they do not use)
+out vec3 v_world;  // draw axes
 void main() {
     mat4 model = u_model * skin_matrix();
     mat3 m = mat3(model); // shortcut: assumes uniform scale; add a normal matrix for non-uniform scaling
@@ -22,7 +23,9 @@ void main() {
     v_tangent = vec4(m * a_tangent.xyz, a_tangent.w);
     v_object = a_position;
     v_layers = a_tangent.xy;
-    gl_Position = u_view_proj * (u_model * vec4(instance_point((skin_matrix() * vec4(a_position, 1.0)).xyz), 1.0));
+    vec4 world = u_model * vec4(instance_point((skin_matrix() * vec4(a_position, 1.0)).xyz), 1.0);
+    v_world = world.xyz;
+    gl_Position = u_view_proj * world;
 }
 #endif
 
@@ -33,6 +36,7 @@ in vec2 v_uv;
 in vec4 v_tangent;
 in vec3 v_object;
 in vec2 v_layers;
+in vec3 v_world;
 uniform vec4 u_base;
 uniform float u_roughness;
 uniform float u_metalness;
@@ -123,6 +127,7 @@ float terrain_material(inout vec3 base, inout vec3 n, float roughness) {
 layout(location = 1) out vec4 o_normal;
 layout(location = 2) out vec4 o_emission;
 void main() {
+    if (u_ndigs > 0 && dug(v_world)) discard;
     vec3 n = normalize(gl_FrontFacing || u_one_sided > 0.5 ? v_normal : -v_normal);
     if (u_normal_scale > 0.0) {
         vec3 t = v_tangent.xyz - n * dot(n, v_tangent.xyz);
