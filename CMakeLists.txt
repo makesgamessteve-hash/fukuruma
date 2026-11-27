@@ -174,7 +174,7 @@ set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boo
   game_scale_ladder game_physics game_navigation game_planets game_stars game_descent PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
-set_tests_properties(unit_lua game_planets game_descent PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
+set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
 
 if(FK_COVERAGE)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
