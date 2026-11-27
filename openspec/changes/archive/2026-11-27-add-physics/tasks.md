@@ -9,4 +9,4 @@
 - [x] 6 C and Lua tests (stacking, sliding, bouncing, 10,000-step determinism, every shape pair, save/restore,
       characters); physics scenario with a golden and a recorded hash
 - [x] 7 Coverage gates, sanitizers, all CTest tests, web build and browser tests; plan and README
-- [ ] 8 CI green on every target; Pages updated; archive
+- [x] 8 CI green on every target; Pages updated; archive
