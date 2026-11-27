@@ -646,11 +646,13 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 ### M6 — The Fukuruma chain: vertical slice (XL)
 
-- **OpenSpec:** `add-doll-chain` (first step done: the doll registry, a hull grammar, the chain with deploy, recall
-  and board, seat views), `add-cockpits` (done: cabins, screens, the seat's look limit), `add-vehicle-controllers` (done: legged,
-  flight and fixed controllers, stomps, seat bob), `add-travel` (done: teleport network, Drop Ship between
-  orbit and the ground, autopilot), then the
-  Fukuruma test.
+- **OpenSpec (done):** `add-doll-chain` (registry, hull grammar, the chain with deploy, recall and board),
+  `add-cockpits`, `add-vehicle-controllers` (legged, flight, orbit), `add-travel` (teleport network, Drop Ship
+  between orbit and the ground, autopilot), `add-fukuruma-test`, `add-chain-presentation` (drone view per doll,
+  ship AI, deploy easing), `add-doll-feel` (cabin sway, engines), `add-doll-collision`, `add-jump-drive` (jumps from
+  the Jump Ship's bridge; the rest stays in its system), `add-floating-origin`, `add-orbits`.
+- **Moved to M8 (owner's decision, 2026-11-27):** boarding on foot (walking into the next doll in its parent's
+  hangar), interiors made for people, the Commander as a human inside the dolls; M6 boards seat to seat.
 - **Work:** the doll registry and schema, detailed procedural hulls for the seven dolls and the Drop
   Ship (part grammar with greebles, PBR materials, lights), deploy / recall / board / disembark as
   choreographed mechanical sequences watched from the cockpit, on its screens or in the orientation

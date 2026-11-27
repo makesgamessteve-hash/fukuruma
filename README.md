@@ -36,7 +36,12 @@ cube-sphere chunks, air that scatters its star's light into its own skies and su
 own colours; binaries light worlds twice and pulsars sweep their beams. In M5 the descent from orbit to the ground is seamless:
 terrain materials and wind-blown flora, pits and tunnels the suit can dig, volumetric clouds with their shadows and
 fog, the sea with waves, reflections and caustics, and weather (rain, storms with lightning, snow, sandstorms). Around the
-range, rivers run in carved channels to lakes and the sea, white where they fall.
+range, rivers run in carved channels to lakes and the sea, white where they fall. Since M6 the whole Fukuruma chain is
+there: the Jump Ship in high orbit, a Space Station going round the world, the Continental Explorer in the sky, the
+Land Explorer and the Walker on the ground and the Exosuit on foot. Every doll is steered from its own cockpit;
+Drop Ships fly between orbit and the ground on autopilot, the teleport links the Jump Ship and the stations, and
+star jumps start from the Jump Ship's bridge (B and N board up and down the chain, T deploys, R recalls, O engages
+the autopilot, P teleports). Walking the dolls' interiors comes in M8.
 
 - [Game concept](docs/CONCEPT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
