@@ -84,7 +84,7 @@ void main() {
         float view_depth = -(u_view * vec4(world, 1.0)).z;
 
         color = brdf(n, v, u_sun_dir, albedo, rough, metal) * u_sun_color * shadow(world, n, view_depth)
-              * cloud_shadow(world - u_centre, u_sun_dir);
+              * cloud_shadow(world - u_centre, u_sun_dir, 4);
         if (dot(u_sun2_color, u_sun2_color) > 0.0) color += brdf(n, v, u_sun2_dir, albedo, rough, metal) * u_sun2_color;
 #if MAX_LIGHTS > 0
         for (int i = 0; i < MAX_LIGHTS; i++) {

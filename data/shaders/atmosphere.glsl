@@ -69,7 +69,7 @@ void main() {
         vec3 depth_light = vec3(0.0);
         for (int j = 0; j < LIGHT_STEPS; j++) depth_light += density(p + u_sun_dir * ((float(j) + 0.5) * ls)) * ls;
         vec3 tau = extinction(depth_view + depth_light);
-        vec3 att = exp(-tau) * cloud_shadow(p, u_sun_dir); // under broken cloud: shafts of light through the haze
+        vec3 att = exp(-tau) * cloud_shade(p, u_sun_dir); // under broken cloud: shafts of light through the haze
         light_r += att * d.x;
         light_m += att * d.y;
     }
@@ -104,7 +104,7 @@ void main() {
                 vec3 p = cam + dir * along;
                 float d = cloud_density(p) * (1.0 - smoothstep(18000.0, 30000.0, along)); // thinning into the distance
                 if (d <= 0.0) continue;
-                vec3 light = u_sun_color * (cloud_shadow(p, u_sun_dir) * (forward + 0.08) + 0.05);
+                vec3 light = u_sun_color * (cloud_shadow(p, u_sun_dir, u_cloud_steps >= 32 ? 4 : 2) * (forward + 0.08) + 0.05);
                 lit += t * light * (1.0 - exp(-d * ds));
                 t *= exp(-d * ds);
             }
