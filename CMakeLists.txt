@@ -61,9 +61,9 @@ add_library(fk_engine STATIC ${FK_ENGINE_SRC})
 target_include_directories(fk_engine PUBLIC engine/src)
 target_link_libraries(fk_engine PUBLIC fk_third_party SDL3::SDL3-static)
 fk_settings(fk_engine)
-if(NOT MSVC AND NOT FK_COVERAGE AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-  # The generators' hot loops (noise, planet chunks, galaxy) stay quick in debug builds; -ffp-contract=off keeps their
-  # results identical.
+if(NOT MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  # The generators' hot loops (noise, planet chunks, galaxy) stay quick in debug and coverage builds (still
+  # instrumented); -ffp-contract=off keeps their results identical.
   file(GLOB FK_GEN_SRC ${CMAKE_SOURCE_DIR}/engine/src/gen/*.c)
   set_source_files_properties(${FK_GEN_SRC} PROPERTIES COMPILE_OPTIONS -O2)
 endif()
