@@ -49,6 +49,9 @@ const float *fk_lua_pose_globals(lua_State *L, int arg, const fk_model *model);
 void fk_lua_orbit_open(lua_State *L);
 /* fk.galaxy (script/lua_galaxy.c): pushes the table. */
 void fk_lua_galaxy_open(lua_State *L);
+/* fk.noise (script/lua_noise.c): pushes the table. */
+void fk_lua_noise_open(lua_State *L);
+struct fk_noise *fk_lua_noise_arg(lua_State *L, int arg);
 /* fk.physics (script/lua_physics.c): pushes the table. */
 void fk_lua_physics_open(lua_State *L);
 /* fk.audio (script/lua_audio.c): pushes the table. */
