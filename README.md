@@ -33,7 +33,10 @@ generated galaxy: the real star lights it and sets, the sky shows the real neigh
 and the galaxy and system maps let you jump to other stars, each system with its own worlds and marvels. Since M4 every world has a
 surface from noise graphs (continents, ridges, dunes, craters, ice, banded giants, rings, clouds) streamed as
 cube-sphere chunks, air that scatters its star's light into its own skies and sunsets, and stars that glow in their
-own colours; binaries light worlds twice and pulsars sweep their beams. M5 (seamless surfaces) is in progress.
+own colours; binaries light worlds twice and pulsars sweep their beams. In M5 the descent from orbit to the ground is seamless:
+terrain materials and wind-blown flora, pits and tunnels the suit can dig, volumetric clouds with their shadows and
+fog, the sea with waves, reflections and caustics, and weather (rain, storms with lightning, snow, sandstorms). Rivers,
+waterfalls and lakes above sea level are still to come.
 
 - [Game concept](docs/CONCEPT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
