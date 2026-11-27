@@ -187,6 +187,7 @@ set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation g
 # The sandbox scenes draw the world's ground (software rendering, instrumented builds): slower than the rest.
 set_tests_properties(game_boot game_boot_reproducible game_input game_feel game_first_person game_showcase_lighting
   game_physics game_graphics_menu PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
+set_tests_properties(game_terrain_materials PROPERTIES TIMEOUT 900) # the heaviest: with the coverage run's parallel tests
 
 if(FK_COVERAGE)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
