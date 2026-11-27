@@ -189,7 +189,7 @@ if(FK_COVERAGE)
     COMMAND ${CMAKE_COMMAND} -E env LUA_PATH=${FK_SRC}/third_party/luacov/?.lua
       $<TARGET_FILE:fukuruma> --test ${FK_SRC}/tests/lua --coverage
     COMMAND ${Python3_EXECUTABLE} ${FK_SRC}/tools/coverage/lua_gate.py luacov.report.out 95
-    COMMAND ${FK_GCOVR} --gcov-ignore-parse-errors=suspicious_hits.warn --root ${FK_SRC} --filter ${FK_SRC}/engine/src
+    COMMAND ${FK_GCOVR} --gcov-ignore-parse-errors=suspicious_hits.warn --gcov-ignore-parse-errors=negative_hits.warn --root ${FK_SRC} --filter ${FK_SRC}/engine/src
       --print-summary --txt coverage-c.txt --html-details coverage-c.html --fail-under-line 95 ${CMAKE_BINARY_DIR}
     WORKING_DIRECTORY $<TARGET_FILE_DIR:fukuruma>
     VERBATIM)
