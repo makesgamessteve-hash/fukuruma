@@ -19,13 +19,13 @@ dig.DECK = 81        -- no digging into the deck (half its size, metres)
 dig.AIM = 2.2        -- metres above the feet: from inside a hole, the next one goes forward and down, with headroom
 
 -- Sets up the component and the dig command. suit(): the suit's state {x, y (its feet), z, fx, fz}; world: the
--- physics world.
-function dig.install(world, suit)
+-- physics world; allowed() (optional): whether the suit may dig now (the Commander is in it).
+function dig.install(world, suit, allowed)
   dig.id = sim.create()
   sim.set(dig.id, "digs", { world = "", list = {}, at = 0 })
   sim.on("dig", function()
     local d = sim.get(dig.id, "digs")
-    if sim.tick < d.at then return end
+    if sim.tick < d.at or (allowed and not allowed()) then return end
     local s = suit()
     local x, z = s.x + s.fx * dig.REACH, s.z + s.fz * dig.REACH
     local h = world:height(x, z)

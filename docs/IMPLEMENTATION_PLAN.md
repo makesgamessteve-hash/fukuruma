@@ -646,7 +646,9 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 ### M6 — The Fukuruma chain: vertical slice (XL)
 
-- **OpenSpec:** `add-doll-chain`, `add-vehicle-controllers`, `add-teleport-network`, `add-autopilot`.
+- **OpenSpec:** `add-doll-chain` (first step done: the doll registry, a hull grammar, the chain with deploy, recall
+  and board, seat views), `add-cockpits`, `add-vehicle-controllers`, `add-teleport-network`, `add-autopilot`, then the
+  Fukuruma test.
 - **Work:** the doll registry and schema, detailed procedural hulls for the seven dolls and the Drop
   Ship (part grammar with greebles, PBR materials, lights), deploy / recall / board / disembark as
   choreographed mechanical sequences watched from the cockpit, on its screens or in the orientation

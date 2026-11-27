@@ -34,6 +34,7 @@ local navmap = require("navmap")
 local terrain = require("terrain")
 local scatter = require("scatter")
 local dig = require("dig")
+local chain = require("chain")
 local weather = require("weather")
 
 local game = {}
@@ -104,18 +105,25 @@ function game.init()
   game.suit = sim.create()
   sim.set(game.suit, "suit", { x = 0, y = 0, z = 0, vx = 0, vy = 0, vz = 0, fx = 0, fz = 1, wx = 0, wz = 0, lx = 0, lz = 1,
     scan_at = 0, body = body })
-  sim.on("move", function(args) -- the wanted velocity and the direction the Commander looks
+  chain.install(function() return sim.get(game.suit, "suit") end, function(x, y, z) -- the Exosuit deployed there
+    local s = sim.get(game.suit, "suit")
+    game.world:set(s.body, { position = { x, y + SUIT_HEIGHT / 2 + 0.05, z }, velocity = { 0, 0, 0 } })
+    s.x, s.y, s.z, s.vx, s.vy, s.vz = x, y, z, 0, 0, 0
+  end)
+  sim.on("move", function(args) -- the wanted velocity and the direction the Commander looks (on foot only)
     local body = sim.get(game.suit, "suit")
+    if not chain.on_foot() then args = { x = 0, z = 0, fx = body.lx, fz = body.lz } end
     body.wx, body.wz, body.lx, body.lz = args.x, args.z, args.fx, args.fz
   end)
-  dig.install(game.world, function() return sim.get(game.suit, "suit") end)
+  dig.install(game.world, function() return sim.get(game.suit, "suit") end, chain.on_foot)
   sim.on("scan", function()
     local body = sim.get(game.suit, "suit")
-    if sim.tick < body.scan_at then return end
+    if sim.tick < body.scan_at or not chain.on_foot() then return end
     body.scan_at = sim.tick + SCAN_COOLDOWN
     sim.emit("scan", { position = { body.x, 0, body.z } })
   end)
-  feel.listen(sim, { scan = feedback.scan, impact = feedback.impact, jump = feedback.jump, dig = feedback.dig },
+  feel.listen(sim, { scan = feedback.scan, impact = feedback.impact, jump = feedback.jump, dig = feedback.dig,
+    deploy = feedback.deploy, recall = feedback.recall, board = feedback.board },
     function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
   sim.listen("scan", function() -- a scan swells the discovery theme for a while
@@ -133,6 +141,10 @@ function game.init()
   actions.define("view", { kind = "button", keys = { "V" }, gamepad = { "back" }, touch = "view" })
   actions.define("menu", { kind = "button", keys = { "Escape" }, gamepad = { "start" }, touch = "menu" })
   actions.define("map", { kind = "button", keys = { "M" }, gamepad = { "y" }, touch = "map" })
+  actions.define("board_up", { kind = "button", keys = { "B" }, gamepad = { "dpup" } }) -- to the parent doll's seat
+  actions.define("board_down", { kind = "button", keys = { "N" }, gamepad = { "dpdown" } }) -- to a child doll's seat
+  actions.define("deploy", { kind = "button", keys = { "T" }, gamepad = { "dpright" } })
+  actions.define("recall", { kind = "button", keys = { "R" }, gamepad = { "dpleft" } })
   actions.define("save", { kind = "button", keys = { "F5" } })
   actions.define("load", { kind = "button", keys = { "F9" } })
   menu.actions = { save = function() game.save() end, load = function() game.load() end }
@@ -227,6 +239,13 @@ function game.input()
   end
   if actions.pressed("scan") and not busy and game.view == "helmet" then sim.send("scan", {}) end
   if actions.pressed("dig") and not busy and game.view == "helmet" then sim.send("dig", {}) end
+  if not busy then -- the Fukuruma chain (doll-chain spec): the commands aim at what chain.lua picks
+    local up, down, kind = chain.up(), chain.down(), chain.next_kind()
+    if actions.pressed("board_up") and up then sim.send("board", { id = up }) end
+    if actions.pressed("board_down") and down then sim.send("board", { id = down }) end
+    if actions.pressed("deploy") and kind then sim.send("deploy", { kind = kind }) end
+    if actions.pressed("recall") and down then sim.send("recall", { id = down }) end
+  end
 end
 
 -- The suit accelerates towards the wanted velocity and turns to face where the Commander looks; the physics
@@ -238,6 +257,7 @@ function game.tick()
   terrain.follow(game.ground_tile, game.world, universe.ground(), suit.x, suit.z)
   local u = universe.state()
   dig.tick(game.world, u.seed .. "/" .. u.place)
+  chain.tick(u.seed .. "/" .. u.place)
   for _, b in sim.each("suit") do
     local dx, dz = b.wx - b.vx, b.wz - b.vz
     local d = math.sqrt(dx * dx + dz * dz)
@@ -279,7 +299,7 @@ local function draw_suit(body, alpha, dt)
   local sway = game.antenna:update(-speed * 0.06, dt)
   game.pose:rotate("antenna", { 1, 0, 0 }, sway)
   local head = game.pose:global("head")
-  if game.view == "helmet" then game.pose:scale("head", 0) end
+  if game.view == "helmet" and chain.on_foot() then game.pose:scale("head", 0) end
   fk.gfx.draw(game.suit_model, model, { pose = game.pose })
   return model, speed, head
 end
@@ -352,7 +372,8 @@ function game.draw(alpha, dt)
     view, projection = game.drone:matrices({ model[13], model[14], model[15] }, w / h)
   else
     game.helmet.fov = comfort.current.fov
-    view, projection = game.helmet:matrices(eye_position(model, head), w / h, { feel.shake() })
+    local eye = chain.on_foot() and eye_position(model, head) or chain.seat(chain.current()) -- at a doll's controls
+    view, projection = game.helmet:matrices(eye, w / h, { feel.shake() })
   end
   fk.gfx.camera(view, projection)
   local inv_x, inv_y, inv_z = -(view[1] * view[13] + view[2] * view[14] + view[3] * view[15]),
@@ -364,6 +385,8 @@ function game.draw(alpha, dt)
       dust = game.now and game.now.look.dust })
   dig.draw(game.dug, universe.ground())
   dig.lamp(game.world, { inv_x, inv_y, inv_z })
+  game.chain_view = game.chain_view or {}
+  chain.draw(game.chain_view, { inv_x, inv_y, inv_z })
   local g0 = universe.ground() -- rivers and lakes (rivers-and-lakes spec): meshed once per world
   if game.waters_for ~= g0 then game.waters_for, game.water_mesh = g0, g0 and g0.waters and g0.surface:water_mesh() end
   if game.water_mesh then
