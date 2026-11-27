@@ -188,6 +188,11 @@ set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation g
 set_tests_properties(game_boot game_boot_reproducible game_input game_feel game_first_person game_showcase_lighting
   game_physics game_graphics_menu PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
 set_tests_properties(game_terrain_materials PROPERTIES TIMEOUT 900) # the heaviest: with the coverage run's parallel tests
+# The slow scenarios (20 s and more) run at the end of a milestone and on CI, not after every change (AGENTS.md):
+# ctest -LE slow is the quick set.
+set_property(TEST game_terrain_materials game_dig game_weather game_navigation game_descent game_rivers game_physics
+  game_boot_reproducible game_showcase_lighting game_graphics_menu game_feel game_water game_first_person game_clouds
+  APPEND PROPERTY LABELS slow)
 
 if(FK_COVERAGE)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)

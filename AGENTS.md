@@ -47,8 +47,10 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 - **Spec-driven:** every feature starts as an OpenSpec change in `openspec/changes/` (`openspec new change <id>`,
   skills `openspec-propose` / `openspec-apply-change` / `openspec-archive-change`). Validate with
   `openspec validate <id> --strict`. Archive the change once it is deployed.
-- **`main` only:** commit and push to `main`. Push only after the build, unit tests, game tests and coverage
-  gates pass locally. Pages deploys only green builds.
+- **`main` only:** commit and push to `main`. After every change, push once `tools/qa.sh` passes locally: the build,
+  the unit and Lua tests, the quick game scenarios, and the scenarios of the change at hand (`tools/qa.sh chain`). The
+  slow scenarios, the coverage gates, the sanitizers and the browser suite run at the end of each milestone
+  (`tools/qa.sh milestone <emsdk_env.sh>`) and on CI for every push. Pages deploys only green builds.
 - **Engine/game split:** C11 engine in `engine/`, Lua game in `data/scripts/`. Hot loops in C, decisions in Lua.
   Only `engine/src/platform/` calls SDL; only `engine/src/gfx/gl_*.c` calls OpenGL.
 - **Content beside the binary:** scripts, shaders and assets live in `data/` (and `mods/`), never compiled in.
