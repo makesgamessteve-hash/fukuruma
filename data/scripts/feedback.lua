@@ -39,6 +39,15 @@ return {
     trauma = 0.25, rumble = { 0.6, 0.3, 0.35 }, sound = "impact" },
   -- A doll taken back into its hold: a softer clunk, a short hum.
   recall = { trauma = 0.12, rumble = { 0.3, 0.2, 0.25 }, sound = "ui_open" },
+  -- A Walker's or Land Explorer's foot coming down: the cabin jolts, the ground booms (scaled by the doll's size).
+  stomp = {
+    particles = { count = 40, radius = 6, direction = { 0, 1, 0 }, spread = 1.4, speed_min = 2, speed_max = 8,
+      life_min = 1, life_max = 2.2, size = 2.5, size_end = 7, gravity = 0.8, drag = 1.2, color = { 0.6, 0.55, 0.47 },
+      alpha = 0.6, alpha_end = 0 },
+    trauma = 0.3,
+    rumble = { 0.7, 0.25, 0.2 },
+    sound = "impact",
+  },
   -- The Commander at another doll's controls: the seat settles, the instruments chime.
   board = { trauma = 0.08, rumble = { 0.15, 0.25, 0.15 }, sound = "ui_confirm" },
   -- The Jump Ship's drive: a long, deep shake and rumble with the jump's roar.

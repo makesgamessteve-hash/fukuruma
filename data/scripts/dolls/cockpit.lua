@@ -53,11 +53,12 @@ function cockpit.build(state, def)
   return state[def.id]
 end
 
--- Draws the cabin around the eye (presentation). Returns the built cockpit, or nil.
-function cockpit.draw(state, def, eye)
+-- Draws the cabin around the eye, turned with the doll (yaw; presentation). Returns the built cockpit, or nil.
+function cockpit.draw(state, def, eye, yaw)
   local c = cockpit.build(state, def)
   if not c then return nil end
-  local m = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, eye[1], eye[2], eye[3], 1 }
+  local cy, sy = math.cos(yaw or 0), math.sin(yaw or 0)
+  local m = { cy, 0, -sy, 0, 0, 1, 0, 0, sy, 0, cy, 0, eye[1], eye[2], eye[3], 1 }
   fk.gfx.draw(c.shell, m, { roughness = 0.6, metalness = 0.3, slice = "local" })
   fk.gfx.draw(c.screens, m, { roughness = 0.3, emission = { 0.6, 0.6, 0.6 }, emissive_colors = true, slice = "local" })
   return c
@@ -76,13 +77,14 @@ end
 -- The screens' lines: what the doll knows (lines: a list of strings per screen, as many as the cockpit has screens).
 -- Drawn as text centred on each screen where it appears, cut to the screen's width there (8 pixels a letter), so far
 -- or small screens show less (presentation). Returns how many screens were seen.
-function cockpit.text(c, eye, lines, view, projection, w, h, color)
-  local seen = 0
+function cockpit.text(c, eye, lines, view, projection, w, h, color, yaw)
+  local seen, cy, sy = 0, math.cos(yaw or 0), math.sin(yaw or 0)
+  local function at(x, y, z) return { eye[1] + x * cy + z * sy, eye[2] + y, eye[3] - x * sy + z * cy } end
   for i, spot in ipairs(c and c.spots or {}) do
-    local p = { eye[1] + spot[1], eye[2] + spot[2], eye[3] + spot[3] }
+    local p = at(spot[1], spot[2], spot[3])
     local x, y = cockpit.project(p, view, projection, w, h)
-    local left = cockpit.project({ p[1] - spot[4], p[2], p[3] }, view, projection, w, h)
-    local right = cockpit.project({ p[1] + spot[4], p[2], p[3] }, view, projection, w, h)
+    local left = cockpit.project(at(spot[1] - spot[4], spot[2], spot[3]), view, projection, w, h)
+    local right = cockpit.project(at(spot[1] + spot[4], spot[2], spot[3]), view, projection, w, h)
     local text = lines[i]
     if x and left and right and text and x > 0 and x < w and y > 0 and y < h then
       local fits = math.floor(math.abs(right - left) / 8)

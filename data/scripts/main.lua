@@ -125,7 +125,7 @@ function game.init()
     sim.emit("scan", { position = { body.x, 0, body.z } })
   end)
   feel.listen(sim, { scan = feedback.scan, impact = feedback.impact, jump = feedback.jump, dig = feedback.dig,
-    deploy = feedback.deploy, recall = feedback.recall, board = feedback.board },
+    deploy = feedback.deploy, recall = feedback.recall, board = feedback.board, stomp = feedback.stomp },
     function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
   sim.listen("scan", function() -- a scan swells the discovery theme for a while
@@ -146,6 +146,7 @@ function game.init()
   actions.define("board_up", { kind = "button", keys = { "B" }, gamepad = { "dpup" } }) -- to the parent doll's seat
   actions.define("board_down", { kind = "button", keys = { "N" }, gamepad = { "dpdown" } }) -- to a child doll's seat
   actions.define("deploy", { kind = "button", keys = { "T" }, gamepad = { "dpright" } })
+  actions.define("lift", { kind = "axis", negative = { "C" }, positive = { "Space" } }) -- flying dolls up and down
   actions.define("recall", { kind = "button", keys = { "R" }, gamepad = { "dpleft" } })
   actions.define("save", { kind = "button", keys = { "F5" } })
   actions.define("load", { kind = "button", keys = { "F9" } })
@@ -245,6 +246,15 @@ function game.input()
   end
   if actions.pressed("scan") and not busy and game.view == "helmet" then sim.send("scan", {}) end
   if actions.pressed("dig") and not busy and game.view == "helmet" then sim.send("dig", {}) end
+  if not chain.on_foot() then -- at a doll's controls: the move keys steer it (vehicle controllers)
+    local lift = (busy or game.view == "drone") and 0 or actions.value("lift")
+    local d = { throttle = -y, turn = -x, lift = lift }
+    local last = game.drive or {}
+    if d.throttle ~= last.throttle or d.turn ~= last.turn or d.lift ~= last.lift then
+      game.drive = d
+      sim.send("drive", d)
+    end
+  end
   if not busy then -- the Fukuruma chain (doll-chain spec): the commands aim at what chain.lua picks
     local up, down, kind = chain.up(), chain.down(), chain.next_kind()
     if actions.pressed("board_up") and up then sim.send("board", { id = up }) end
@@ -378,9 +388,14 @@ function game.draw(alpha, dt)
     view, projection = game.drone:matrices({ model[13], model[14], model[15] }, w / h)
   else
     game.helmet.fov = comfort.current.fov
-    local eye = chain.on_foot() and eye_position(model, head) or chain.seat(chain.current()) -- at a doll's controls
+    local seated = not chain.on_foot() and chain.current()
+    local eye = seated and chain.seat(seated) or eye_position(model, head) -- at a doll's controls: its seat
+    if seated then eye[2] = eye[2] + chain.bob(seated) * comfort.current.head_bob end
     game.eye = eye
+    local look = game.helmet.yaw -- in a seat, the head turns from the doll's front
+    if seated then game.helmet.yaw = look + (seated.yaw or 0) end
     view, projection = game.helmet:matrices(eye, w / h, { feel.shake() })
+    game.helmet.yaw = look
   end
   fk.gfx.camera(view, projection)
   local inv_x, inv_y, inv_z = -(view[1] * view[13] + view[2] * view[14] + view[3] * view[15]),
@@ -396,7 +411,7 @@ function game.draw(alpha, dt)
   chain.draw(game.chain_view, { inv_x, inv_y, inv_z })
   game.cockpits = game.cockpits or {}
   game.cockpit_now = game.view == "helmet" and not chain.on_foot()
-    and cockpit.draw(game.cockpits, dolls.by_id[chain.current().kind], game.eye) or nil
+    and cockpit.draw(game.cockpits, dolls.by_id[chain.current().kind], game.eye, chain.current().yaw) or nil
   local g0 = universe.ground() -- rivers and lakes (rivers-and-lakes spec): meshed once per world
   if game.waters_for ~= g0 then game.waters_for, game.water_mesh = g0, g0 and g0.waters and g0.surface:water_mesh() end
   if game.water_mesh then
@@ -412,7 +427,7 @@ function game.draw(alpha, dt)
   feel.draw()
   if game.view == "drone" then hud.drone(feel.time)
   elseif game.cockpit_now then -- at a doll's controls: its screens instead of the visor
-    cockpit.text(game.cockpit_now, game.eye, chain.screens(), view, projection, w, h, { 1, 0.75, 0.3 })
+    cockpit.text(game.cockpit_now, game.eye, chain.screens(), view, projection, w, h, { 1, 0.75, 0.3 }, chain.current().yaw)
   else
     hud.visor({ yaw = game.helmet.yaw, speed = speed, turn_rate = game.helmet.turn_rate, vignette = comfort.current.vignette,
       scan = math.max(0, math.min(1, 1 - (body.scan_at - sim.tick) / SCAN_COOLDOWN)) })

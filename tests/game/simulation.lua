@@ -2,7 +2,7 @@
 -- then the state hash must equal the value recorded below on Linux, Windows, macOS and in the browser.
 local sim = require("fk.sim")
 
-local RECORDED_HASH = "d0beca8792ba34f8"
+local RECORDED_HASH = "86682e7b3785f29c"
 
 return scenario {
   seed = 1,

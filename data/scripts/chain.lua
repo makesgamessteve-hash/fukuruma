@@ -82,7 +82,7 @@ function chain.install(suit, move_suit)
     local h = holds(s[1])
     local nxt = chain.START[i + 1]
     if nxt then h[nxt[1]] = h[nxt[1]] - 1 end -- the next one down is out
-    list[i] = { id = i, kind = s[1], parent = parent, x = x, y = y, z = z, hold = h }
+    list[i] = { id = i, kind = s[1], parent = parent, x = x, y = y, z = z, yaw = 0, speed = 0, stride = 0, hold = h }
     parent = i
   end
   sim.set(chain.id, "chain", { dolls = list, at = #list, next = #list + 1 })
@@ -96,7 +96,8 @@ function chain.install(suit, move_suit)
     local x, y, z = c.x + o[1], (dolls.by_id[kind].place == "orbit" and 0 or c.y) + o[2], c.z + o[3]
     if dolls.by_id[kind].place == "ground" then x, y, z = place(kind, x, o[2], z) end
     c.hold[kind] = c.hold[kind] - 1
-    local d = { id = s.next, kind = kind, parent = c.id, x = x, y = y, z = z, hold = holds(kind) }
+    local d = { id = s.next, kind = kind, parent = c.id, x = x, y = y, z = z, yaw = c.yaw or 0, speed = 0, stride = 0,
+      hold = holds(kind) }
     s.next = s.next + 1
     s.dolls[#s.dolls + 1] = d
     if kind == "exosuit" then move_suit(x, y, z) end
@@ -121,9 +122,11 @@ function chain.install(suit, move_suit)
     local c = chain.current()
     local d = chain.find(args.id)
     if not d or not linked(c, d) then return end
+    c.drive = nil -- the doll left behind stops
     chain.state().at = d.id
     sim.emit("board", { position = { d.x, d.y, d.z }, kind = d.kind, id = d.id, strength = 0.6 })
   end)
+  chain.install_drive()
 end
 
 -- What the player's buttons aim at (presentation; the commands check again): the parent doll; the nearest child out
@@ -182,12 +185,51 @@ function chain.screens()
   return list
 end
 
--- Each tick: the Exosuit's place follows the suit; on another world (world_key), the dolls on the ground stand on its
+-- Steering (vehicle controllers): throttle and turn (-1..1) and lift (-1..1, flying dolls) for the doll the
+-- Commander sits in. Each doll's controller (its definition's controller field) moves it every tick:
+--   legged {speed, accel, turn, stride}: walks on the ground; a stomp event every stride (metres)
+--   flight {speed, accel, turn, climb, min_altitude}: flies, no lower than min_altitude above the ground
+--   fixed: holds its place (orbits; their own controllers come with the teleport network and autopilot)
+function chain.install_drive()
+  sim.on("drive", function(args)
+    local c = chain.current()
+    if c.kind == "exosuit" then return end
+    local function clamp(v) return math.max(-1, math.min(1, tonumber(v) or 0)) end
+    c.drive = { throttle = clamp(args.throttle), turn = clamp(args.turn), lift = clamp(args.lift) }
+  end)
+end
+
+local function steer(d, dt)
+  local ctl = dolls.by_id[d.kind].controller
+  if not ctl or ctl.kind == "fixed" then return end
+  local drive = d.drive or { throttle = 0, turn = 0, lift = 0 }
+  d.yaw, d.speed, d.stride = d.yaw or 0, d.speed or 0, d.stride or 0 -- (games saved before the controllers)
+  local want, step = drive.throttle * ctl.speed, ctl.accel * dt
+  d.speed = d.speed + math.max(-step, math.min(step, want - d.speed))
+  d.yaw = d.yaw + drive.turn * ctl.turn * dt * math.min(1, 0.3 + math.abs(d.speed) / ctl.speed)
+  local dx, dz = fk.math.sin(d.yaw) * d.speed * dt, fk.math.cos(d.yaw) * d.speed * dt
+  d.x, d.z = d.x + dx, d.z + dz
+  local ground = chain.ground(d.x, d.z)
+  if ctl.kind == "legged" then
+    d.y = ground
+    d.stride = d.stride + math.sqrt(dx * dx + dz * dz)
+    if d.stride >= ctl.stride then -- a foot comes down: the ground shakes, the cabin jolts
+      d.stride = d.stride - ctl.stride
+      sim.emit("stomp", { position = { d.x, d.y, d.z }, kind = d.kind,
+        strength = math.min(1, dolls.by_id[d.kind].size_m / 600 + 0.35) })
+    end
+  else
+    d.y = math.max(ground + ctl.min_altitude, d.y + drive.lift * ctl.climb * dt)
+  end
+end
+
+-- Each tick: the doll the Commander steers moves; the Exosuit's place follows the suit; on another world (world_key), the dolls on the ground stand on its
 -- ground.
 -- shortcut: the whole chain goes along with a jump; stations staying behind in their systems come with the teleport
 -- network (M6).
 function chain.tick(world_key)
   local s, state = chain.suit(), chain.state()
+  steer(chain.current(), sim.dt)
   local moved = state.world ~= world_key
   state.world = world_key
   for _, d in ipairs(state.dolls) do
@@ -196,10 +238,24 @@ function chain.tick(world_key)
   end
 end
 
+-- How far the seat bobs with a legged doll's stride (presentation; metres up), 0 for others.
+function chain.bob(d)
+  local ctl = dolls.by_id[d.kind].controller
+  if not ctl or ctl.kind ~= "legged" or math.abs(d.speed or 0) < 0.01 then return 0 end
+  return math.min(1.2, dolls.by_id[d.kind].size_m * 0.004) * math.abs(fk.math.sin((d.stride or 0) / ctl.stride * math.pi))
+end
+
 -- Where the Commander's eye is when seated in doll d (its seat; the Exosuit's is drawn by main.lua).
 function chain.seat(d)
   local def = dolls.by_id[d.kind]
-  return { d.x + def.seat[1] * def.size_m, d.y + def.seat[2] * def.size_m, d.z + def.seat[3] * def.size_m }
+  local sx, sz, c, s = def.seat[1] * def.size_m, def.seat[3] * def.size_m, fk.math.cos(d.yaw or 0), fk.math.sin(d.yaw or 0)
+  return { d.x + sx * c + sz * s, d.y + def.seat[2] * def.size_m, d.z - sx * s + sz * c }
+end
+
+-- The doll's turn about the vertical (radians; 0 faces +z) as a column-major matrix at its place.
+function chain.matrix(d, y_offset)
+  local c, s = math.cos(d.yaw or 0), math.sin(d.yaw or 0)
+  return { c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, d.x, d.y + (y_offset or 0), d.z, 1 }
 end
 
 -- Draws every doll out in the world but the Exosuit (presentation): hulls built once per kind, in the depth slice
@@ -214,7 +270,7 @@ function chain.draw(state, eye)
       local dx, dy, dz = d.x - eye[1], d.y - eye[2], d.z - eye[3]
       local far = math.sqrt(dx * dx + dy * dy + dz * dz)
       local slice = far < 2e4 and "local" or far < 2e7 and "planetary" or "celestial"
-      fk.gfx.draw(state.meshes[d.kind], { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, d.x, d.y - 0.05, d.z, 1 },
+      fk.gfx.draw(state.meshes[d.kind], chain.matrix(d, -0.05),
         { roughness = def.roughness or 0.6, metalness = def.metalness or 0, slice = slice })
       n = n + 1
     end

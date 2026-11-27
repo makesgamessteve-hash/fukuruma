@@ -4,6 +4,7 @@ return {
   id = "land_explorer", name = "Land Explorer", size_m = 1440, place = "ground", offset = { 900, 0, 4200 },
   carries = { walker = 2 }, seat = { 0, 0.93, 0.34 }, roughness = 0.7, metalness = 0.35,
   cockpit = { width = 16, height = 6, depth = 12, posts = 4, screens = 5, color = { 0.42, 0.38, 0.32 } },
+  controller = { kind = "legged", speed = 5, accel = 0.6, turn = 0.06, stride = 320 },
   hull = {
     { "legs", count = 6, at = { 0, 0.5, 0 }, spread = { 0.42, 0.3 }, length = 0.5, thick = 0.07, color = DARK },
     { "box", at = { 0, 0.6, 0 }, size = { 0.55, 0.2, 0.85 }, color = HULL },
