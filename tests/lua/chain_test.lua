@@ -207,6 +207,33 @@ return {
     local old = { kind = "walker", x = 0, y = 0, z = 0 } -- a doll saved before the controllers
     assert(chain.bob(old) == 0 and chain.seat(old)[2] > 0)
   end,
+  ["the legs of the dolls on the ground are solid"] = function()
+    start()
+    local w = find("walker")
+    assert(w.bodies and #w.bodies == 4, "four leg columns")
+    local foot = hull.feet(dolls.by_id.walker.hull, 72)[1]
+    local fx, fz = w.x + foot[1], w.z + foot[2]
+    local suit = sim.get(game.suit, "suit")
+    local h = game.world:height(fx, fz + 12) or chain.ground(fx, fz + 12)
+    game.world:set(suit.body, { position = { fx, h + 1.85, fz + 12 }, velocity = { 0, 0, 0 } })
+    suit.x, suit.y, suit.z = fx, h, fz + 12
+    step(30)
+    sim.send("move", { x = 0, z = -2.6, fx = 0, fz = -1 })
+    step(400)
+    assert(suit.z > fz + foot[3] / 2, "the suit stops at the leg: " .. suit.z - fz)
+    sim.send("board", { id = w.id })
+    step()
+    sim.send("board", { id = chain.up() })
+    step()
+    sim.send("deploy", { kind = "walker" })
+    step()
+    local new = chain.state().dolls[#chain.state().dolls]
+    assert(new.kind == "walker" and #new.bodies == 4)
+    local ids = new.bodies
+    sim.send("recall", { id = new.id })
+    step()
+    assert(not pcall(game.world.get, game.world, ids[1]), "recalled: its legs are gone")
+  end,
   ["the chain is saved and drawn"] = function()
     start()
     sim.send("board", { id = find("walker").id })

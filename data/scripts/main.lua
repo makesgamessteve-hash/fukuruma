@@ -112,7 +112,7 @@ function game.init()
     local s = sim.get(game.suit, "suit")
     game.world:set(s.body, { position = { x, y + SUIT_HEIGHT / 2 + 0.05, z }, velocity = { 0, 0, 0 } })
     s.x, s.y, s.z, s.vx, s.vy, s.vz = x, y, z, 0, 0, 0
-  end)
+  end, game.world)
   sim.on("move", function(args) -- the wanted velocity and the direction the Commander looks (on foot only)
     local body = sim.get(game.suit, "suit")
     if not chain.on_foot() then args = { x = 0, z = 0, fx = body.lx, fz = body.lz } end

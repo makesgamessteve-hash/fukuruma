@@ -94,6 +94,24 @@ local BUILD = {
   end,
 }
 
+-- Where a hull's legs stand: {x, z, width, height} per leg (metres for a doll size metres high), the column from the
+-- foot up to the knee that bodies bump into (the physics colliders of legged dolls).
+function hull.feet(parts, size)
+  local out = {}
+  for _, p in ipairs(parts) do
+    if p[1] == "legs" then
+      for i = 0, p.count - 1 do
+        local side = i % 2 == 0 and -1 or 1
+        local row = p.count > 2 and (i // 2) / (p.count / 2 - 1) * 2 - 1 or 0
+        local hz = p.at[3] + row * p.spread[2]
+        out[#out + 1] = { (p.at[1] + side * p.spread[1]) * size, (hz + row * p.spread[2] * 0.15) * size,
+          p.thick * 1.4 * size, (p.at[2] - p.length * 0.45) * size }
+      end
+    end
+  end
+  return out
+end
+
 -- The mesh table ({positions, colors, indices}) of a doll's hull, size metres high (or long).
 function hull.build(parts, size)
   local mesh = { positions = {}, colors = {}, indices = {} }

@@ -84,9 +84,32 @@ end
 
 chain.TELEPORT = { jump_ship = true, space_station = true } -- the teleport network's nodes
 
+-- The physics world's columns for the legs of the dolls standing on the ground (not the Exosuit, which is the
+-- suit's own body): made when a doll is out, moved with it, removed when it is recalled. Their IDs are part of the
+-- doll's saved state, like the bodies themselves are part of the physics world's.
+local function solid(d)
+  local def = dolls.by_id[d.kind]
+  if d.kind == "exosuit" or def.place ~= "ground" or not chain.world then return end
+  local feet = hull.feet(def.hull, def.size_m)
+  local c, s = fk.math.cos(d.yaw or 0), fk.math.sin(d.yaw or 0)
+  d.bodies = d.bodies or {}
+  for i, f in ipairs(feet) do
+    local x, z = d.x + f[1] * c + f[2] * s, d.z - f[1] * s + f[2] * c
+    local at = { x, d.y + f[4] / 2, z }
+    if d.bodies[i] then chain.world:set(d.bodies[i], { position = at })
+    else d.bodies[i] = chain.world:add({ shape = "box", size = { f[3], f[4], f[3] }, position = at, kinematic = true }) end
+  end
+end
+
+local function unsolid(d)
+  for _, id in ipairs(d.bodies or {}) do chain.world:remove(id) end
+  d.bodies = nil
+end
+
 -- Sets up the component and the commands. suit(): the suit's state {x, y, z}; move_suit(x, y, z): puts the suit
--- (feet) there.
-function chain.install(suit, move_suit)
+-- (feet) there; world (optional): the physics world the legged dolls stand in.
+function chain.install(suit, move_suit, world)
+  chain.world = world
   chain.id = sim.create()
   local list, parent = {}, nil
   for i, s in ipairs(chain.START) do
@@ -126,6 +149,7 @@ function chain.install(suit, move_suit)
     for i, o in ipairs(s.dolls) do
       if o == d then table.remove(s.dolls, i) break end
     end
+    unsolid(d)
     c.hold[d.kind] = (c.hold[d.kind] or 0) + 1
     sim.emit("recall", { position = { d.x, d.y, d.z }, kind = d.kind, id = d.id, strength = 0.8 })
   end)
@@ -324,6 +348,7 @@ function chain.tick(world_key)
   for _, d in ipairs(state.dolls) do
     if d.kind == "exosuit" then d.x, d.y, d.z = s.x, s.y, s.z
     elseif moved and dolls.by_id[d.kind].place == "ground" then d.y = chain.ground(d.x, d.z) end
+    solid(d)
   end
 end
 
