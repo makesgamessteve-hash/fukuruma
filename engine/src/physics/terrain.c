@@ -49,38 +49,91 @@ bool fk_terrain_height(const fk_terrain *t, float x, float z, float *height, flo
 }
 
 /* A sphere at c of radius r against the ground: the plane of the triangle under its centre. */
-/* The distance from a point in a dig's open part to the solid around it: the dug wall straight out from the dig's
-   centre where that lies below the ground (h), else the rim, the circle where the hole meets the ground. */
-static float open_distance(const float p[3], const float *d, float h) {
-    float dx = p[0] - d[0], dy = p[1] - d[1], dz = p[2] - d[2], len = sqrtf(dx * dx + dy * dy + dz * dz);
-    if (len < d[3] && len > 0 && d[1] + dy * d[3] / len <= h) return d[3] - len;
-    float k = h - d[1];
-    if (k * k >= d[3] * d[3]) return fabsf(d[3] - len);
-    float rho = sqrtf(d[3] * d[3] - k * k), across = sqrtf(dx * dx + dz * dz) - rho, up = p[1] - h;
-    return sqrtf(across * across + up * up);
+/* Inside the dug space, the distance to the solid around it is the distance to the nearest point of its boundary:
+   a dig's wall where no other dig covers it and it lies below the ground, the crease where two digs' walls meet, or a
+   dig's rim, where its wall meets the ground (taken as level at the point's own ground height h). Taking the furthest
+   containing dig's wall instead underestimates the distance where digs overlap: a ridge at the seam the suit stops at. */
+#define FK_NEAR_DIGS 32
+
+static float ground_at(const fk_terrain *t, float x, float z, float fallback) {
+    float h, n[3];
+    return fk_terrain_height(t, x, z, &h, n) ? h : fallback;
+}
+
+static bool covered(const fk_terrain *t, const float q[3], const int *near, int count, int skip_a, int skip_b) {
+    for (int k = 0; k < count; k++) {
+        if (near[k] == skip_a || near[k] == skip_b) continue;
+        const float *d = &t->digs[4 * near[k]];
+        float dx = q[0] - d[0], dy = q[1] - d[1], dz = q[2] - d[2], r = d[3] - 1e-3f;
+        if (dx * dx + dy * dy + dz * dz < r * r) return true;
+    }
+    return false;
+}
+
+static void closer(const float p[3], const float q[3], float *best) {
+    float dx = q[0] - p[0], dy = q[1] - p[1], dz = q[2] - p[2], l = sqrtf(dx * dx + dy * dy + dz * dz);
+    if (l < *best) *best = l;
+}
+
+static float open_distance(const fk_terrain *t, const float p[3], float h, float least) {
+    int near[FK_NEAR_DIGS], count = 0;
+    for (int i = 0; i < t->ndigs && count < FK_NEAR_DIGS; i++) { /* the digs a boundary point within reach could be in */
+        const float *d = &t->digs[4 * i];
+        float dx = p[0] - d[0], dy = p[1] - d[1], dz = p[2] - d[2], reach = 3 * d[3];
+        if (dx * dx + dy * dy + dz * dz < reach * reach) near[count++] = i;
+    }
+    float best = 1e9f;
+    for (int a = 0; a < count; a++) {
+        const float *d = &t->digs[4 * near[a]];
+        float v[3] = {p[0] - d[0], p[1] - d[1], p[2] - d[2]}, l = sqrtf(v3_dot(v, v)), q[3];
+        if (l < 1e-6f) v3_set(v, 0, -1, 0), l = 1;
+        for (int k = 0; k < 3; k++) q[k] = d[k] + v[k] * d[3] / l; /* the wall straight out from the centre */
+        if (q[1] <= ground_at(t, q[0], q[2], h) && !covered(t, q, near, count, near[a], -1)) closer(p, q, &best);
+        float k = h - d[1]; /* the rim */
+        if (k * k < d[3] * d[3]) {
+            float rho = sqrtf(d[3] * d[3] - k * k), hx = v[0], hz = v[2], hl = sqrtf(hx * hx + hz * hz);
+            if (hl < 1e-6f) hx = 1, hz = 0, hl = 1;
+            float r[3] = {d[0] + hx / hl * rho, h, d[2] + hz / hl * rho};
+            if (!covered(t, r, near, count, near[a], -1)) closer(p, r, &best);
+        }
+        for (int b = a + 1; b < count; b++) { /* the crease with another dig */
+            const float *e = &t->digs[4 * near[b]];
+            float u[3] = {e[0] - d[0], e[1] - d[1], e[2] - d[2]}, dist = sqrtf(v3_dot(u, u));
+            if (dist >= d[3] + e[3] || dist <= fabsf(d[3] - e[3])) continue;
+            for (int c = 0; c < 3; c++) u[c] /= dist;
+            float along = (dist * dist + d[3] * d[3] - e[3] * e[3]) / (2 * dist), rho = sqrtf(d[3] * d[3] - along * along);
+            float m[3] = {d[0] + u[0] * along, d[1] + u[1] * along, d[2] + u[2] * along};
+            float w[3] = {p[0] - m[0], p[1] - m[1], p[2] - m[2]}, wu = v3_dot(w, u);
+            for (int c = 0; c < 3; c++) w[c] -= u[c] * wu;
+            float wl = sqrtf(v3_dot(w, w));
+            if (wl < 1e-6f) { /* on the axis: any point of the circle; one across the axis */
+                float side[3] = {u[2], 0, -u[0]};
+                if (v3_dot(side, side) < 1e-6f) v3_set(side, 1, 0, 0);
+                v3_norm(w, side), wl = 1;
+            }
+            float cq[3] = {m[0] + w[0] / wl * rho, m[1] + w[1] / wl * rho, m[2] + w[2] / wl * rho};
+            if (cq[1] <= ground_at(t, cq[0], cq[2], h) && !covered(t, cq, near, count, near[a], near[b])) closer(p, cq, &best);
+        }
+    }
+    return best < least ? least : best; /* never nearer than the furthest containing dig's wall (a corner missed above) */
 }
 
 /* The ground with its digs as a solid, about the distance to its surface (positive in the open). Above the ground the
-   surface below is its own, unless a dig's opening lies under the point; inside a dig, the dug wall or the rim. (The
-   simple max of the two fields marks the same surface, but underestimates the distance over an opening.) */
+   surface below is its own, unless a dig's opening lies under the point; inside a dig, the boundary of the dug space.
+   (The simple max of the two fields marks the same surface, but underestimates the distance over an opening.) */
 float fk_terrain_solid(const fk_terrain *t, const float p[3]) {
     float h, n[3];
     if (!fk_terrain_height(t, p[0], p[2], &h, n)) return 1e9f;
-    float ground = (p[1] - h) * n[1], open = 0, hole = -1e9f;
+    float ground = (p[1] - h) * n[1], hole = -1e9f;
     bool inside = false;
     for (int i = 0; i < t->ndigs; i++) {
         const float *d = &t->digs[4 * i];
         float dx = p[0] - d[0], dy = p[1] - d[1], dz = p[2] - d[2], fy = h - d[1];
         float in = d[3] - sqrtf(dx * dx + dy * dy + dz * dz);
         if (in > hole) hole = in;
-        bool over = ground > 0 && dx * dx + fy * fy + dz * dz < d[3] * d[3]; /* above this dig's opening */
-        if (in > 0 || over) {
-            inside = true;
-            float o = open_distance(p, d, h);
-            if (o > open) open = o; /* solid lies outside every dig: at least the furthest of their walls */
-        }
+        if (in > 0 || (ground > 0 && dx * dx + fy * fy + dz * dz < d[3] * d[3])) inside = true; /* or over its opening */
     }
-    if (inside) return open;
+    if (inside) return open_distance(t, p, h, hole > 0 ? hole : 0);
     return ground > hole ? ground : hole;
 }
 

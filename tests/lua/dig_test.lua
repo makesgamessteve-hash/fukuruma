@@ -78,4 +78,15 @@ return {
     assert(not pcall(game.world.digs, game.world, { 1, 2, 3 }))
     assert(not pcall(game.world.digs, game.world, { 1, 2, 3, 0 }), "a radius above 0")
   end,
+  ["underground, the helmet lamp comes on and the sky's light fades"] = function()
+    local s = start()
+    place(s, 0, 150)
+    local h = game.world:height(0, 150)
+    assert(dig.lamp(game.world, { 0, h + 2, 150 }) == 0 and dig.daylight(game.world, { 0, h + 2, 150 }) == 1, "above")
+    assert(dig.lamp(game.world, { 0, h - 0.5, 150 }) > 0, "just below: dim")
+    assert(dig.lamp(game.world, { 0, h - 3, 150 }) == 1, "deep: full")
+    local shallow, deep = dig.daylight(game.world, { 0, h - 0.5, 150 }), dig.daylight(game.world, { 0, h - 6, 150 })
+    assert(shallow < 1 and deep < shallow and deep > 0.05, "less sky the deeper")
+    assert(dig.lamp(game.world, { 1e7, 0, 1e7 }) == 0 and dig.daylight(game.world, { 1e7, 0, 1e7 }) == 1, "off the ground")
+  end,
 }

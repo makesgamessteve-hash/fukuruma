@@ -76,6 +76,25 @@ function dig.nearest(eye)
   return out
 end
 
+-- The helmet lamp (presentation): a warm light at the eye once it is below the ground, brighter the deeper (up to 1 m
+-- down). Returns how bright, 0..1.
+function dig.lamp(world, eye)
+  local h = world:height(eye[1], eye[3])
+  local k = h and math.min(1, h - eye[2] - 0.3) or 0
+  if k <= 0 then return 0 end
+  fk.gfx.light({ position = eye, color = { 1, 0.85, 0.65 }, intensity = 6 * k, radius = 12 })
+  return k
+end
+
+-- How much of the sky's light reaches an eye below the ground (presentation): 1 above it, less the deeper. The
+-- sky's ambient light is scaled by it, so tunnels are lit by the helmet lamp, not by a sky they cannot see.
+function dig.daylight(world, eye)
+  local h = world:height(eye[1], eye[3])
+  local d = h and h - eye[2] or 0
+  if d <= 0 then return 1 end
+  return 0.06 + 0.94 * fk.math.exp(-d / 1.5)
+end
+
 -- The dug walls: meshes per region, rebuilt when the digs change (presentation). g: the range's ground.
 function dig.draw(state, g)
   if not g then return 0 end
@@ -104,7 +123,7 @@ function dig.draw(state, g)
     end
   end
   for _, m in ipairs(state.meshes) do
-    fk.gfx.draw(m, { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -0.05, 0, 1 }, { roughness = 0.95 }) -- with the ground, under the deck
+    fk.gfx.draw(m, { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -0.05, 0, 1 }, { roughness = 0.95, one_sided = true }) -- with the ground, under the deck; the normals face the open side
   end
   return #state.meshes
 end

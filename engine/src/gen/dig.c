@@ -69,12 +69,13 @@ static void emit(out *o, const double a[3], const double b[3], const double c[3]
         double n[3];
         gradient(o->f, p[t], n);
         double depth = fk_dig_ground(o->f, p[t][0], p[t][2]) - p[t][1]; /* soil near the top, rock deeper down */
-        double k = depth / 2.5;
+        double k = depth / 2.5, sky = exp(-(depth > 0 ? depth : 0) / 3.0); /* less of the sky's light the deeper */
         k = k < 0 ? 0 : k > 1 ? 1 : k;
+        sky = 0.4 + 0.6 * sky;
         for (int q = 0; q < 3; q++) {
             x->position[q] = (float)p[t][q];
             x->normal[q] = (float)n[q];
-            x->color[q] = (float)(o->soil[q] + (o->rock[q] - o->soil[q]) * k);
+            x->color[q] = (float)((o->soil[q] + (o->rock[q] - o->soil[q]) * k) * sky);
         }
         o->idx[o->ni++] = (uint32_t)o->nv++;
     }

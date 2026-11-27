@@ -36,7 +36,10 @@ return scenario {
     local ground = game.world:height(s.x, s.z)
     t.expect(s.y < ground - 4, "the suit is deep below the surface: " .. s.y .. " under " .. ground)
     t.expect(s.y + 3.6 < ground, "with ground over its head")
+    game.helmet.yaw, game.helmet.pitch = math.pi, 0.15 -- back up the tunnel: lamp-lit walls, daylight at the opening
+    t.frames(10)
     t.screenshot("dig_tunnel")
+    game.helmet.yaw, game.helmet.pitch = 0, -0.25
     local deep_z, deep_y = s.z, s.y
     walk(150, -2.6) -- back to the pit
     game.save()

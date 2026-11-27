@@ -308,7 +308,7 @@ local function draw_sky()
   if light.atmosphere then fk.gfx.atmosphere(light.atmosphere) end
   local flash = w and w.flash or 0 -- lightning: the sky and the land light up
   if light.sun.intensity > 0 then fk.gfx.sun(light.sun) else fk.gfx.sun({ direction = { 0, 1, 0 }, intensity = 0 }) end
-  fk.gfx.ambient({ sky = light.ambient.sky, ground = light.ambient.ground, intensity = 1 + 6 * flash })
+  fk.gfx.ambient({ sky = light.ambient.sky, ground = light.ambient.ground, intensity = (1 + 6 * flash) * (game.daylight or 1) })
   fk.gfx.sky(universe.view().map, { strength = light.stars, rotation = light.galaxy_rotation })
   if light.sun2 then fk.gfx.sun2(light.sun2) end
   local _, h = fk.gfx.size()
@@ -343,6 +343,7 @@ function game.draw(alpha, dt)
   game.now = g and weather.present(game.weather, { seed = v.seed, desc = g.desc, air = v.air, t = sim.tick * sim.dt,
     cold = site and (site.temperature or 288) < 268, dt = pdt, eye = { body.x, body.y + 3, body.z }, wind = { 0.8, 0.35 },
     share = fk.gfx.settings().max_particles / 12000 }) or nil
+  game.daylight = dig.daylight(game.world, { body.x, body.y + 3.2, body.z })
   draw_stage(pdt)
   local model, speed, head = draw_suit(body, alpha, pdt)
   local w, h = fk.gfx.size()
@@ -362,6 +363,7 @@ function game.draw(alpha, dt)
     { digs = dig.nearest({ inv_x, inv_y, inv_z }), wet = game.now and game.now.look.wet, snow = game.now and game.now.look.snow,
       dust = game.now and game.now.look.dust })
   dig.draw(game.dug, universe.ground())
+  dig.lamp(game.world, { inv_x, inv_y, inv_z })
   fk.gfx.wind({ direction = { 0.8, 0.35 }, strength = 1, time = feel.time })
   local g = universe.ground()
   if g and g.desc.ocean then fk.gfx.water({ centre = g.centre, radius = g.radius, time = feel.time, waves = 0.5 }) end

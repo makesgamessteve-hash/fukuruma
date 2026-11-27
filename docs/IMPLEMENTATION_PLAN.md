@@ -626,12 +626,12 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 - **OpenSpec:** `add-terrain-streaming` (done: chunks to 0.3 m quads, terrain collision, the range on land),
   `add-terrain-materials` (done), `add-biomes-and-scatter` (done), `add-voxel-terrain` (done: dug spheres the
-  physics and the ground share, saved), `add-volumetric-clouds-and-fog` (done), `add-water` (done: the sea, its floor
+  physics and the ground share, saved; `fix-dig-tunnels`: tunnels of any length, lit by the helmet lamp), `add-volumetric-clouds-and-fog` (done), `add-water` (done: the sea, its floor
   and caustics), `add-weather` (done).
 - **Still open in M5:** rivers, waterfalls and lakes above sea level (they need water courses in the world's data),
   impostors for distant flora, debris from digging, time-sliced generation on the web, and the showcase scenes for
-  rivers and light shafts. Known rough edges: a long tunnel can stall after a few digs, tunnel interiors are dark and
-  bluish, and cloud edges are grainy without TAA.
+  rivers and light shafts. Known rough edges: the dug walls are smooth and untextured, and cloud edges are grainy
+  without TAA.
 - **Work:** quadtree chunk streaming from orbit to the ground without cracks, regional detail,
   triplanar terrain materials with wetness, snow and dust layers; biome scatter (instanced detailed
   flora and rocks with wind animation and impostors); voxel near field (smooth meshing),

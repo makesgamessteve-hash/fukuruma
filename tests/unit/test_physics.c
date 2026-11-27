@@ -530,6 +530,11 @@ UTEST(terrain, digs_open_pits_and_tunnels) {
     EXPECT_NEAR(fk_terrain_solid(t, (float[3]){6, 0.5f, 0}), 0.5f, 1e-4f); /* away from the digs: the ground */
     EXPECT_LT(fk_terrain_solid(t, (float[3]){-6, -1, 0}), 0);              /* inside the solid */
     EXPECT_GT(fk_terrain_solid(t, (float[3]){1.5f, -2.5f, 0}), 0.9f);      /* where the holes overlap: open */
+    const float tunnel[8] = {0, -6, 0, 2.8f, 3.2f, -6, 0, 2.8f}; /* two digs deep under the ground, 3.2 m apart */
+    fk_world_digs(w, tunnel, 2, false);
+    EXPECT_NEAR(fk_terrain_solid(t, (float[3]){1.6f, -6, 0}), 2.3f, 0.01f); /* at the seam: the crease, not a ridge */
+    EXPECT_NEAR(fk_terrain_solid(t, (float[3]){-2, -6, 0}), 0.8f, 0.01f);   /* near a wall no other dig covers */
+    fk_world_digs(w, digs, 2, false);
     fk_body b = ball(FK_BODY_DYNAMIC, 0.5f, 0, 1, 0);
     uint32_t id = fk_world_add(w, &b, 1);
     run(w, 300);
