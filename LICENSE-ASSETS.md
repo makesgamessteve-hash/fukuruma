@@ -24,8 +24,8 @@ Assets that come from elsewhere or were generated with external services are cre
 ## Exception: audio generated with ElevenLabs
 
 The sound effects and music generated with ElevenLabs (every file listed as generated in `data/sounds/CREDITS.md` and
-`data/music/CREDITS.md`) are **not** licensed under CC BY 4.0. They were generated on the project owner's ElevenLabs
-account (commercial use needs a paid plan) and are used under ElevenLabs' terms, which allow generated sound effects only in combination with
+`data/music/CREDITS.md`) are **not** licensed under CC BY 4.0. They were generated on the project owner's paid ElevenLabs
+plan (which allows commercial use) and are used under ElevenLabs' terms, which allow generated sound effects only in combination with
 other material: they may not be sold, sublicensed or distributed on their own, or put into a sound library or
 collection.
 

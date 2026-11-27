@@ -776,7 +776,7 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 2. **ElevenLabs:** the API key is provided (a network secret of the "fukuruma" cloud environment, which also
    allows `api.elevenlabs.io`). ElevenLabs' terms allow generated sound effects only combined with other material
    (no standalone distribution, sublicensing or sound libraries), so generated audio is excluded from CC BY 4.0
-   and ships only as part of the game (`LICENSE-ASSETS.md`). Commercial use needs a paid plan, and the music has its
+   and ships only as part of the game (`LICENSE-ASSETS.md`). The owner's plan is a paid one (commercial use allowed); the music has its
    own [Music Terms](https://elevenlabs.io/music-terms).
 3. Optional: install ponytail in your local Claude Code with `/plugin marketplace add DietrichGebert/ponytail`
    and then `/plugin install ponytail@ponytail` (two separate prompts). The repository already contains its `AGENTS.md`.
