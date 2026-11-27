@@ -44,7 +44,7 @@ for (const scenario of ['boot', 'simulation', 'showcase_materials', 'showcase_sk
   await test(`${scenario} scenario passes in the browser`, async (page) => {
     await page.goto(`${base}?scenario=${scenario}`);
     // the sandbox scenes draw the world's ground: slow on the software renderer the tests run on
-    await page.waitForFunction(() => window.fukurumaResult, null, { timeout: 180000 });
+    await page.waitForFunction(() => window.fukurumaResult, null, { timeout: 300000 });
     const result = await page.evaluate(() => window.fukurumaResult);
     assert(result.status === 'passed', `scenario ${result.status}: ${result.message}`);
   });

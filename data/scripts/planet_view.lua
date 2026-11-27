@@ -12,6 +12,7 @@ planet_view.PIXELS = 3     -- the most a chunk's quad may span on screen before 
 planet_view.MAX_LEVEL = 20 -- deepest level: quads of about 0.3 m on an Earth-sized world
 planet_view.NEAR = 2e6     -- metres above the surface below which chunks are placed one by one (see draw)
 planet_view.MATERIAL = 3   -- the terrain material's quality: 1 layers, 2 with detail, 3 with bumps (graphics levels)
+planet_view.REACH = nil    -- metres: chunks further away are left to the air's ground colour (lower graphics levels)
 planet_view.KEEP = 300     -- frames an unused chunk stays
 
 local GRID = fk.planet.GRID
@@ -105,6 +106,7 @@ function View:select(cam, focal, wait, look)
       if angle - math.asin(bound / dist) > look[2] then return end
     end
     local d = math.max(dist - bound, 1)
+    if planet_view.REACH and d > planet_view.REACH and dist_c - R < planet_view.REACH then return end
     local quad = R * size * 0.8 / GRID
     if l < planet_view.MAX_LEVEL and quad / d * focal > planet_view.PIXELS then
       local kids, all = {}, true
