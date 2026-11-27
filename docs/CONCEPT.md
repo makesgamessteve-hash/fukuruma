@@ -585,7 +585,8 @@ mods/       one folder per mod, overlaid on data/ in load order
 
 On the web, the same `data/` folder is packaged as a separate data file next to the `.wasm` and can
 be swapped without rebuilding. Code (C, Lua, shaders, tools) is MIT. Art (textures, materials,
-models, animations, sprites, colour-grading tables, fonts, sounds, music) is CC BY 4.0.
+models, animations, sprites, colour-grading tables, fonts, sounds, music) is CC BY 4.0, except audio generated with
+ElevenLabs, which ships only as part of the game under ElevenLabs' terms (`LICENSE-ASSETS.md`).
 
 ### 8.3 Quality
 

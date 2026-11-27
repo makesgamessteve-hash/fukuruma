@@ -37,7 +37,7 @@ return scenario {
   run = function(t)
     local game = require("game")
     fk.gfx.configure({ width = 480, height = 270, fill = false, supersample = 1, taa = false, shadow_cascades = 2,
-      shadow_size = 1024, ao_samples = 0, max_lights = 8, hdr = true, bloom = true, dither = true, max_particles = 6000 })
+      shadow_size = 1024, ao_samples = 0, max_lights = 8, hdr = true, bloom = true, dither = true, max_particles = 6000, clouds = true })
     fk.gfx.palette(nil)
     local pv = require("planet_view")
     pv.REACH, pv.MAX_LEVEL, pv.PIXELS, pv.MATERIAL = nil, 20, 6, 3

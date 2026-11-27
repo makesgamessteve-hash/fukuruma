@@ -119,15 +119,38 @@ float cloud_density(vec3 p) {
     float shape = 4.0 * t * (1.0 - t); // round tops and bottoms
     return max(0.0, n * shape - (1.0 - u_cloud_layer.z) * 0.75) * 4.0 * u_cloud_layer.w;
 }
-// How much of the star's light gets through the clouds to p (relative to the centre), along sun.
-float cloud_shadow(vec3 p, vec3 sun) {
+// How much of the star's light gets through the clouds to p (relative to the centre), along sun, from n (1 to 4)
+// samples through the layer (fewer where it is called many times per pixel).
+float cloud_shadow(vec3 p, vec3 sun, int n) {
+#ifndef CLOUDS
+    return 1.0;
+#else
     if (u_cloud_steps == 0) return 1.0;
-    float depth = 0.0, ds = (u_cloud_layer.y - u_cloud_layer.x) / 4.0;
+    float depth = 0.0, ds = (u_cloud_layer.y - u_cloud_layer.x) / float(n);
     vec3 up = normalize(p);
     float h = length(p) - u_radius, along = max(dot(up, sun), 0.05);
     float start = max(u_cloud_layer.x - h, 0.0) / along; // to the bottom of the layer, along the sun
-    for (int i = 0; i < 4; i++) depth += cloud_density(p + sun * (start + (float(i) + 0.5) * ds / along)) * ds / along;
+    for (int i = 0; i < 4; i++) {
+        if (i >= n) break;
+        depth += cloud_density(p + sun * (start + (float(i) + 0.5) * ds / along)) * ds / along;
+    }
     return exp(-depth);
+#endif
+}
+
+// A coarse cloud_shadow (one sample, the largest shapes only) for the air's many samples per pixel: the shafts.
+float cloud_shade(vec3 p, vec3 sun) {
+#ifndef CLOUDS
+    return 1.0;
+#else
+    if (u_cloud_steps == 0) return 1.0;
+    float h = length(p) - u_radius, along = max(dot(normalize(p), sun), 0.05);
+    float mid = 0.5 * (u_cloud_layer.x + u_cloud_layer.y), thick = (u_cloud_layer.y - u_cloud_layer.x) / along;
+    if (h > mid) return 1.0;
+    vec3 q = (p + sun * ((mid - h) / along) + u_cloud_offset) / 1400.0;
+    float d = max(0.0, cloud_noise(q) - (1.0 - u_cloud_layer.z) * 0.75) * 4.0 * u_cloud_layer.w;
+    return exp(-d * thick);
+#endif
 }
 
 // The sea (water spec): a sphere at sea level about the world's centre.
