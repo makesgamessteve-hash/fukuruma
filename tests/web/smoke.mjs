@@ -40,7 +40,7 @@ async function test(name, fn, options = {}) {
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 // simulation: the recorded state hash must match in WebAssembly too (determinism across platforms).
-for (const scenario of ['boot', 'simulation', 'showcase_materials', 'showcase_skinning', 'feel', 'audio', 'save', 'first_person', 'scale_ladder', 'orbits', 'physics']) {
+for (const scenario of ['boot', 'simulation', 'showcase_materials', 'showcase_skinning', 'feel', 'audio', 'save', 'first_person', 'scale_ladder', 'orbits', 'physics', 'systems']) {
   await test(`${scenario} scenario passes in the browser`, async (page) => {
     await page.goto(`${base}?scenario=${scenario}`);
     await page.waitForFunction(() => window.fukurumaResult, null, { timeout: 60000 });
