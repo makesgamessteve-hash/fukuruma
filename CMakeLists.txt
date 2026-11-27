@@ -46,7 +46,7 @@ function(fk_settings target)
     endif()
   endif()
   if(FK_COVERAGE)
-    target_compile_options(${target} PRIVATE --coverage -O0)
+    target_compile_options(${target} PRIVATE --coverage -fprofile-update=atomic -O0) # atomic: jobs run on threads
     target_link_options(${target} PRIVATE --coverage)
   endif()
   if(FK_SANITIZE)

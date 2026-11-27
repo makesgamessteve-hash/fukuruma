@@ -9,6 +9,7 @@
 #include "assets/vfs.h"
 #include "assets/watch.h"
 #include "audio/mixer.h"
+#include "core/jobs.h"
 #include "fx/particles.h"
 #include "gfx/frame.h"
 #include "gfx/gfx.h"
@@ -27,6 +28,7 @@ static struct {
     fk_options opt;
     lua_State *L;
     bool window, interactive, broken, started;
+    int workers; /* job threads (0 on the web) */
     bool restart, reconfigure; /* hot reload: a script or a shader changed */
     bool audio;                /* a sound device is open; otherwise the mixer runs on frame time, silently */
     double audio_carry;        /* fraction of a sample frame not yet mixed (silent runs) */
@@ -289,6 +291,7 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
     app.game_ref = app.step_ref = app.co_ref = LUA_NOREF;
     if (!fk_cli_parse(argc, argv, &app.opt)) return finish(1);
     fk_vfs_init(base);
+    app.workers = fk_jobs_start(-1);
     bool render = !app.opt.no_render && !app.opt.test_dir;
     app.L = fk_script_open(render, app.opt.seed, app.opt.coverage);
     if (app.opt.test_dir) return finish(fk_run_tests(app.L, app.opt.test_dir, app.opt.coverage) ? 0 : 1);
@@ -362,6 +365,7 @@ fk_status fk_app_iterate(void) {
         return FK_RUNNING;
     }
     fk_script_frame_begin(app.L);
+    if (!app.workers) fk_jobs_update(2000000); /* no worker threads (the web): 2 ms of background work per frame */
     if (!call_game("input", -1, -1)) return fail();
     for (int i = 0; i < ticks; i++)
         if (!sim_step()) return fail();
@@ -388,6 +392,7 @@ fk_status fk_app_iterate(void) {
 }
 
 int fk_app_quit(void) {
+    fk_jobs_stop(); /* first: jobs may write into memory the scripts own */
     fk_script_close(app.L); /* first: meshes are freed while the GL context still exists */
     fk_watch_clear();
     fk_platform_audio_close();

@@ -48,6 +48,20 @@ void fk_platform_find_files(const char *dir, const char *suffix, fk_file_fn fn, 
 void fk_platform_message(const char *title, const char *text);
 /* Mouse look: hides the cursor and reports movement without limits (pointer lock in browsers). */
 void fk_platform_capture_mouse(bool on);
+/* Threads, mutexes and condition variables for the job system. Without thread support (the web build) the thread
+   functions return NULL and fk_platform_cpus() returns 1; NULL mutexes and conditions are no-ops. */
+typedef int (*fk_thread_fn)(void *arg);
+void *fk_platform_thread_start(fk_thread_fn fn, void *arg, const char *name);
+void fk_platform_thread_join(void *thread);
+int fk_platform_cpus(void);
+void *fk_platform_mutex(void);
+void fk_platform_mutex_free(void *m);
+void fk_platform_lock(void *m);
+void fk_platform_unlock(void *m);
+void *fk_platform_cond(void);
+void fk_platform_cond_free(void *c);
+void fk_platform_cond_wait(void *c, void *m);
+void fk_platform_cond_wake_all(void *c);
 bool fk_platform_web(void);   /* running in a browser */
 bool fk_platform_phone(void); /* a browser on a device with a coarse pointer (phone, tablet) */
 /* The folder for stored values (ends with a separator), or NULL when there is none. */

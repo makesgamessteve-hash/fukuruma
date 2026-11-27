@@ -182,6 +182,34 @@ void fk_platform_capture_mouse(bool on) {
     if (window) SDL_SetWindowRelativeMouseMode(window, on);
 }
 
+void *fk_platform_thread_start(fk_thread_fn fn, void *arg, const char *name) {
+#ifdef __EMSCRIPTEN__
+    (void)fn, (void)arg, (void)name;
+    return NULL; /* no threads: GitHub Pages cannot send the headers WebAssembly threads need */
+#else
+    return SDL_CreateThread(fn, name, arg);
+#endif
+}
+
+void fk_platform_thread_join(void *thread) { SDL_WaitThread(thread, NULL); }
+
+int fk_platform_cpus(void) {
+#ifdef __EMSCRIPTEN__
+    return 1;
+#else
+    return SDL_GetNumLogicalCPUCores();
+#endif
+}
+
+void *fk_platform_mutex(void) { return SDL_CreateMutex(); }
+void fk_platform_mutex_free(void *m) { SDL_DestroyMutex(m); }
+void fk_platform_lock(void *m) { SDL_LockMutex(m); }
+void fk_platform_unlock(void *m) { SDL_UnlockMutex(m); }
+void *fk_platform_cond(void) { return SDL_CreateCondition(); }
+void fk_platform_cond_free(void *c) { SDL_DestroyCondition(c); }
+void fk_platform_cond_wait(void *c, void *m) { SDL_WaitCondition(c, m); }
+void fk_platform_cond_wake_all(void *c) { SDL_BroadcastCondition(c); }
+
 const char *fk_platform_pref_path(void) {
     static char *path;
     if (!path) path = SDL_GetPrefPath("fukuruma", "fukuruma");

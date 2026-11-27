@@ -12,3 +12,9 @@ double fk_dcos(double x);
 void fk_dsincos(double x, double *s, double *c);
 /* x wrapped into [-pi, pi). */
 double fk_dwrap(double x);
+/* e^x, the natural logarithm (NaN below 0, -inf at 0), atan2 and x^y (x > 0; 0 for x == 0 and y > 0), within a few
+   ulp of the exact values. */
+double fk_dexp(double x);
+double fk_dlog(double x);
+double fk_datan2(double y, double x);
+double fk_dpow(double x, double y);

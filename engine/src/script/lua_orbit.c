@@ -1,4 +1,4 @@
-/* fk.math (deterministic sin, cos, wrap) and fk.orbit (Kepler orbits on rails) for scripts. */
+/* fk.math (deterministic sin, cos, wrap, exp, log, atan2, pow) and fk.orbit (Kepler orbits on rails) for scripts. */
 #include "core/dmath.h"
 #include "core/orbit.h"
 #include "lauxlib.h"
@@ -16,6 +16,26 @@ static int l_cos(lua_State *L) {
 
 static int l_wrap(lua_State *L) {
     lua_pushnumber(L, fk_dwrap(luaL_checknumber(L, 1)));
+    return 1;
+}
+
+static int l_exp(lua_State *L) {
+    lua_pushnumber(L, fk_dexp(luaL_checknumber(L, 1)));
+    return 1;
+}
+
+static int l_log(lua_State *L) {
+    lua_pushnumber(L, fk_dlog(luaL_checknumber(L, 1)));
+    return 1;
+}
+
+static int l_atan2(lua_State *L) {
+    lua_pushnumber(L, fk_datan2(luaL_checknumber(L, 1), luaL_checknumber(L, 2)));
+    return 1;
+}
+
+static int l_pow(lua_State *L) {
+    lua_pushnumber(L, fk_dpow(luaL_checknumber(L, 1), luaL_checknumber(L, 2)));
     return 1;
 }
 
@@ -67,7 +87,8 @@ static int l_period(lua_State *L) {
 }
 
 void fk_lua_orbit_open(lua_State *L) {
-    static const luaL_Reg math[] = {{"sin", l_sin}, {"cos", l_cos}, {"wrap", l_wrap}, {NULL, NULL}};
+    static const luaL_Reg math[] = {{"sin", l_sin}, {"cos", l_cos}, {"wrap", l_wrap}, {"exp", l_exp},
+                                    {"log", l_log}, {"atan2", l_atan2}, {"pow", l_pow}, {NULL, NULL}};
     static const luaL_Reg orbit[] = {{"state", l_state}, {"period", l_period}, {NULL, NULL}};
     luaL_newlib(L, math);
     lua_pushnumber(L, FK_PI);

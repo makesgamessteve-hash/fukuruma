@@ -86,3 +86,27 @@ UTEST(orbit, checks_the_elements) {
     o.mu = 1, o.i = NAN;
     EXPECT_STREQ(fk_orbit_check(&o), "the elements must be finite numbers");
 }
+
+UTEST(dmath, exp_log_atan2_pow) {
+    double worst = 0;
+    for (double x = -700; x < 700; x += 0.731) worst = fmax(worst, fabs(fk_dexp(x) / exp(x) - 1));
+    EXPECT_LT(worst, 1e-15);
+    worst = 0;
+    for (double x = 1e-300; x < 1e300; x *= 3.7) worst = fmax(worst, fabs(fk_dlog(x) - log(x)) / fmax(1, fabs(log(x))));
+    EXPECT_LT(worst, 1e-15);
+    worst = 0;
+    for (double a = -3.1; a < 3.1; a += 0.0137)
+        for (double r = 0.5; r < 100; r *= 3) worst = fmax(worst, fabs(fk_datan2(r * sin(a), r * cos(a)) - atan2(r * sin(a), r * cos(a))));
+    EXPECT_LT(worst, 1e-15);
+    EXPECT_LT(fabs(fk_dpow(2.5, 3.5) - pow(2.5, 3.5)), 1e-13);
+    EXPECT_EQ(fk_dpow(0, 2), 0.0);
+    EXPECT_TRUE(isinf(fk_dpow(0, -1)));
+    EXPECT_TRUE(isinf(fk_dexp(800)) && fk_dexp(-800) == 0 && isnan(fk_dexp(NAN)));
+    EXPECT_TRUE(isnan(fk_dlog(-1)) && isinf(fk_dlog(0)) && isinf(fk_dlog(INFINITY)) && isnan(fk_dlog(NAN)));
+    EXPECT_EQ(fk_datan2(1, 0), FK_PI / 2);
+    EXPECT_EQ(fk_datan2(-1, 0), -FK_PI / 2);
+    EXPECT_EQ(fk_datan2(0, 0), 0.0);
+    EXPECT_TRUE(isnan(fk_datan2(NAN, 1)));
+    EXPECT_LT(fabs(fk_datan2(0, -1) - FK_PI), 1e-15);
+    EXPECT_LT(fabs(fk_datan2(-1e-9, -1) + FK_PI), 1e-8);
+}
