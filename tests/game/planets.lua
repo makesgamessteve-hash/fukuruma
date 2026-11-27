@@ -26,6 +26,7 @@ return scenario {
     fk.gfx.configure({ width = 480, height = 270, fill = false, supersample = 1, taa = false, shadow_cascades = 2,
       shadow_size = 1024, ao_samples = 8, max_lights = 8, hdr = true, bloom = true, dither = true })
     fk.gfx.palette(nil)
+    require("planet_view").REACH, require("planet_view").MAX_LEVEL = nil, 20 -- to the horizon, whatever this machine's level
     require("planet_view").PIXELS = 3 -- the finest detail, whatever level the game chose for this machine
     local view, body
     game.draw = function()

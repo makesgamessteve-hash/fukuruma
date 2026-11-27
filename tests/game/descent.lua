@@ -16,6 +16,7 @@ return scenario {
       shadow_size = 1024, ao_samples = 0, max_lights = 8, hdr = true, bloom = true, dither = true })
     fk.gfx.palette(nil)
     require("planet_view").MATERIAL = 3
+    require("planet_view").REACH, require("planet_view").MAX_LEVEL = nil, 20 -- to the horizon, whatever this machine's level
     require("planet_view").PIXELS = 3 -- the finest detail, whatever level the game chose for this machine
     local body = { class = "terran", radius = 6.371e6, temperature = 288, seed = 4,
       atmosphere = { gas = "n2o2", pressure = 1 } }

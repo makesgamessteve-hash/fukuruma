@@ -42,6 +42,7 @@ return scenario {
       shadow_size = 1024, ao_samples = 0, max_lights = 8, hdr = true, bloom = true, dither = true })
     fk.gfx.palette(nil)
     require("planet_view").MATERIAL = 3
+    require("planet_view").REACH, require("planet_view").MAX_LEVEL = nil, 20 -- to the horizon, whatever this machine's level
     require("planet_view").PIXELS = 4
     scatter.density = 1
     local g, state, plants, time = nil, {}, {}, 0
