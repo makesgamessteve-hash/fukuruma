@@ -135,10 +135,11 @@ await test('the menu opens with a tap and stored settings survive a reload', asy
   await page.waitForTimeout(200);
   await page.keyboard.up('ArrowRight');
   await waitForStored(page, /level=medium/);
-  // The game keeps showing new frames after the renderer was rebuilt for the new level.
-  const first = await page.locator('canvas').screenshot();
+  // The game keeps showing new frames after the renderer was rebuilt for the new level (the software renderer
+  // compiles the new level's shaders slowly).
+  const first = await page.locator('canvas').screenshot({ timeout: 120000 });
   await page.waitForTimeout(500);
-  assert(!first.equals(await page.locator('canvas').screenshot()), 'the picture froze after the settings changed');
+  assert(!first.equals(await page.locator('canvas').screenshot({ timeout: 120000 })), 'the picture froze after the settings changed');
   await page.reload();
   await page.waitForFunction(() => document.getElementById('message').hidden, null, { timeout: 60000 });
   await page.waitForTimeout(1000); // a failed load would store the defaults again by now
