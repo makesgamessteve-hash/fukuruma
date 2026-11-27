@@ -25,6 +25,7 @@ and haptics"). In VR the player's head is the Commander's head.
   - starts the session, which then drives the game's frames;
   - reports each frame's pose and the controllers, and sends the game's window drawing to the headset's framebuffer;
   - restores the page when the session ends.
+- **Comfort:** in VR, effects never move the head (CONCEPT §6.5): no shake, head bob or cabin sway.
 - **Test harness:** `t.xr(...)` and `t.xr_pad(...)` play a headset's frames in scenarios.
 - **Shortcuts, for M7's tuning:**
   - The picture is drawn at the canvas's size, not the headset's resolution.

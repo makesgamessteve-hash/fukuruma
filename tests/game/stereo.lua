@@ -17,6 +17,9 @@ return scenario {
     t.xr(0.064, 0, math.sin(math.pi / 4), 0, math.cos(math.pi / 4))
     t.frames(3)
     t.expect(math.abs(game.helmet.yaw - math.pi / 2) < 1e-3 and game.xr, "the player's head is the Commander's head")
+    require("fk.feel").trauma = 1 -- a big jolt: in VR it does not move the head
+    t.frames(1)
+    t.expect(math.abs(game.helmet.yaw - math.pi / 2) < 1e-3, "effects never move the head in VR")
     local sim = require("fk.sim")
     local suit = sim.get(game.suit, "suit")
     local scans = 0

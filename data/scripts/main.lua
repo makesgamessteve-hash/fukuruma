@@ -471,12 +471,13 @@ function game.draw(alpha, dt)
     game.helmet.fov = comfort.current.fov
     local seated = not chain.on_foot() and chain.current()
     local eye = seated and chain.seat(seated) or eye_position(model, head) -- at a doll's controls: its seat
-    if seated then eye[2] = eye[2] + chain.bob(seated) * comfort.current.head_bob end
+    if seated and not game.xr then eye[2] = eye[2] + chain.bob(seated) * comfort.current.head_bob end
     game.eye = eye
     local look = game.helmet.yaw -- in a seat, the head turns from the doll's front
     if seated then game.helmet.yaw = look + (seated.yaw or 0) end
     local shake = { feel.shake() }
-    if seated then -- the cabin sways with the doll (comfort: head bob)
+    if game.xr then shake = { 0, 0, 0, 0, 0 } end -- in VR the head is never moved by effects (CONCEPT 6.5)
+    if seated and not game.xr then -- the cabin sways with the doll (comfort: head bob)
       local roll, pitch = chain.sway(game.sway, seated, dt)
       shake[3], shake[2] = shake[3] + roll * comfort.current.head_bob, shake[2] + pitch * comfort.current.head_bob
     end
