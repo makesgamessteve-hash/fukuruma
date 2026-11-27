@@ -78,7 +78,8 @@ if(EMSCRIPTEN)
   set_target_properties(fukuruma PROPERTIES SUFFIX ".html")
   target_link_options(fukuruma PRIVATE
     -sMIN_WEBGL_VERSION=2 -sMAX_WEBGL_VERSION=2 -sGL_ENABLE_GET_PROC_ADDRESS=1
-    -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -lidbfs.js --pre-js ${CMAKE_SOURCE_DIR}/web/storage.js --pre-js ${CMAKE_SOURCE_DIR}/web/xr.js
+    -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -lidbfs.js
+    "SHELL:--pre-js ${CMAKE_SOURCE_DIR}/web/storage.js" "SHELL:--pre-js ${CMAKE_SOURCE_DIR}/web/xr.js" # (SHELL: keeps CMake from merging the repeated flag)
     --shell-file ${CMAKE_SOURCE_DIR}/web/shell.html
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/data@/data"
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/tests/game@/tests/game")
