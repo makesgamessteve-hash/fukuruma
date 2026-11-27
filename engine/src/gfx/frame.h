@@ -25,6 +25,7 @@ typedef struct {
     float roughness, metalness, emission[3]; /* emission: linear radiance added to the surface */
     float normal_scale;
     bool one_sided; /* closed surfaces seen from outside: back faces keep their normals (no two-sided flip) */
+    bool emissive_colors; /* the vertex colours tint the emission (stars) */
     const fk_texture *base_tex, *metal_rough_tex, *normal_tex, *emission_tex; /* NULL: none */
 } fk_material;
 
@@ -78,6 +79,7 @@ typedef struct {
     float view[16], projection[16];
     float background[3];            /* linear */
     float sun_dir[3], sun_color[3]; /* towards the star; linear colour times intensity */
+    float sun2_dir[3], sun2_color[3]; /* a second star (binaries): no shadows; colour 0 when there is none */
     float sky[3], ground[3];        /* ambient, linear colour times intensity */
     float exposure, contrast, saturation, tint[3];
     fk_point_light lights[FK_MAX_LIGHTS];

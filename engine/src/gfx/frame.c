@@ -45,6 +45,7 @@ void fk_frame_reset(void) {
     memcpy(frame.slice_far, far, sizeof far);
     frame.slice = FK_SLICE_LOCAL;
     frame.sky_map = NULL, frame.sky_strength = 0;
+    memset(frame.sun2_color, 0, sizeof frame.sun2_color);
     frame.atmosphere.on = false;
     memset(frame.sky_rotation, 0, sizeof frame.sky_rotation);
     frame.sky_rotation[0] = frame.sky_rotation[4] = frame.sky_rotation[8] = 1;

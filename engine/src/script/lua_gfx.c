@@ -280,7 +280,9 @@ static int l_draw(lua_State *L) {
         float color[3];
         lua_getfield(L, 3, "one_sided");
         mat.one_sided = lua_toboolean(L, -1);
-        lua_pop(L, 1);
+        lua_getfield(L, 3, "emissive_colors");
+        mat.emissive_colors = lua_toboolean(L, -1);
+        lua_pop(L, 2);
         field_vec3(L, 3, "color", color, ONE, 0, 1, "draw"); /* sRGB, multiplies the vertex colours */
         for (int i = 0; i < 3; i++) mat.base[i] = fk_srgb_to_linear(color[i]);
         if (lua_getfield(L, 3, "texture") != LUA_TNIL) {
@@ -377,6 +379,26 @@ static int l_sun(lua_State *L) {
     float intensity = field_number(L, 1, "intensity", 3, 0, 1000, "sun");
     for (int i = 0; i < 3; i++) f->sun_dir[i] = dir[i] / len;
     linear_times(f->sun_color, color, intensity);
+    return 0;
+}
+
+/* fk.gfx.sun2{direction, color, intensity}: a second star's light (binaries; no shadows); fk.gfx.sun2(nil): none. */
+static int l_sun2(lua_State *L) {
+    fk_frame *f = fk_frame_get();
+    if (lua_isnoneornil(L, 1)) {
+        memset(f->sun2_color, 0, sizeof f->sun2_color);
+        return 0;
+    }
+    luaL_checktype(L, 1, LUA_TTABLE);
+    float dir[3], color[3];
+    static const float UP[3] = {0, 1, 0};
+    field_vec3(L, 1, "direction", dir, UP, -1e6f, 1e6f, "sun2");
+    float len = sqrtf(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
+    if (len < 1e-6f) return luaL_error(L, "sun2: 'direction' must not be zero");
+    field_vec3(L, 1, "color", color, ONE, 0, 1, "sun2");
+    float intensity = field_number(L, 1, "intensity", 3, 0, 1000, "sun2");
+    for (int i = 0; i < 3; i++) f->sun2_dir[i] = dir[i] / len;
+    linear_times(f->sun2_color, color, intensity);
     return 0;
 }
 
@@ -612,7 +634,7 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
                                    {"configure", l_configure}, {"settings", l_settings}, {"size", l_size},
                                    {"text", l_text},       {"rect", l_rect},         {"palette", l_palette},
                                    {"device", l_device},   {"emit", l_emit},         {"particles", l_particles},
-                                   {"slices", l_slices},   {"starfield", l_starfield}, {"sky", l_sky}, {"stats", l_stats}, {"atmosphere", l_atmosphere},
+                                   {"slices", l_slices},   {"starfield", l_starfield}, {"sky", l_sky}, {"stats", l_stats}, {"atmosphere", l_atmosphere}, {"sun2", l_sun2},
                                    {NULL, NULL}};
     rendering = render;
     static const luaL_Reg sky_methods[] = {{"ready", l_sky_ready}, {"stars", l_sky_stars}, {NULL, NULL}};

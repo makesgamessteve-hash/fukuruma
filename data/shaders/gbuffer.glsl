@@ -31,6 +31,7 @@ uniform vec4 u_base;
 uniform float u_roughness;
 uniform float u_metalness;
 uniform vec3 u_emission;
+uniform float u_emissive_colors; // 1: the vertex colours tint the emission (stars), not the base colour
 uniform float u_normal_scale; // 0: no normal map
 uniform float u_one_sided;    // 1: keep normals on back faces (closed surfaces such as planets)
 uniform sampler2D u_base_tex;        // sRGB texture: sampled as linear
@@ -56,6 +57,7 @@ void main() {
     o_base = vec4(linear_to_srgb(base), u_metalness * mr.b); // sRGB colour: better precision in 8 bits than linear
     o_normal = vec4(encode_normal(n), u_roughness * mr.g, 1.0);
     vec3 e = u_emission * texture(u_emission_tex, v_uv).rgb;
+    if (u_emissive_colors > 0.5) e *= srgb_to_linear(v_color);
     float strength = max(max(e.r, e.g), e.b);
     o_emission = vec4(strength > 0.0 ? e / strength : vec3(0.0), min(strength / 16.0, 1.0));
 }

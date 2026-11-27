@@ -329,6 +329,7 @@ static void draw_meshes(GLuint program, bool materials, unsigned slices) {
             bool normal_map = m->normal_tex && m->normal_tex->id;
             gl.Uniform1f(LOC("u_normal_scale"), normal_map ? m->normal_scale : 0.0f); /* 0: no normal map */
             gl.Uniform1f(LOC("u_one_sided"), m->one_sided ? 1.0f : 0.0f);
+            gl.Uniform1f(LOC("u_emissive_colors"), m->emissive_colors ? 1.0f : 0.0f);
             const fk_texture *textures[4] = {m->base_tex, m->metal_rough_tex, m->normal_tex, m->emission_tex};
             static const char *names[4] = {"u_base_tex", "u_metal_rough_tex", "u_normal_tex", "u_emission_tex"};
             for (int t = 0; t < 4; t++) sampler(program, names[t], t, GL_TEXTURE_2D, textures[t] && textures[t]->id ? textures[t]->id : R.white);
@@ -541,6 +542,8 @@ void fk_gfx_render(double dt, int window_w, int window_h) {
     gl.Uniform3fv(LOC("u_camera"), 1, &inv_view[12]);
     gl.Uniform3fv(LOC("u_sun_dir"), 1, f->sun_dir);
     gl.Uniform3fv(LOC("u_sun_color"), 1, f->sun_color);
+    gl.Uniform3fv(LOC("u_sun2_dir"), 1, f->sun2_dir);
+    gl.Uniform3fv(LOC("u_sun2_color"), 1, f->sun2_color);
     gl.Uniform3fv(LOC("u_sky"), 1, f->sky);
     gl.Uniform3fv(LOC("u_ground"), 1, f->ground);
     gl.Uniform3fv(LOC("u_background"), 1, f->background);

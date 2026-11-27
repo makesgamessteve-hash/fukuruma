@@ -292,7 +292,9 @@ local function draw_sky()
   if light.sun.intensity > 0 then fk.gfx.sun(light.sun) else fk.gfx.sun({ direction = { 0, 1, 0 }, intensity = 0 }) end
   fk.gfx.ambient({ sky = light.ambient.sky, ground = light.ambient.ground, intensity = 1 })
   fk.gfx.sky(universe.view().map, { strength = light.stars, rotation = light.galaxy_rotation })
-  universe.draw_sky(t, game.sky_sphere, light)
+  if light.sun2 then fk.gfx.sun2(light.sun2) end
+  local _, h = fk.gfx.size()
+  universe.draw_sky(t, game.sky_sphere, light, h / (2 * math.tan(math.rad(comfort.current.fov) / 2)))
 end
 
 local function draw_stage(dt)

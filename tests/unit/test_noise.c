@@ -1,6 +1,7 @@
 #include <math.h>
 #include <string.h>
 
+#include "core/dmath.h"
 #include "core/rng.h"
 #include "gen/noise.h"
 #include "utest.h"
@@ -62,7 +63,7 @@ UTEST(noise, every_node) {
     uint64_t h = FK_HASH_INIT;
     double lo = 1e9, hi = -1e9;
     for (int i = 0; i < 2000; i++) {
-        double a = i * 0.0031, x = cos(a * 7) * cos(a), y = sin(a), z = sin(a * 7) * cos(a);
+        double a = i * 0.0031, x = fk_dcos(a * 7) * fk_dcos(a), y = fk_dsin(a), z = fk_dsin(a * 7) * fk_dcos(a); /* the same inputs everywhere */
         double v = fk_noise_eval(&g, x, y, z);
         ASSERT_TRUE(isfinite(v));
         lo = fmin(lo, v), hi = fmax(hi, v);
@@ -72,7 +73,7 @@ UTEST(noise, every_node) {
     EXPECT_LE(hi, 1.0);
     EXPECT_LT(lo, hi);
     /* Recorded once; every platform must evaluate exactly these values. */
-    EXPECT_EQ(h, 0xd8f65df438c9e605ull);
+    EXPECT_EQ(h, 0x1ead6d6d5b028670ull);
     for (int k = 0; k <= 5; k++) { /* each source alone */
         fk_noise one = graph(&nodes[k], 1);
         one.nodes[0].in[0] = -1;

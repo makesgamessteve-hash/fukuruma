@@ -10,6 +10,8 @@ local frames = require("fk.frames")
 local units = require("gen.units")
 
 local planets = require("gen.planets")
+local planet_view = require("planet_view")
+local star_view = require("star_view")
 
 local universe = {}
 
@@ -194,6 +196,14 @@ function universe.light(t)
   else
     out.sun = { direction = { 0, -1, 0 }, color = { 0, 0, 0 }, intensity = 0 }
   end
+  if v.place and sys.stars[2] then -- a binary's second star: its own coloured light, no shadows
+    local off = offset_from(sys, v.place, 2, t)
+    local d = normalize(frames.rotate(inv, off))
+    local au = math.sqrt(off[1] * off[1] + off[2] * off[2] + off[3] * off[3]) / AU
+    local flux = sys.stars[2].luminosity / (au * au)
+    out.sun2 = { direction = d, color = sys.stars[2].color,
+      intensity = 5 * fk.math.pow(math.max(flux, 1e-6), 0.4) * math.max(0, math.min(1, (d[2] + 0.05) / 0.15)) }
+  end
   local sky = v.air and (SKY[v.air.gas] or SKY.n2) or { 0, 0, 0 }
   local thin = v.air and math.max(0, math.min(1, (fk.math.log(v.air.pressure) / fk.math.log(10) + 2) / 2)) or 0
   local k = day * thin
@@ -213,27 +223,45 @@ end
 
 
 -- Draws the system's other bodies and stars in the sky over the range at time t, in local axes.
-function universe.draw_sky(t, sphere, light)
+-- Draws the system's other bodies and stars in the sky over the range at time t, in local axes: real planets (with
+-- their surfaces and air) when they look larger than a few pixels, small spheres when they are points of light.
+-- focal: pixels per radian of the view.
+function universe.draw_sky(t, sphere, light, focal)
   local v = universe.view()
   local sys = v.sys
   local inv = frames.conjugate(light.rotation)
   local here = v.place and position(sys, v.place, t) or { 0, 0, 0 }
-  local function draw(p, radius, opts)
+  focal = focal or 300
+  v.planets, v.stars = v.planets or {}, v.stars or {}
+  local function relative(p)
     local rel = frames.rotate(inv, { p[1] - here[1], p[2] - here[2], p[3] - here[3] })
-    local d = math.sqrt(rel[1] * rel[1] + rel[2] * rel[2] + rel[3] * rel[3])
-    if d <= radius * 1.01 or rel[2] < -0.02 * d then return end -- under the horizon
-    local slice, at, s = frames.place_in_slices(rel, radius)
-    opts.slice = slice
-    fk.gfx.draw(sphere, frames.matrix(frames.IDENTITY, at, radius * s), opts)
+    return rel, math.sqrt(rel[1] * rel[1] + rel[2] * rel[2] + rel[3] * rel[3])
   end
   for i, s in ipairs(sys.stars) do
-    local c = s.color
-    draw(star_position(sys, i, t), math.max(s.radius, 1e4), { emission = { c[1] * 60, c[2] * 60, c[3] * 60 } })
+    local rel, d = relative(star_position(sys, i, t))
+    if rel[2] >= -0.02 * d then
+      v.stars[i] = v.stars[i] or star_view.new({ radius = math.max(s.radius, 1e4), color = s.color, pulsar = i == 1 and sys.pulsar },
+        sys.seed + i)
+      star_view.draw(v.stars[i], rel, t)
+    end
   end
   for i, b in ipairs(sys.bodies) do
     if i ~= v.place and b.kind ~= "comet" then
-      local c = PALETTE[b.class] or PALETTE.barren
-      draw(position(sys, i, t), b.radius, { roughness = 0.9, color = c })
+      local rel, d = relative(position(sys, i, t))
+      if d > b.radius * 1.01 and rel[2] >= -0.02 * d then -- above the horizon
+        if b.radius / d * focal > 4 then
+          if not v.planets[i] then v.planets[i] = planet_view.new(planets.describe(b), b.seed) end
+          -- the body's axes: tilted, and turned by its day (presentation only)
+          local spin = b.day and b.day > 0 and t * 2 * fk.math.pi / b.day or 0
+          local q = frames.multiply(inv, frames.multiply({ fk.math.sin((b.tilt or 0) / 2), 0, 0, fk.math.cos((b.tilt or 0) / 2) },
+            { 0, fk.math.sin(spin / 2), 0, fk.math.cos(spin / 2) }))
+          v.planets[i]:draw(rel, q, focal, false, { sun = light.sun.direction, air = false })
+        else
+          local c = PALETTE[b.class] or PALETTE.barren
+          local slice, at, k = frames.place_in_slices(rel, b.radius)
+          fk.gfx.draw(sphere, frames.matrix(frames.IDENTITY, at, b.radius * k), { slice = slice, roughness = 0.9, color = c })
+        end
+      end
     end
   end
 end

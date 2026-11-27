@@ -56,6 +56,7 @@ return {
     assert(night and night.sun.intensity == 0 and night.stars > 0.9, "the world turns: night falls and the stars come out")
     local sphere = fk.gfx.mesh(require("shapes").sphere(1, 8, { 1, 1, 1 }))
     universe.draw_sky(0, sphere, l)
+    universe.draw_sky(10, sphere, l, 1e9) -- a long lens: neighbours draw as real planets
     assert(universe.gravity(nil) == 0.5)
     local empty = { bodies = {} }
     assert(universe.place_for(empty) == nil)
@@ -63,6 +64,17 @@ return {
     rogue.seed, rogue.position = 5, { 26000, 0, 0 }
     local sys = systems.generate(rogue)
     assert(universe.place_for(sys) == 1)
+    for _, s in ipairs(galaxy.near(universe.view().star.position, universe.RANGE)) do -- a binary: two lights
+      if #systems.generate(s).stars > 1 then
+        sim.send("jump", { sector = s.sector, seed = s.seed })
+        sim.step({})
+        if universe.view().place then
+          local b = universe.light(0)
+          assert(b.sun2 and b.sun2.intensity >= 0, "the second star lights the world too")
+          break
+        end
+      end
+    end
   end,
   ["the maps open, choose, scrub time and jump"] = function()
     start()

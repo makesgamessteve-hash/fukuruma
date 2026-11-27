@@ -16,6 +16,8 @@ uniform mat4 u_view;
 uniform vec3 u_camera;
 uniform vec3 u_sun_dir;
 uniform vec3 u_sun_color;
+uniform vec3 u_sun2_dir;   // a second star (binaries), unshadowed
+uniform vec3 u_sun2_color;
 uniform vec3 u_sky;
 uniform vec3 u_ground;
 uniform vec3 u_background;
@@ -82,6 +84,7 @@ void main() {
         float view_depth = -(u_view * vec4(world, 1.0)).z;
 
         color = brdf(n, v, u_sun_dir, albedo, rough, metal) * u_sun_color * shadow(world, n, view_depth);
+        if (dot(u_sun2_color, u_sun2_color) > 0.0) color += brdf(n, v, u_sun2_dir, albedo, rough, metal) * u_sun2_color;
 #if MAX_LIGHTS > 0
         for (int i = 0; i < MAX_LIGHTS; i++) {
             if (i >= u_nlights) break;
