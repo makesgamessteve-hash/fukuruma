@@ -154,13 +154,15 @@ function game.init()
   actions.define("view", { kind = "button", keys = { "V" }, gamepad = { "back" }, touch = "view" })
   actions.define("menu", { kind = "button", keys = { "Escape" }, gamepad = { "start" }, touch = "menu" })
   actions.define("map", { kind = "button", keys = { "M" }, gamepad = { "y" }, touch = "map" })
-  actions.define("board_up", { kind = "button", keys = { "B" }, gamepad = { "dpup" } }) -- to the parent doll's seat
-  actions.define("board_down", { kind = "button", keys = { "N" }, gamepad = { "dpdown" } }) -- to a child doll's seat
-  actions.define("deploy", { kind = "button", keys = { "T" }, gamepad = { "dpright" } })
+  actions.define("board_up", { kind = "button", keys = { "B" }, gamepad = { "dpup" }, touch = "board_up" }) -- to the parent doll's seat
+  actions.define("board_down", { kind = "button", keys = { "N" }, gamepad = { "dpdown" }, touch = "board_down" }) -- to a child doll's seat
+  actions.define("deploy", { kind = "button", keys = { "T" }, gamepad = { "dpright" }, touch = "deploy" })
   actions.define("lift", { kind = "axis", negative = { "C" }, positive = { "Space" } }) -- flying dolls up and down
-  actions.define("teleport", { kind = "button", keys = { "P" } }) -- Jump Ship <-> stations
-  actions.define("autopilot", { kind = "button", keys = { "O" } })
-  actions.define("recall", { kind = "button", keys = { "R" }, gamepad = { "dpleft" } })
+  actions.define("teleport", { kind = "button", keys = { "P" }, touch = "teleport" }) -- Jump Ship <-> stations
+  actions.define("autopilot", { kind = "button", keys = { "O" }, touch = "autopilot" })
+  actions.define("lift_up", { kind = "button", touch = "lift_up" }) -- touch: a flying doll's climb and dive
+  actions.define("lift_down", { kind = "button", touch = "lift_down" })
+  actions.define("recall", { kind = "button", keys = { "R" }, gamepad = { "dpleft" }, touch = "recall" })
   actions.define("save", { kind = "button", keys = { "F5" } })
   actions.define("load", { kind = "button", keys = { "F9" } })
   menu.actions = { save = function() game.save() end, load = function() game.load() end }
@@ -170,6 +172,15 @@ function game.init()
   actions.touch_button("menu", 0.94, 0.1, 0.06)
   actions.touch_button("view", 0.94, 0.27, 0.05)
   actions.touch_button("map", 0.94, 0.42, 0.05)
+  -- at a doll's controls (touch-controls spec: a layout per doll, chosen each frame in game.input)
+  actions.touch_button("board_up", 0.74, 0.6, 0.06)
+  actions.touch_button("board_down", 0.86, 0.8, 0.07)
+  actions.touch_button("deploy", 0.72, 0.88, 0.06)
+  actions.touch_button("recall", 0.6, 0.92, 0.05)
+  actions.touch_button("autopilot", 0.86, 0.6, 0.06)
+  actions.touch_button("teleport", 0.6, 0.74, 0.05)
+  actions.touch_button("lift_up", 0.52, 0.72, 0.05)
+  actions.touch_button("lift_down", 0.52, 0.88, 0.05)
   game.control = { x = 0, z = 0, fx = 0, fz = 1 }
 end
 
@@ -221,6 +232,29 @@ end
 
 -- Input becomes commands, only when something changes. Walking goes towards where the Commander looks.
 -- The menu and the outside view hold the suit: they are for looking only.
+-- The touch buttons for where the Commander is (touch-controls spec): on foot run, scan, dig and up to the Walker; at a
+-- doll's controls up and down the chain, deploy and recall what there is, autopilot and teleport where they lead,
+-- climb and dive in flying dolls. Menu, view and map always.
+function game.touch_layout()
+  local names = { "menu", "view", "map" }
+  local function add(name, ok) if ok then names[#names + 1] = name end end
+  add("board_up", chain.up() ~= nil)
+  if chain.on_foot() then
+    add("sprint", true) add("scan", true) add("dig", true)
+  else
+    local c = chain.current()
+    local ctl = dolls.by_id[c.kind].controller
+    add("board_down", chain.down() ~= nil)
+    add("deploy", chain.next_kind() ~= nil)
+    add("recall", chain.down() ~= nil)
+    add("autopilot", chain.autopilot_target() ~= nil and ctl and ctl.kind ~= "orbit" and ctl.kind ~= "fixed")
+    add("teleport", chain.teleport_target() ~= nil)
+    add("lift_up", ctl and ctl.kind == "flight") add("lift_down", ctl and ctl.kind == "flight")
+  end
+  actions.touch_layout(names)
+  return names
+end
+
 function game.input()
   actions.update()
   if navmap.open then -- the maps take the controls; the suit holds still
@@ -259,8 +293,10 @@ function game.input()
   end
   if actions.pressed("scan") and not busy and game.view == "helmet" then sim.send("scan", {}) end
   if actions.pressed("dig") and not busy and game.view == "helmet" then sim.send("dig", {}) end
+  game.touch_layout()
   if not chain.on_foot() then -- at a doll's controls: the move keys steer it (vehicle controllers)
-    local lift = (busy or game.view == "drone") and 0 or actions.value("lift")
+    local lift = (busy or game.view == "drone") and 0 or
+      math.max(-1, math.min(1, actions.value("lift") + (actions.held("lift_up") and 1 or 0) - (actions.held("lift_down") and 1 or 0)))
     local d = { throttle = -y, turn = -x, lift = lift }
     local last = game.drive or {}
     if d.throttle ~= last.throttle or d.turn ~= last.turn or d.lift ~= last.lift then

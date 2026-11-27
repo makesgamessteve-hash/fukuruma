@@ -29,6 +29,17 @@ function actions.touch_button(name, x, y, radius)
   buttons[name] = { x = x, y = y, r = radius }
 end
 
+-- The touch buttons in use now (a list of names; nil: all): the others are neither drawn nor pressed. Each doll has
+-- its own layout (touch-controls spec).
+local layout
+function actions.touch_layout(names)
+  layout = nil
+  if names then
+    layout = {}
+    for _, n in ipairs(names) do layout[n] = true end
+  end
+end
+
 local function aspect()
   local w, h = fk.gfx.size()
   return w / h
@@ -48,7 +59,7 @@ end
 
 local function touch_held(name)
   local b = buttons[name]
-  if not b then return false end
+  if not b or (layout and not layout[name]) then return false end
   for _, touch in ipairs(fk.input.touches()) do
     if in_button(touch, b) then return true end
   end
@@ -170,7 +181,9 @@ function actions.touch_controls()
     buttons = {},
   }
   for name, b in pairs(buttons) do
-    controls.buttons[#controls.buttons + 1] = { name = name, x = b.x, y = b.y, r = b.r, held = touch_held(name) }
+    if not layout or layout[name] then
+      controls.buttons[#controls.buttons + 1] = { name = name, x = b.x, y = b.y, r = b.r, held = touch_held(name) }
+    end
   end
   table.sort(controls.buttons, function(p, q) return p.name < q.name end)
   return controls

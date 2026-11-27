@@ -32,7 +32,9 @@ local function place(x, y, rx, ry)
 end
 
 -- Labels drawn on the buttons (the action's name in capitals when it has none here).
-view.LABELS = { sprint = "RUN", scan = "SCAN", menu = "MENU", view = "VIEW", map = "MAP", dig = "DIG" }
+view.LABELS = { sprint = "RUN", scan = "SCAN", menu = "MENU", view = "VIEW", map = "MAP", dig = "DIG", board_up = "UP",
+  board_down = "DOWN", deploy = "DEPLOY", recall = "RECALL", autopilot = "AUTO", teleport = "PORT", lift_up = "CLIMB",
+  lift_down = "DIVE" }
 
 function view.draw(controls)
   if not controls then return end
