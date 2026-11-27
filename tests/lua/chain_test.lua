@@ -130,7 +130,8 @@ return {
       step()
       if not drop.auto then break end
     end
-    assert(arrived == find("space_station").id and drop.y > 3e5, "the Drop Ship has climbed to the station: " .. drop.y)
+    local up = drop.y - chain.ground(drop.x, drop.z)
+    assert(arrived == find("space_station").id and up > 3e5, "the Drop Ship has climbed to the station: " .. up)
     sim.send("board", { id = find("space_station").id })
     step()
     assert(chain.current().kind == "space_station" and chain.teleport_target() == find("jump_ship").id)
@@ -193,7 +194,9 @@ return {
     assert(c.auto)
     sim.send("drive", { throttle = 1 })
     step(60)
-    assert(c.auto == nil and station.x == x0 and station.y == 4.0e5, "the hands cancel the autopilot; a station holds")
+    local R = -require("universe").ground().centre[2]
+    local r = math.sqrt(station.x * station.x + (station.y + R) ^ 2)
+    assert(c.auto == nil and station.x > x0 and math.abs(r - R - 4.0e5) < 1, "the hands cancel the autopilot; the station orbits")
     c.auto = 999
     step()
     assert(c.auto == nil, "a vanished target ends the autopilot")

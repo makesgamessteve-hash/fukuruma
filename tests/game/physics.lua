@@ -2,7 +2,7 @@
 -- tower stops the suit; the resulting state is the same on every platform (the recorded hash).
 local sim = require("fk.sim")
 
-local RECORDED_HASH = "4a0d827b0aab15e6"
+local RECORDED_HASH = "f50304ada1e0b8fe"
 
 return scenario {
   seed = 1,

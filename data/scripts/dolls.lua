@@ -4,7 +4,7 @@
 --   place = "ground" | "sky" | "orbit" (where it stands once deployed), offset = {x, y, z} (metres from the doll
 --   that deploys it; y: height above the ground or the parent), seat = {x, y, z} (the Commander's eye at its
 --   controls, in units of size_m), hull = {parts} (dolls/hull.lua), roughness, metalness, cockpit (dolls/cockpit.lua;
---   none for the Exosuit, which is steered on foot), controller (chain.lua: legged, flight or fixed).
+--   none for the Exosuit, which is steered on foot), controller (chain.lua: legged, flight, orbit or fixed).
 local dolls = { list = {}, by_id = {} }
 
 local PLACES = { ground = true, sky = true, orbit = true }

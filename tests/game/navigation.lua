@@ -4,7 +4,7 @@
 local sim = require("fk.sim")
 local universe = require("universe")
 
-local RECORDED_HASH = "2c575c97e9423dcf"
+local RECORDED_HASH = "f753a65a9e618c8c"
 
 local function press(t, key, frames)
   t.key(key, true); t.frames(1)

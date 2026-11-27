@@ -4,7 +4,7 @@ return {
   id = "jump_ship", name = "Jump Ship", size_m = 144000, place = "orbit", offset = { 0, 3.0e7, 0 },
   carries = { space_station = 2, drop_ship = 1 }, seat = { 0, 0.12, 0.42 }, roughness = 0.5, metalness = 0.5,
   cockpit = { width = 28, height = 8, depth = 18, posts = 6, screens = 8, color = { 0.4, 0.42, 0.46 } },
-  controller = { kind = "fixed" },
+  controller = { kind = "orbit" },
   hull = {
     { "lathe", at = { 0, 0, 0 }, stations = { { -0.5, 0 }, { -0.42, 0.07 }, { -0.1, 0.11 }, { 0.25, 0.09 }, { 0.5, 0 } }, sides = 10, color = HULL },
     { "lathe", at = { 0, 0, -0.18 }, stations = { { -0.03, 0.2 }, { 0, 0.215 }, { 0.03, 0.2 }, { 0, 0.185 }, { -0.03, 0.2 } }, sides = 24, color = GLOW },

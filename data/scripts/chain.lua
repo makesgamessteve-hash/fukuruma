@@ -2,7 +2,6 @@
 -- which one the Commander is in. Simulation: a saved component, changed only by the deploy, recall and board
 -- commands. Places are in the range's local frame (metres, y up from the ground at the range); orbits are parked
 -- straight above the range.
--- shortcut: orbiting dolls stand still above the range; give them real orbits with the vehicle controllers (M6).
 local sim = require("fk.sim")
 local dolls = require("dolls")
 local hull = require("dolls.hull")
@@ -285,7 +284,7 @@ end
 -- Commander sits in. Each doll's controller (its definition's controller field) moves it every tick:
 --   legged {speed, accel, turn, stride}: walks on the ground; a stomp event every stride (metres)
 --   flight {speed, accel, turn, climb, min_altitude}: flies, no lower than min_altitude above the ground
---   fixed: holds its place (orbits; their own controllers come with the teleport network and autopilot)
+--   orbit: goes round the world at its height (stations, the Jump Ship); fixed: holds its place
 function chain.install_drive()
   sim.on("drive", function(args)
     local c = chain.current()
@@ -294,6 +293,21 @@ function chain.install_drive()
     c.drive = { throttle = clamp(args.throttle), turn = clamp(args.turn), lift = clamp(args.lift) }
     if c.drive.throttle ~= 0 or c.drive.turn ~= 0 or c.drive.lift ~= 0 then c.auto = nil end -- the hands take over
   end)
+end
+
+-- Doll d's distance from the world's centre, and the ground's (its surface straight below d), in metres. Flying
+-- dolls keep their height this way, so they can follow the world's curve all the way round (to a station on the far
+-- side); near the range it is the same as the height above chain.ground.
+local function radial(d)
+  local g = require("universe").ground()
+  if not g then return d.y, 0 end
+  local R = -g.centre[2]
+  local x, y, z = d.x, d.y + R, d.z
+  local r = math.sqrt(x * x + y * y + z * z)
+  if r < 1e-6 then return 0, R end
+  local up, e, n = g.up, g.east, g.north
+  local dir = { (e[1] * x + up[1] * y + n[1] * z) / r, (e[2] * x + up[2] * y + n[2] * z) / r, (e[3] * x + up[3] * y + n[3] * z) / r }
+  return r, R + g.surface:height(dir[1], dir[2], dir[3]) - g.surface:height(up[1], up[2], up[3])
 end
 
 -- Autopilot: the drive that takes doll d towards doll t (turning by the side the target lies on; no angles, so only
@@ -308,18 +322,70 @@ local function autopilot(d, t, ctl)
   local ahead = flat > 1e-6 and (fx * dx + fz * dz) / flat or 1
   local left = flat > 1e-6 and (fz * dx - fx * dz) / flat or 0 -- the side a larger yaw turns to
   local turn = ahead < 0 and (left >= 0 and 1 or -1) or math.max(-1, math.min(1, left * 4))
-  local lift = ctl.kind == "flight" and math.max(-1, math.min(1, dy / math.max(500, flat * 0.2))) or 0
+  local climb = dy -- towards a doll in orbit: up or down to its distance from the world's centre, not its local height
+  if dolls.by_id[t.kind].place == "orbit" then climb = radial(t) - radial(d) end
+  local lift = ctl.kind == "flight" and math.max(-1, math.min(1, climb / math.max(500, flat * 0.2))) or 0
   return { throttle = ahead < 0.3 and 0.3 or 1, turn = turn, lift = lift }
 end
 
--- How fast a doll may go: flying dolls faster the higher they are (thin air; a Drop Ship from orbit), up to 8 km/s.
+-- How fast a doll may go: flying dolls faster the higher they are (thin air; a Drop Ship from orbit), up to 15 km/s
+-- (an orbiting station goes round at about 7.7 km/s).
 local function top_speed(d, ctl)
   if ctl.kind ~= "flight" then return ctl.speed end
-  return math.min(8000, ctl.speed * (1 + math.max(0, d.y - chain.ground(d.x, d.z)) / 5000))
+  local r, ground = radial(d)
+  return math.min(15000, ctl.speed * (1 + math.max(0, r - ground) / 1000))
+end
+
+-- An orbiting doll goes round the world on a circle through the plane over the range (x up from its centre),
+-- starting overhead, at the speed its height needs: sqrt(GM / r^3), GM from the world's gravity and radius.
+local function orbit(d, dt)
+  local g = require("universe").ground()
+  if not g then return end
+  local R = -g.centre[2] -- the world's centre lies straight below the range
+  d.altitude = d.altitude or d.y
+  local r = R + d.altitude
+  local gravity = chain.world and -chain.world:gravity()[2] or 9.81
+  d.theta = (d.theta or 0) + math.sqrt(gravity * R * R / (r * r * r)) * dt
+  d.x, d.y, d.z = r * fk.math.sin(d.theta), -R + r * fk.math.cos(d.theta), 0
+end
+
+-- A flying doll's autopilot: a transfer around the world's centre in the plane over the range. Its distance from the
+-- centre goes towards the target's and its angle turns towards the target's, both at its top speed (no angles are
+-- computed: the target's direction is taken once within a step's turn, else the doll turns a step its way); its
+-- sideways offset (z) closes in too. Up to orbit, round to a station on the far side, and back down alike.
+local function transfer(d, t, ctl, dt)
+  local R = -require("universe").ground().centre[2]
+  local ax, ay, bx, by = d.x, d.y + R, t.x, t.y + R
+  local ra, rb = math.sqrt(ax * ax + ay * ay), math.sqrt(bx * bx + by * by)
+  local top = top_speed(d, ctl)
+  local step = top * dt
+  local r = ra + math.max(-step, math.min(step, rb - ra))
+  local cos, sin = (ax * bx + ay * by) / (ra * rb), (ax * by - ay * bx) / (ra * rb)
+  local turn = step / ra
+  local ux, uy
+  if cos >= fk.math.cos(turn) then ux, uy = bx / rb, by / rb
+  else
+    local c, s = fk.math.cos(turn), fk.math.sin(turn) * (sin >= 0 and 1 or -1)
+    ux, uy = (ax * c - ay * s) / ra, (ax * s + ay * c) / ra
+  end
+  d.x, d.y = ux * r, uy * r - R
+  d.z = d.z + math.max(-step, math.min(step, t.z - d.z))
+  d.speed = top
+  local rr, floor = radial(d) -- never below its floor
+  floor = floor + ctl.min_altitude
+  if rr < floor then
+    local k = floor / rr
+    d.x, d.y, d.z = d.x * k, (d.y + R) * k - R, d.z * k
+  end
 end
 
 local function steer(d, dt)
   local ctl = dolls.by_id[d.kind].controller
+  if ctl and ctl.kind == "orbit" then return orbit(d, dt) end
+  if ctl and ctl.kind == "flight" and d.auto and require("universe").ground() then -- flying on autopilot: a transfer
+    local t = chain.find(d.auto)
+    if t and autopilot(d, t, ctl) then return transfer(d, t, ctl, dt) end
+  end
   if not ctl or ctl.kind == "fixed" then return end
   d.yaw, d.speed, d.stride = d.yaw or 0, d.speed or 0, d.stride or 0 -- (games saved before the controllers)
   local drive = d.drive or { throttle = 0, turn = 0, lift = 0 }
@@ -347,7 +413,14 @@ local function steer(d, dt)
         strength = math.min(1, dolls.by_id[d.kind].size_m / 600 + 0.35) })
     end
   else
-    d.y = math.max(ground + ctl.min_altitude, d.y + drive.lift * ctl.climb * dt * top / ctl.speed) -- (faster up high too)
+    d.y = d.y + drive.lift * ctl.climb * dt * top / ctl.speed -- (faster up high too)
+    local r, floor = radial(d)
+    floor = floor + ctl.min_altitude
+    if r < floor then -- no lower than the floor over the ground below it, measured from the world's centre
+      local R = -require("universe").ground().centre[2]
+      local k = floor / r
+      d.x, d.y, d.z = d.x * k, (d.y + R) * k - R, d.z * k
+    end
   end
 end
 
@@ -361,8 +434,9 @@ function chain.tick(world_key)
   local moved_on = state.world ~= world_key and state.world ~= nil
   if moved_on and current.kind == "jump_ship" then current.system = require("universe").state().seed end -- it jumped
   steer(current, sim.dt)
-  for _, d in ipairs(state.dolls) do -- dolls on autopilot go on without the Commander
-    if d ~= current and d.auto then steer(d, sim.dt) end
+  for _, d in ipairs(state.dolls) do -- dolls on autopilot go on without the Commander; orbits go round anyway
+    local ctl = dolls.by_id[d.kind].controller
+    if d ~= current and here(d) and (d.auto or ctl and ctl.kind == "orbit") then steer(d, sim.dt) end
   end
   local moved = state.world ~= world_key
   state.world = world_key
