@@ -65,7 +65,9 @@ if(NOT MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   # The generators' hot loops (noise, planet chunks, galaxy) stay quick in debug and coverage builds (still
   # instrumented); -ffp-contract=off keeps their results identical.
   file(GLOB FK_GEN_SRC ${CMAKE_SOURCE_DIR}/engine/src/gen/*.c)
-  set_source_files_properties(${FK_GEN_SRC} PROPERTIES COMPILE_OPTIONS -O2)
+  # Coverage: plain counters in these loops (atomic ones cost several times the work; a rare lost count when two
+  # workers hit the same line is harmless for line coverage).
+  set_source_files_properties(${FK_GEN_SRC} PROPERTIES COMPILE_OPTIONS "-O2;$<$<BOOL:${FK_COVERAGE}>:-fprofile-update=single>")
 endif()
 
 add_executable(fukuruma engine/src/platform/main.c)
@@ -174,7 +176,10 @@ set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boo
   game_scale_ladder game_physics game_navigation game_planets game_stars game_descent PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
-set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
+set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation PROPERTIES TIMEOUT 300)
+# The sandbox scenes draw the world's ground (software rendering, instrumented builds): slower than the rest.
+set_tests_properties(game_boot game_boot_reproducible game_input game_feel game_first_person game_showcase_lighting
+  game_physics game_graphics_menu PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
 
 if(FK_COVERAGE)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)

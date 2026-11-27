@@ -33,7 +33,7 @@ end
 -- Draws ground g's world seen from eye (local axes, metres) looking along forward within half_angle (radians, to the
 -- view's corners). Returns the number of chunks drawn.
 function terrain.draw(state, g, eye, forward, half_angle, focal, wait)
-  if not g then return 0 end
+  if not g or (not wait and fk.gfx.device().renderer == "none") then return 0 end -- nothing to see: build nothing
   if state.view_of ~= g then state.view, state.view_of = planet_view.new(g.desc, 0), g end
   -- The planetary slice starts just short of the nearest ground that could be in view, so its depth precision goes
   -- where the ground is (from orbit, the slice would otherwise spend it on empty space).
