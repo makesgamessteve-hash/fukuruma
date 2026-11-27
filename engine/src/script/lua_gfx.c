@@ -284,6 +284,17 @@ static int l_draw(lua_State *L) {
         mat.emissive_colors = lua_toboolean(L, -1);
         lua_pop(L, 2);
         mat.clouds = field_number(L, 3, "clouds", 0, 0, 1, "draw");
+        if (lua_getfield(L, 3, "terrain") == LUA_TTABLE) { /* {origin, up, wet, snow, dust} */
+            int t = lua_gettop(L);
+            static const float UP[3] = {0, 1, 0};
+            mat.terrain = true;
+            field_vec3(L, t, "origin", mat.terrain_origin, ZERO, -1e6f, 1e6f, "draw terrain");
+            field_vec3(L, t, "up", mat.terrain_up, UP, -1, 1, "draw terrain");
+            mat.weather[0] = field_number(L, t, "wet", 0, 0, 1, "draw terrain");
+            mat.weather[1] = field_number(L, t, "snow", 0, 0, 1, "draw terrain");
+            mat.weather[2] = field_number(L, t, "dust", 0, 0, 1, "draw terrain");
+        }
+        lua_pop(L, 1);
         field_vec3(L, 3, "color", color, ONE, 0, 1, "draw"); /* sRGB, multiplies the vertex colours */
         for (int i = 0; i < 3; i++) mat.base[i] = fk_srgb_to_linear(color[i]);
         if (lua_getfield(L, 3, "texture") != LUA_TNIL) {

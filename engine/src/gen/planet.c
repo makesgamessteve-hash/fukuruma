@@ -104,6 +104,18 @@ void fk_planet_color(const fk_planet *p, const double d[3], double height, float
     if (temp < 255 || lat > p->ice_latitude) mix(rgb, rgb, pal[FK_PAL_ICE], temp < 255 ? (255 - temp) / 10 : (lat - p->ice_latitude) * 20);
 }
 
+void fk_planet_layers(const fk_planet *p, const double d[3], double height, double *snow, double *wet) {
+    *snow = *wet = 0;
+    if (p->bands) return;
+    double lat = fabs(d[1]), h = raw(p, d) - p->sea_level;
+    double temp = p->temperature - 60 * lat * lat - 0.0065 * (height > 0 ? height : 0);
+    if (p->ocean && h < 0) return; /* the sea itself: water (M5 add-water) */
+    *snow = (268 - temp) / 10;
+    if (lat > p->ice_latitude) *snow = 1;
+    *snow = *snow < 0 ? 0 : *snow > 1 ? 1 : *snow;
+    if (p->ocean && h < 0.03) *wet = 1 - h / 0.03; /* the shore (rain adds wetness everywhere: the weather) */
+}
+
 static void surface(const fk_planet *p, int face, double u, double v, double pos[3], double d[3], double *height) {
     fk_cube_to_sphere(face, u, v, d);
     *height = fk_planet_height(p, d);
@@ -140,6 +152,9 @@ double fk_planet_chunk(const fk_planet *p, int face, int level, int x, int y, fk
                 vx->normal[k] = (float)(nl != 0 ? n[k] / nl : d[k]);
             }
             fk_planet_color(p, d, h, vx->color);
+            double snow, wet; /* the surface layers for the terrain material, in the (otherwise unused) tangent */
+            fk_planet_layers(p, d, h, &snow, &wet);
+            vx->tangent[0] = (float)snow, vx->tangent[1] = (float)wet;
             if (p->clouds.count) { /* the cloud layer as seen from far away, in u: the draw fades it (option clouds) */
                 double c = 0.5 + 0.5 * fk_noise_eval(&p->clouds, d[0], d[1], d[2]), t = (c - (1 - p->cloud_cover)) / 0.15;
                 vx->uv[0] = (float)((t < 0 ? 0 : t > 1 ? 1 : t) * 0.9);

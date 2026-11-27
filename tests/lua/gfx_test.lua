@@ -56,6 +56,11 @@ return {
     fk.gfx.atmosphere({ centre = { 0, -6.4e6, 0 }, radius = 6.4e6, top = 6.46e6, height = 8000, rayleigh = { 5.8e-6, 13.5e-6, 33.1e-6 },
       mie = 4e-6, absorb = { 0, 0, 0 }, ground = { 0.3, 0.4, 0.2 } })
     fk.gfx.atmosphere(nil)
+    local m = fk.gfx.mesh({ positions = { 0, 0, 0, 1, 0, 0, 0, 1, 0 }, colors = { 1, 1, 1, 1, 1, 1, 1, 1, 1 }, indices = { 1, 2, 3 } })
+    fk.gfx.draw(m, I, { terrain = { origin = { 1, 2, 3 }, up = { 0, 1, 0 }, wet = 0.5, snow = 0.2, dust = 1 }, clouds = 0.3 })
+    fk.gfx.draw(m, I, { terrain = {} })
+    fails(function() fk.gfx.draw(m, I, { terrain = { wet = 2 } }) end, "'wet'")
+    fails(function() fk.gfx.draw(m, I, { clouds = -1 }) end, "'clouds'")
     fails(function() fk.gfx.atmosphere({ radius = 0 }) end, "'radius' must be a number")
     fails(function() fk.gfx.atmosphere({ radius = 10, top = 5 }) end, "'top' must be a number")
     local draws, triangles = fk.gfx.stats()

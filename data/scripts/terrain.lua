@@ -31,8 +31,9 @@ function terrain.follow(state, world, g, x, z)
 end
 
 -- Draws ground g's world seen from eye (local axes, metres) looking along forward within half_angle (radians, to the
--- view's corners). Returns the number of chunks drawn.
-function terrain.draw(state, g, eye, forward, half_angle, focal, wait)
+-- view's corners). weather (optional): {wet, snow, dust}, 0..1, over the ground's own layers. Returns the number of
+-- chunks drawn.
+function terrain.draw(state, g, eye, forward, half_angle, focal, wait, weather)
   if not g or (not wait and fk.gfx.device().renderer == "none") then return 0 end -- nothing to see: build nothing
   if state.view_of ~= g then state.view, state.view_of = planet_view.new(g.desc, 0), g end
   -- The planetary slice starts just short of the nearest ground that could be in view, so its depth precision goes
@@ -40,7 +41,8 @@ function terrain.draw(state, g, eye, forward, half_angle, focal, wait)
   local dx, dy, dz = eye[1] - g.centre[1], eye[2] - g.centre[2], eye[3] - g.centre[3]
   local clear = math.sqrt(dx * dx + dy * dy + dz * dz) - g.radius - (g.desc.relief or 0)
   fk.gfx.slices({ planetary = { math.max(frames.LOCAL_FAR, clear * 0.5), frames.PLANETARY[2] } })
-  return state.view:draw(g.centre, g.to_local, focal, wait, { eye = eye, look = { forward, half_angle }, air = false })
+  return state.view:draw(g.centre, g.to_local, focal, wait, { eye = eye, look = { forward, half_angle }, air = false,
+    weather = weather })
 end
 
 return terrain

@@ -47,5 +47,7 @@ void fk_planet_flatten(fk_planet *p, const double d[3], double radius);
    following the curvature. */
 void fk_planet_grid(const fk_planet *p, const double up[3], const double east[3], const double north[3], double x0,
                     double z0, double cell, int n, float *heights);
+/* The surface layers at a direction: snow cover (cold, polar) and wetness (shores), each 0..1. */
+void fk_planet_layers(const fk_planet *p, const double d[3], double height, double *snow, double *wet);
 double fk_planet_chunk(const fk_planet *p, int face, int level, int x, int y, fk_vertex *vertices, uint32_t *indices,
                        double centre[3]);

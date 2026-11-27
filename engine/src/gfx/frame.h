@@ -27,6 +27,10 @@ typedef struct {
     bool one_sided; /* closed surfaces seen from outside: back faces keep their normals (no two-sided flip) */
     bool emissive_colors; /* the vertex colours tint the emission (stars) */
     float clouds; /* 0..1: how much of the cloud cover stored in the vertices' u shows (planet chunks) */
+    bool terrain; /* the terrain material (planet chunks near the ground): detail, rock, snow, wetness, dust */
+    float terrain_origin[3]; /* the chunk's centre (planet axes, metres) wrapped to the detail's period */
+    float terrain_up[3];     /* the world's up at the chunk, in draw axes */
+    float weather[3];        /* extra wetness, snow and dust from the weather, 0..1 */
     const fk_texture *base_tex, *metal_rough_tex, *normal_tex, *emission_tex; /* NULL: none */
 } fk_material;
 

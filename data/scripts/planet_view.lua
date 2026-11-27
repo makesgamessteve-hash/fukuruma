@@ -128,10 +128,20 @@ end
 -- Near the ground each chunk gets the depth slice its distance from the eye calls for; a chunk reaching across the
 -- local slice's far end is drawn in both slices (the planetary slice starts where the local one ends), so the ground
 -- runs on without a seam. Returns how many draws that took.
-local function draw_near(self, chosen, rel, q, eye, material)
+local function draw_near(self, chosen, rel, q, eye, material, weather)
   local draws = 0
   local function place(c, k)
     local p = frames.rotate(q, c.centre)
+    -- the terrain material on the ground near the eye: detail wraps every PERIOD metres, so the chunk's centre goes
+    -- in wrapped (the same point of two chunks then gets the same detail)
+    if k == 1 then -- (its detail fades with the size of a pixel, so it can cover every chunk drawn full size)
+      local cl = math.sqrt(c.centre[1] * c.centre[1] + c.centre[2] * c.centre[2] + c.centre[3] * c.centre[3])
+      material.terrain = { origin = { c.centre[1] % 256, c.centre[2] % 256, c.centre[3] % 256 },
+        up = frames.rotate(q, { c.centre[1] / cl, c.centre[2] / cl, c.centre[3] / cl }),
+        wet = weather and weather.wet, snow = weather and weather.snow, dust = weather and weather.dust }
+    else
+      material.terrain = nil
+    end
     local at = { rel[1] + p[1] * k, rel[2] + p[2] * k, rel[3] + p[3] * k }
     local r = { at[1] - eye[1], at[2] - eye[2], at[3] - eye[3] }
     local bound = c.bound * k
@@ -170,13 +180,13 @@ function View:draw(rel, q, focal, wait, opts)
   local slice, at, s = frames.place_in_slices(rel, self.d.radius + (self.d.relief or 0))
   local scale = s
   local material = { roughness = self.d.bands and 0.6 or 0.85, slice = slice, one_sided = true, clouds = 1 }
-  if opts then for k, v in pairs(opts) do if k ~= "sun" and k ~= "air" and k ~= "eye" and k ~= "look" then material[k] = v end end end
+  if opts then for k, v in pairs(opts) do if k ~= "sun" and k ~= "air" and k ~= "eye" and k ~= "look" and k ~= "weather" then material[k] = v end end end
   local altitude = math.sqrt(cam[1] * cam[1] + cam[2] * cam[2] + cam[3] * cam[3]) - self.d.radius
   -- the cloud layer seen from afar thins out on the way down (one fade for every chunk: no seams between levels)
   material.clouds = math.max(0, math.min(1, (altitude - 1e4) / 4e4)) * material.clouds
   if opts and opts.eye and altitude < planet_view.NEAR then
     for f = 0, 5 do ready(self:request(f, 0, 0, 0), wait) end
-    self.draws = draw_near(self, chosen, rel, q, eye, material)
+    self.draws = draw_near(self, chosen, rel, q, eye, material, opts.weather)
     self:forget()
     return #chosen
   end
