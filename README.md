@@ -113,5 +113,6 @@ GitHub Pages must be enabled once: **Settings → Pages → Build and deployment
 ## Licences
 
 - Code (C, Lua, GLSL, JavaScript, tools): [MIT](LICENSE)
-- Art (textures, materials, models, animations, sprites, sounds, music): [CC BY 4.0](LICENSE-ASSETS.md)
+- Art (textures, materials, models, animations, sprites, sounds, music): [CC BY 4.0](LICENSE-ASSETS.md), except the
+  sounds and music generated with ElevenLabs, which ship only as part of the game (see the exception there)
 - Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)

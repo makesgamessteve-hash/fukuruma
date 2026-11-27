@@ -20,3 +20,16 @@ Suggested attribution:
 
 Assets that come from elsewhere or were generated with external services are credited in a
 `CREDITS.md` file in their folder, which may name additional terms.
+
+## Exception: audio generated with ElevenLabs
+
+The sound effects and music generated with ElevenLabs (every file listed as generated in `data/sounds/CREDITS.md` and
+`data/music/CREDITS.md`) are **not** licensed under CC BY 4.0. They were generated on the project owner's ElevenLabs
+account (commercial use needs a paid plan) and are used under ElevenLabs' terms, which allow generated sound effects only in combination with
+other material: they may not be sold, sublicensed or distributed on their own, or put into a sound library or
+collection.
+
+So these files are included only as part of Fukuruma. You may use, copy and distribute them as part of the game, in a
+copy or fork of it, or in a mod that ships with it. You may not extract them to sell, sublicense or distribute them on
+their own, put them into a sound library, or use them to train AI models. To reuse a sound outside Fukuruma, generate
+your own.

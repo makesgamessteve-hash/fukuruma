@@ -65,6 +65,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 - **Simulation vs. presentation:** rendering, animation blending, particles, camera feel, hit-pause and haptics react
   to simulation events and never change simulation state. Every new player action gets a feedback bundle (sound,
   particles, light, camera, rumble).
-- **Licences:** code MIT, art CC BY 4.0 (`LICENSE-ASSETS.md`). Record third-party code in
+- **Licences:** code MIT, art CC BY 4.0 (`LICENSE-ASSETS.md`), except audio generated with ElevenLabs: it ships
+  only as part of the game under ElevenLabs' terms (the exception in `LICENSE-ASSETS.md`); never offer it standalone. Record third-party code in
   `THIRD_PARTY_NOTICES.md` and generated or external assets in a `CREDITS.md` next to them.
 - **Secrets:** never commit API keys (for example the ElevenLabs key); tools read them from the environment.

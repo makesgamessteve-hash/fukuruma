@@ -759,7 +759,7 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 | Scope: economy, outposts, deformation, factions, story | never finishing | vertical slice first (M6); each system starts minimal and data-driven; ponytail rules |
 | No wasm threads on GitHub Pages | slower generation on the web | single-thread fallback; add `coi-serviceworker` later only if profiling shows a need |
 | WebXR through Emscripten | missing bindings | a small custom JS library; mocked tests; the flat mode always works |
-| ElevenLabs licence vs CC BY 4.0 | audio cannot be redistributed | the owner confirms their plan's terms before generated audio is committed; provenance is recorded; files can be regenerated or replaced |
+| ElevenLabs licence vs CC BY 4.0 | generated sound effects may not be offered standalone | generated audio is excluded from CC BY 4.0 and ships only as part of the game (`LICENSE-ASSETS.md`); provenance is recorded; files can be regenerated or replaced |
 | Push-to-main without review | broken `main` | full local test run before push; Pages deploys only green builds; small commits |
 | Lua performance | stutter | Lua for decisions only; hot loops in C; per-tick Lua budgets measured in game tests |
 
@@ -769,10 +769,10 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 1. **Enable GitHub Pages** once: *Settings → Pages → Source: GitHub Actions* (done).
 2. **ElevenLabs:** the API key is provided (a network secret of the "fukuruma" cloud environment, which also
-   allows `api.elevenlabs.io`). Still open: confirmation that your plan's terms allow publishing the generated
-   sound effects and music under CC BY 4.0 (the public pages say commercial use needs a paid plan, and game
-   rights for large studios need Enterprise; the binding text is in the
-   [Music Terms](https://elevenlabs.io/music-terms)).
+   allows `api.elevenlabs.io`). ElevenLabs' terms allow generated sound effects only combined with other material
+   (no standalone distribution, sublicensing or sound libraries), so generated audio is excluded from CC BY 4.0
+   and ships only as part of the game (`LICENSE-ASSETS.md`). Commercial use needs a paid plan, and the music has its
+   own [Music Terms](https://elevenlabs.io/music-terms).
 3. Optional: install ponytail in your local Claude Code with `/plugin marketplace add DietrichGebert/ponytail`
    and then `/plugin install ponytail@ponytail` (two separate prompts). The repository already contains its `AGENTS.md`.
 4. Optional: name the phone and VR headset you want the game tuned for.
