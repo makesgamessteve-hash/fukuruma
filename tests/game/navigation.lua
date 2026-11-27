@@ -1,10 +1,10 @@
--- navigation-maps spec: M opens the galaxy map; Enter jumps the range to the chosen star within range; Tab shows the
+-- navigation-maps spec: M opens the galaxy map; from the Jump Ship's bridge, Enter jumps to the chosen star within range; Tab shows the
 -- system map. Three jumps in a row reach three new systems, each with its own sky, light and gravity, and the result
 -- is the same on every platform.
 local sim = require("fk.sim")
 local universe = require("universe")
 
-local RECORDED_HASH = "b3d0a05e57ff799b"
+local RECORDED_HASH = "cbabe2be116c870e"
 
 local function press(t, key, frames)
   t.key(key, true); t.frames(1)
@@ -17,6 +17,11 @@ return scenario {
   run = function(t)
     local game = require("game")
     t.frames(5)
+    local chain = require("chain") -- the jump drive is on the Jump Ship's bridge (the way up there: tests/game/travel.lua)
+    for _, d in ipairs(chain.state().dolls) do
+      if d.kind == "jump_ship" then chain.state().at = d.id end
+    end
+    game.helmet.pitch = -0.35
     local seen = { [universe.state().seed] = true }
     local gravity = { game.world:gravity()[2] }
     press(t, "M", 5)

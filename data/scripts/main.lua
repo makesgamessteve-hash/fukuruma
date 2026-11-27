@@ -119,6 +119,10 @@ function game.init()
     body.wx, body.wz, body.lx, body.lz = args.x, args.z, args.fx, args.fz
   end)
   dig.install(game.world, function() return sim.get(game.suit, "suit") end, chain.on_foot)
+  universe.can_jump = function() -- the jump drive is on the Jump Ship's bridge (no chain: the universe on its own)
+    local state = chain.id and sim.alive(chain.id) and sim.get(chain.id, "chain")
+    return not state or chain.current().kind == "jump_ship"
+  end
   sim.on("scan", function()
     local body = sim.get(game.suit, "suit")
     if sim.tick < body.scan_at or not chain.on_foot() then return end
@@ -282,11 +286,12 @@ end
 function game.tick()
   local dt = sim.dt
   local suit = sim.get(game.suit, "suit")
-  terrain.follow(game.ground_tile, game.world, universe.ground(), suit.x, suit.z)
+  local at = chain.suit_out() and suit or chain.current() -- the ground streams in where the Commander is
+  terrain.follow(game.ground_tile, game.world, universe.ground(), at.x, at.z)
   local u = universe.state()
   dig.tick(game.world, u.seed .. "/" .. u.place)
   chain.tick(u.seed .. "/" .. u.place)
-  for _, b in sim.each("suit") do
+  for _, b in sim.each(chain.suit_out() and "suit" or "suit_away") do -- the suit waits where it was left
     local dx, dz = b.wx - b.vx, b.wz - b.vz
     local d = math.sqrt(dx * dx + dz * dz)
     local step = ACCEL * dt
@@ -393,7 +398,9 @@ function game.draw(alpha, dt)
     share = fk.gfx.settings().max_particles / 12000 }) or nil
   game.daylight = dig.daylight(game.world, { body.x, body.y + 3.2, body.z })
   draw_stage(pdt)
-  local model, speed, head = draw_suit(body, alpha, pdt)
+  local model, speed, head
+  if chain.suit_out() then model, speed, head = draw_suit(body, alpha, pdt)
+  else model, speed, head = mat4.translation(body.x, body.y, body.z), 0, mat4.identity() end
   local w, h = fk.gfx.size()
   local view, projection
   if game.view == "drone" then

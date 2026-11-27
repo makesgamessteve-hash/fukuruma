@@ -67,6 +67,12 @@ local function distance(a, b)
   return math.sqrt(dx * dx + dy * dy + dz * dz)
 end
 
+-- Is doll d in the star system the range is in? Only the Jump Ship leaves a system; what it deployed stays there.
+local function here(d)
+  return d.system == nil or d.system == require("universe").state().seed
+end
+chain.here = here
+
 local function near(a, b)
   return distance(a, b) <= math.max(dolls.by_id[a.kind].size_m, dolls.by_id[b.kind].size_m) * chain.REACH
 end
@@ -75,6 +81,7 @@ end
 -- parent or child: in orbit both (their hangars), or on and over the ground both and near. Between orbit and the
 -- ground only a Drop Ship goes.
 local function linked(a, b)
+  if not here(a) or not here(b) then return false end
   if a.kind == "drop_ship" or b.kind == "drop_ship" then return near(a, b) end
   if b.parent ~= a.id and a.parent ~= b.id then return false end
   local ao, bo = dolls.by_id[a.kind].place == "orbit", dolls.by_id[b.kind].place == "orbit"
@@ -90,6 +97,11 @@ chain.TELEPORT = { jump_ship = true, space_station = true } -- the teleport netw
 local function solid(d)
   local def = dolls.by_id[d.kind]
   if d.kind == "exosuit" or def.place ~= "ground" or not chain.world then return end
+  if not here(d) then -- left behind in another system: not in this world's physics
+    for _, id in ipairs(d.bodies or {}) do chain.world:remove(id) end
+    d.bodies = nil
+    return
+  end
   local feet = hull.feet(def.hull, def.size_m)
   local c, s = fk.math.cos(d.yaw or 0), fk.math.sin(d.yaw or 0)
   d.bodies = d.bodies or {}
@@ -117,7 +129,8 @@ function chain.install(suit, move_suit, world)
     local h = holds(s[1])
     local nxt = chain.START[i + 1]
     if nxt then h[nxt[1]] = h[nxt[1]] - 1 end -- the next one down is out
-    list[i] = { id = i, kind = s[1], parent = parent, x = x, y = y, z = z, yaw = 0, speed = 0, stride = 0, hold = h }
+    list[i] = { id = i, kind = s[1], parent = parent, x = x, y = y, z = z, yaw = 0, speed = 0, stride = 0, hold = h,
+      system = require("universe").state().seed }
     parent = i
   end
   sim.set(chain.id, "chain", { dolls = list, at = #list, next = #list + 1 })
@@ -132,7 +145,7 @@ function chain.install(suit, move_suit, world)
     if dolls.by_id[kind].place == "ground" then x, y, z = place(kind, x, o[2], z) end
     c.hold[kind] = c.hold[kind] - 1
     local d = { id = s.next, kind = kind, parent = c.id, x = x, y = y, z = z, yaw = c.yaw or 0, speed = 0, stride = 0,
-      hold = holds(kind) }
+      hold = holds(kind), system = c.system }
     s.next = s.next + 1
     s.dolls[#s.dolls + 1] = d
     if kind == "exosuit" then move_suit(x, y, z) end
@@ -183,16 +196,24 @@ end
 -- What the player's buttons aim at (presentation; the commands check again): the parent doll; the nearest child out
 -- in the world; the first kind (by name) the current doll holds docked, Drop Ships last.
 function chain.up()
-  local c = chain.current()
-  return c.parent
+  local p = chain.current().parent
+  return p and here(chain.find(p)) and p or nil
 end
 
 function chain.down()
   local c, best, id = chain.current(), math.huge, nil
   for _, d in ipairs(chain.state().dolls) do
-    if d.parent == c.id and distance(c, d) < best then best, id = distance(c, d), d.id end
+    if d.parent == c.id and here(d) and distance(c, d) < best then best, id = distance(c, d), d.id end
   end
   return id
+end
+
+-- Is the suit out in this system (an Exosuit deployed here)? Otherwise it is neither simulated nor drawn.
+function chain.suit_out()
+  for _, d in ipairs(chain.state().dolls) do
+    if d.kind == "exosuit" and here(d) then return true end
+  end
+  return false
 end
 
 -- The teleport button's target: from the Jump Ship the first station, from a station the Jump Ship (or nil).
@@ -200,7 +221,7 @@ function chain.teleport_target()
   local c = chain.current()
   if not chain.TELEPORT[c.kind] then return nil end
   for _, d in ipairs(chain.state().dolls) do
-    if d ~= c and chain.TELEPORT[d.kind] and (c.kind ~= d.kind) then return d.id end
+    if d ~= c and here(d) and chain.TELEPORT[d.kind] and (c.kind ~= d.kind) then return d.id end
   end
 end
 
@@ -212,7 +233,7 @@ function chain.autopilot_target()
   local high = c.y - chain.ground(c.x, c.z) > 50000
   local best, id = math.huge, nil
   for _, d in ipairs(chain.state().dolls) do
-    local fits = high and d.kind == "continental_explorer" or not high and dolls.by_id[d.kind].place == "orbit"
+    local fits = here(d) and (high and d.kind == "continental_explorer" or not high and dolls.by_id[d.kind].place == "orbit")
     if fits and distance(c, d) < best then best, id = distance(c, d), d.id end
   end
   return id
@@ -250,7 +271,7 @@ function chain.screens()
   for _, k in ipairs(kinds) do hold[#hold + 1] = label(k) .. " " .. c.hold[k] end
   if #hold == 1 then hold[2] = "EMPTY" end
   for _, d in ipairs(s.dolls) do
-    if d.parent == c.id or d.id == c.parent then out[#out + 1] = label(d.kind) .. " " .. metres(distance(c, d)) end
+    if here(d) and (d.parent == c.id or d.id == c.parent) then out[#out + 1] = label(d.kind) .. " " .. metres(distance(c, d)) end
   end
   if #out == 1 then out[2] = "NONE" end
   local target = c.auto and chain.find(c.auto)
@@ -339,6 +360,8 @@ end
 function chain.tick(world_key)
   local s, state = chain.suit(), chain.state()
   local current = chain.current()
+  local moved_on = state.world ~= world_key and state.world ~= nil
+  if moved_on and current.kind == "jump_ship" then current.system = require("universe").state().seed end -- it jumped
   steer(current, sim.dt)
   for _, d in ipairs(state.dolls) do -- dolls on autopilot go on without the Commander
     if d ~= current and d.auto then steer(d, sim.dt) end
@@ -346,8 +369,8 @@ function chain.tick(world_key)
   local moved = state.world ~= world_key
   state.world = world_key
   for _, d in ipairs(state.dolls) do
-    if d.kind == "exosuit" then d.x, d.y, d.z = s.x, s.y, s.z
-    elseif moved and dolls.by_id[d.kind].place == "ground" then d.y = chain.ground(d.x, d.z) end
+    if d.kind == "exosuit" and here(d) then d.x, d.y, d.z = s.x, s.y, s.z
+    elseif moved and here(d) and dolls.by_id[d.kind].place == "ground" then d.y = chain.ground(d.x, d.z) end
     solid(d)
   end
 end
@@ -421,7 +444,7 @@ function chain.draw(state, eye, now)
   local n = 0
   for _, real in ipairs(chain.state().dolls) do
     local d = shown(state, real, now)
-    if real.kind ~= "exosuit" then
+    if real.kind ~= "exosuit" and here(real) then
       local def = dolls.by_id[real.kind]
       state.meshes[real.kind] = state.meshes[real.kind] or fk.gfx.mesh(hull.build(def.hull, def.size_m))
       local dx, dy, dz = d.x - eye[1], d.y - eye[2], d.z - eye[3]

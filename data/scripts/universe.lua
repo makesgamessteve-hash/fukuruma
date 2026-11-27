@@ -69,6 +69,7 @@ function universe.install(on_gravity)
   universe.on_gravity = on_gravity
   on_gravity(universe.gravity(sys.bodies[place]))
   sim.on("jump", function(args)
+    if universe.can_jump and not universe.can_jump() then return end -- only from the Jump Ship's bridge (main.lua)
     local u = sim.get(universe.id, "universe")
     local from, to = universe.star(u.sector, u.seed), universe.star(args.sector, args.seed)
     if not to or galaxy.distance(from.position, to.position) > universe.RANGE or to.seed == u.seed then return end

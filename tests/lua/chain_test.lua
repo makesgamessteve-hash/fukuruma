@@ -234,6 +234,34 @@ return {
     step()
     assert(not pcall(game.world.get, game.world, ids[1]), "recalled: its legs are gone")
   end,
+  ["the jump drive is on the Jump Ship's bridge, and the chain stays behind in its system"] = function()
+    start()
+    local universe = require("universe")
+    local galaxy = require("fk.galaxy")
+    local home, sector, target = universe.state().seed, universe.state().sector, nil
+    for _, s in ipairs(galaxy.near(universe.view().star.position, universe.RANGE)) do
+      if s.seed ~= home then target = s break end
+    end
+    sim.send("jump", { sector = target.sector, seed = target.seed })
+    step()
+    assert(universe.state().seed == home, "no jump from the Exosuit")
+    local ship = find("jump_ship")
+    chain.state().at = ship.id -- (the way up is tested above)
+    sim.send("jump", { sector = target.sector, seed = target.seed })
+    step(2)
+    assert(universe.state().seed == target.seed and ship.system == target.seed, "the Jump Ship jumps")
+    local walker = find("walker")
+    assert(not chain.here(walker) and walker.bodies == nil and not chain.suit_out(), "the rest stays behind")
+    assert(chain.teleport_target() == nil and chain.down() == nil and chain.draw({}, { 0, 0, 0 }) == 1)
+    assert(chain.next_kind() == "space_station", "one station is still in the hold")
+    sim.send("deploy", { kind = "space_station" })
+    step()
+    local station = chain.state().dolls[#chain.state().dolls]
+    assert(station.system == target.seed and chain.here(station) and chain.teleport_target() == station.id)
+    sim.send("jump", { sector = sector, seed = home })
+    step(2)
+    assert(chain.here(walker) and chain.suit_out() and walker.bodies, "back home: the chain is there again")
+  end,
   ["the chain is saved and drawn"] = function()
     start()
     sim.send("board", { id = find("walker").id })
