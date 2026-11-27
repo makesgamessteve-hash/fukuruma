@@ -40,6 +40,9 @@ UTEST(jobs, time_sliced_without_workers) {
     EXPECT_TRUE(fk_jobs_done(ids[0]));
     fk_jobs_wait(ids[50]); /* runs the queue up to it */
     EXPECT_TRUE(fk_jobs_done(ids[50]));
+    fk_jobs_run(3); /* exactly three more, in order */
+    EXPECT_TRUE(fk_jobs_done(ids[53]));
+    EXPECT_FALSE(fk_jobs_done(ids[54]));
     fk_jobs_update(UINT64_MAX);
     for (int i = 0; i < 100; i++) ASSERT_EQ(values[i], expected(i));
     fk_jobs_stop();

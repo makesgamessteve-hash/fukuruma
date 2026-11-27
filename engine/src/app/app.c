@@ -6,6 +6,8 @@
 
 #include "app/cli.h"
 #include "app/golden.h"
+
+#define FK_SCENARIO_JOBS 8 /* background jobs run per frame in test scenarios */
 #include "assets/vfs.h"
 #include "assets/watch.h"
 #include "audio/mixer.h"
@@ -291,7 +293,8 @@ fk_status fk_app_init(int argc, char **argv, const char *base) {
     app.game_ref = app.step_ref = app.co_ref = LUA_NOREF;
     if (!fk_cli_parse(argc, argv, &app.opt)) return finish(1);
     fk_vfs_init(base);
-    app.workers = fk_jobs_start(-1);
+    /* scenarios: no workers, a fixed number of jobs per frame (below), so what is ready when is the same everywhere */
+    app.workers = fk_jobs_start(app.opt.scenario ? 0 : -1);
     bool render = !app.opt.no_render && !app.opt.test_dir;
     app.L = fk_script_open(render, app.opt.seed, app.opt.coverage);
     if (app.opt.test_dir) return finish(fk_run_tests(app.L, app.opt.test_dir, app.opt.coverage) ? 0 : 1);
@@ -365,7 +368,8 @@ fk_status fk_app_iterate(void) {
         return FK_RUNNING;
     }
     fk_script_frame_begin(app.L);
-    if (!app.workers) fk_jobs_update(2000000); /* no worker threads (the web): 2 ms of background work per frame */
+    if (app.opt.scenario) fk_jobs_run(FK_SCENARIO_JOBS);
+    else if (!app.workers) fk_jobs_update(2000000); /* no worker threads (the web): 2 ms of background work per frame */
     if (!call_game("input", -1, -1)) return fail();
     for (int i = 0; i < ticks; i++)
         if (!sim_step()) return fail();

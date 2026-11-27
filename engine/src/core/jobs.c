@@ -145,15 +145,20 @@ void fk_jobs_wait(uint32_t id) {
     fk_platform_unlock(J.lock);
 }
 
+static bool run_one(void) {
+    fk_platform_lock(J.lock);
+    job j;
+    bool got = take(&j);
+    fk_platform_unlock(J.lock);
+    if (got) run(&j);
+    return got;
+}
+
 void fk_jobs_update(uint64_t budget_ns) {
     uint64_t start = fk_platform_ticks_ns();
-    for (;;) {
-        fk_platform_lock(J.lock);
-        job j;
-        bool got = take(&j);
-        fk_platform_unlock(J.lock);
-        if (!got) return;
-        run(&j);
-        if (fk_platform_ticks_ns() - start >= budget_ns) return;
-    }
+    while (run_one() && fk_platform_ticks_ns() - start < budget_ns) {}
+}
+
+void fk_jobs_run(int count) {
+    for (int i = 0; i < count && run_one(); i++) {}
 }

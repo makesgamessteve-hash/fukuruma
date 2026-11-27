@@ -18,3 +18,6 @@ bool fk_jobs_done(uint32_t job);
 void fk_jobs_wait(uint32_t job);
 /* Runs queued jobs on this thread for up to budget_ns (the web's time slice; harmless with workers). */
 void fk_jobs_update(uint64_t budget_ns);
+/* Runs up to count queued jobs on this thread: a fixed amount of background work per frame, the same on every
+   machine (test scenarios, whose pictures must not depend on the machine's speed). */
+void fk_jobs_run(int count);
