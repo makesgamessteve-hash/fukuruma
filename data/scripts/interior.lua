@@ -25,7 +25,8 @@ end
 
 -- The layout of a doll kind: {free = {rects}, doors = {rects}, fixtures = {{kind, x, z, ...}}, rooms = {{name, x0,
 -- z0, x1, z1}}, spawn = {x, z}}. Fixtures: seat (the controls), ramp (into a docked doll of kind), exit (out of a
--- docked doll), suit (the suit bay), clone (the clone bay).
+-- docked doll), suit (the suit bay), clone (the clone bay), tram (a stop of the tram along the hangars: from the
+-- corridor to each hangar's ramp in turn and back).
 function interior.layout(kind)
   if layouts[kind] then return layouts[kind] end
   local def = dolls.by_id[kind]
@@ -78,9 +79,12 @@ function interior.layout(kind)
     rooms[#rooms + 1] = { name = "hangar " .. k, x0 = -s / 2, z0 = z - 3 - s, x1 = s / 2, z1 = z - 3, docked = k,
       open = { z1 = { { -1.5, 1.5 } } } }
     if z == 0 then corridor.open.z0 = { { -1.5, 1.5 } } end
-    fixtures[#fixtures + 1] = { "ramp", 0, z - 8, kind = k }
+    local near = z - 3 - s / 2 + dolls.by_id[k].size_m / 2 + 4 -- at the near end of the docked doll (drawn at the centre)
+    fixtures[#fixtures + 1] = { "ramp", 0, near, kind = k }
+    fixtures[#fixtures + 1] = { "tram", -4, near, stop = dolls.by_id[k].name .. " hangar" } -- (out of the ramp's reach)
     z = z - 3 - s
   end
+  if #kinds > 0 then table.insert(fixtures, #fixtures - #kinds * 2 + 1, { "tram", 0, 0.4, stop = "corridor" }) end
   fixtures[#fixtures + 1] = { "exit", 0, 1 } -- (only in a docked doll: down its ramp into the parent's hangar)
   local layout = { free = free, doors = doors, fixtures = fixtures, rooms = rooms, spawn = { 0, 2 },
     seat = { 0, seat_z }, length = seat_z + front - z }
@@ -107,6 +111,18 @@ function interior.move(layout, w, dx, dz, open)
   if interior.free(layout, w.x + dx, w.z + dz, open) then w.x, w.z = w.x + dx, w.z + dz return end
   if interior.free(layout, w.x + dx, w.z, open) then w.x = w.x + dx end
   if interior.free(layout, w.x, w.z + dz, open) then w.z = w.z + dz end
+end
+
+-- The tram stop after stop f (fixtures in order, wrapping round).
+function interior.next_stop(layout, f)
+  local stops, at = {}, 1
+  for _, s in ipairs(layout.fixtures) do
+    if s[1] == "tram" then
+      stops[#stops + 1] = s
+      if s == f then at = #stops end
+    end
+  end
+  return stops[at % #stops + 1]
 end
 
 -- The fixture or door within reach of (x, z), the nearest: {kind, ...} or {"door", name = ...}, or nil.

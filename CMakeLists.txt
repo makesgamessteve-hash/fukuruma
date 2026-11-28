@@ -170,6 +170,7 @@ add_test(NAME game_chain COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/
 add_test(NAME game_drive COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/drive.lua)
 add_test(NAME game_travel COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/travel.lua)
 add_test(NAME game_interiors COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/interiors.lua)
+add_test(NAME game_hangars COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/hangars.lua)
 add_test(NAME game_fukuruma COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/fukuruma.lua)
 add_test(NAME game_chain_views COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/chain_views.lua)
 add_test(NAME game_touch_layout COMMAND fukuruma --headless --scenario ${FK_SRC}/tests/game/touch_layout.lua)
@@ -189,10 +190,10 @@ set_tests_properties(unit_c unit_lua game_boot_norender data_missing data_other_
   game_systems_norender game_navigation_norender PROPERTIES LABELS unit)
 set_tests_properties(game_tick_error_headless game_bad_shader game_boot game_boot_reproducible game_input
   game_showcase_lighting game_showcase_materials game_showcase_skinning game_feel game_graphics_menu game_first_person
-  game_scale_ladder game_physics game_navigation game_planets game_stars game_descent game_terrain_materials game_dig game_clouds game_water game_weather game_rivers game_chain game_drive game_travel game_fukuruma game_chain_views game_touch_layout game_stereo game_interiors PROPERTIES LABELS game)
+  game_scale_ladder game_physics game_navigation game_planets game_stars game_descent game_terrain_materials game_dig game_clouds game_water game_weather game_rivers game_chain game_drive game_travel game_fukuruma game_chain_views game_touch_layout game_stereo game_interiors game_hangars PROPERTIES LABELS game)
 get_property(FK_ALL_TESTS DIRECTORY PROPERTY TESTS)
 set_tests_properties(${FK_ALL_TESTS} PROPERTIES TIMEOUT 60) # a hanging test fails fast instead of blocking CI
-set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation game_terrain_materials game_dig game_clouds game_water game_weather game_rivers game_chain game_drive game_travel game_fukuruma game_chain_views game_touch_layout game_stereo game_interiors PROPERTIES TIMEOUT 300)
+set_tests_properties(unit_c unit_lua game_planets game_descent game_navigation game_terrain_materials game_dig game_clouds game_water game_weather game_rivers game_chain game_drive game_travel game_fukuruma game_chain_views game_touch_layout game_stereo game_interiors game_hangars PROPERTIES TIMEOUT 300)
 # The sandbox scenes draw the world's ground (software rendering, instrumented builds): slower than the rest.
 set_tests_properties(game_boot game_boot_reproducible game_input game_feel game_first_person game_showcase_lighting
   game_physics game_graphics_menu PROPERTIES TIMEOUT 300) # planet chunks are slow in unoptimised coverage builds
@@ -201,7 +202,7 @@ set_tests_properties(game_terrain_materials PROPERTIES TIMEOUT 900) # the heavie
 # ctest -LE slow is the quick set.
 set_property(TEST game_terrain_materials game_dig game_weather game_navigation game_descent game_rivers game_physics
   game_boot_reproducible game_showcase_lighting game_graphics_menu game_feel game_water game_first_person game_clouds
-  game_drive
+  game_drive game_interiors game_hangars
   APPEND PROPERTY LABELS slow)
 
 if(FK_COVERAGE)

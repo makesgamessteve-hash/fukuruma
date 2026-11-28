@@ -126,6 +126,35 @@ return {
     use()
     assert(chain.walking().x == 0, "and the hand does nothing")
   end,
+  ["the tram runs from the corridor along the hangars and back"] = function()
+    start()
+    local ship = find("jump_ship")
+    chain.state().at = ship.id
+    use()
+    local l = interior.layout("jump_ship")
+    local stops = {}
+    for _, f in ipairs(l.fixtures) do
+      if f[1] == "tram" then stops[#stops + 1] = f end
+    end
+    assert(#stops == 3 and stops[1].stop == "corridor" and interior.next_stop(l, stops[3]) == stops[1])
+    local w = chain.walking()
+    w.x, w.z = stops[1][2], stops[1][3] + 1
+    assert(chain.use_hint() == "TRAM TO THE DROP SHIP HANGAR")
+    for i = 2, 3 do
+      use()
+      assert(w.ride and chain.use_hint() == nil or chain.use_hint() == "ON THE TRAM")
+      for _ = 1, 60 * chain.TRAM + 10 do
+        step()
+        if not w.ride then break end
+      end
+      assert(not w.ride and w.x == stops[i][2] and w.z == stops[i][3] + 1.5, "off at stop " .. i)
+    end
+    local ride = { 0, 0, 0 }
+    w.ride = ride
+    assert(chain.use_hint() == "ON THE TRAM")
+    use()
+    assert(w.ride == ride, "the hand does nothing on the tram")
+  end,
   ["up a ramp into a docked doll, down again, and out at its controls"] = function()
     start()
     local ship = find("jump_ship")

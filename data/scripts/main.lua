@@ -460,7 +460,7 @@ function game.draw(alpha, dt)
   game.now = g and weather.present(game.weather, { seed = v.seed, desc = g.desc, air = v.air, t = sim.tick * sim.dt,
     cold = site and (site.temperature or 288) < 268, dt = pdt, eye = { body.x, body.y + 3, body.z }, wind = { 0.8, 0.35 },
     share = fk.gfx.settings().max_particles / 12000 }) or nil
-  game.daylight = chain.walking() and 0.4 or dig.daylight(game.world, { body.x, body.y + 3.2, body.z })
+  game.daylight = chain.walking() and 0.8 or dig.daylight(game.world, { body.x, body.y + 3.2, body.z })
   draw_stage(pdt)
   local model, speed, head
   if chain.suit_out() then model, speed, head = draw_suit(body, alpha, pdt)
@@ -532,7 +532,12 @@ function game.draw(alpha, dt)
     game.interior_meshes = game.interior_meshes or {}
     game.interior_meshes[key] = game.interior_meshes[key]
       or fk.gfx.mesh(interior.mesh(layout, function(name) return not open(name) end))
-    if walk then fk.gfx.draw(game.interior_meshes[key], chain.frame_matrix(frame), { roughness = 0.7, metalness = 0.2, indoor = true }) end
+    if walk then -- (kilometre-long hangars reach on into the planetary slice)
+      if layout.length > 400 then fk.gfx.slices({ planetary = { frames.LOCAL_FAR, frames.PLANETARY[2] } }) end -- (no gap from orbit)
+      for _, slice in ipairs(layout.length > 400 and { "local", "planetary" } or { "local" }) do
+        fk.gfx.draw(game.interior_meshes[key], chain.frame_matrix(frame), { roughness = 0.7, metalness = 0.2, indoor = true, slice = slice })
+      end
+    end
     game.cockpit_eye = chain.frame_point(frame, layout.seat[1], cockpit.EYE, layout.seat[2])
     game.cockpit_yaw = frame.yaw
     game.cockpit_now = cockpit.draw(game.cockpits, dolls.by_id[kind], game.cockpit_eye, frame.yaw, walk ~= nil)
@@ -548,14 +553,33 @@ function game.draw(alpha, dt)
           game.docked_meshes = game.docked_meshes or {}
           game.docked_meshes[r.docked] = game.docked_meshes[r.docked] or fk.gfx.mesh(hull.build(def.hull, def.size_m))
           local at = chain.frame_point(frame, 0, 0, cz)
-          fk.gfx.draw(game.docked_meshes[r.docked], chain.frame_matrix({ x = at[1], y = at[2], z = at[3], yaw = frame.yaw }),
-            { roughness = def.roughness or 0.6, metalness = def.metalness or 0, indoor = true })
+          for _, slice in ipairs(def.size_m > 200 and { "local", "planetary" } or { "local" }) do
+            fk.gfx.draw(game.docked_meshes[r.docked], chain.frame_matrix({ x = at[1], y = at[2], z = at[3], yaw = frame.yaw }),
+              { roughness = def.roughness or 0.6, metalness = def.metalness or 0, indoor = true, slice = slice })
+          end
+        end
+      end
+      -- ambient drones (presentation): two in each drone bay and hangar, circling with a blinking light
+      game.drone_mesh = game.drone_mesh or fk.gfx.mesh(hull.build({
+        { "box", at = { 0, 0, 0 }, size = { 0.5, 0.18, 0.5 }, color = { 0.3, 0.32, 0.35 } },
+        { "box", at = { 0.3, 0.05, 0 }, size = { 0.2, 0.04, 0.2 }, color = { 0.2, 0.2, 0.22 }, mirror = true } }, 1))
+      for i, r in ipairs(layout.rooms) do
+        if r.name == "drone bay" or r.docked then
+          local cx, cz, span = (r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2, math.min(3.5, (r.x1 - r.x0) * 0.3)
+          for k = 0, 1 do
+            local a = feel.time * (0.5 + 0.2 * k) + i + k * math.pi
+            local p = chain.frame_point(frame, cx + math.cos(a) * span, 2.2 + 0.4 * k + math.sin(a * 3) * 0.15,
+              (r.docked and r.z1 - 12 or cz) + math.sin(a) * span)
+            local blink = math.floor(feel.time * 2 + k) % 2 == 0 and 2 or 0
+            fk.gfx.draw(game.drone_mesh, mat4.translation(p[1], p[2], p[3]),
+              { roughness = 0.4, metalness = 0.6, indoor = true, emission = { blink, blink * 0.2, blink * 0.1 } })
+          end
         end
       end
       table.sort(lights, function(a, b) return a[2] < b[2] end)
       for i = 1, math.min(5, #lights) do
         local l = lights[i]
-        fk.gfx.light({ position = l[1], color = l[3], intensity = l[4] and l[4] * 0.6 or 6, radius = l[4] or 12 })
+        fk.gfx.light({ position = l[1], color = l[3], intensity = l[4] and l[4] * l[4] * 0.15 or 6, radius = l[4] and l[4] * 1.5 or 12 })
       end
     end
   end

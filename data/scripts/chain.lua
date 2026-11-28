@@ -460,8 +460,18 @@ function chain.walk_input(x, z)
   if w then w.wx, w.wz = x * chain.WALK, z * chain.WALK end
 end
 
+chain.TRAM = 12 -- seconds a tram ride takes at most (speed: at least 40 m/s)
+
 local function walk_tick(dt)
   local w = chain.state().walk
+  if w and w.ride then -- on the tram: carried to the stop, the walk held
+    local dx, dz = w.ride[1] - w.x, w.ride[2] - w.z
+    local left = math.sqrt(dx * dx + dz * dz)
+    local step = math.max(40, w.ride[3] / chain.TRAM) * dt
+    if left <= step then w.x, w.z, w.ride = w.ride[1], w.ride[2] + 1.5, nil -- (off the tram, beside its stop)
+    else w.x, w.z = w.x + dx / left * step, w.z + dz / left * step end
+    return
+  end
   if not w or not w.wx then return end
   local kind = chain.walk_kind(w)
   interior.move(interior.layout(kind), w, w.wx * dt, w.wz * dt, door_open(kind))
@@ -521,6 +531,7 @@ function chain.use_hint()
   elseif f[1] == "ramp" then return (d.hold[f.kind] or 0) > 0 and ("BOARD THE " .. label(f.kind)) or nil
   elseif f[1] == "exit" then return "DOWN THE RAMP"
   elseif f[1] == "suit" then return (d.hold.exosuit or 0) > 0 and "SUIT UP AND GO OUT" or nil
+  elseif f[1] == "tram" then return w.ride and "ON THE TRAM" or ("TRAM TO THE " .. interior.next_stop(interior.layout(kind), f).stop:upper())
   end
 end
 
@@ -572,6 +583,10 @@ function chain.use()
   elseif f[1] == "exit" and w.docked then
     local ramp = fixture(interior.layout(d.kind), "ramp", w.docked)
     s.walk = { doll = d.id, x = ramp[2], z = ramp[3] + 1.5 }
+  elseif f[1] == "tram" and not w.ride then -- on to the next stop (interior-transit: the hangars are kilometres long)
+    local to = interior.next_stop(layout, f)
+    w.ride = { to[2], to[3], math.sqrt((to[2] - w.x) ^ 2 + (to[3] - w.z) ^ 2) }
+    sim.emit("tram", { position = { d.x, d.y, d.z }, strength = 0.4 })
   elseif f[1] == "suit" and not w.docked then -- the Exosuit goes on: out beside the doll, on foot
     local exo = chain.deploy_from(d, "exosuit")
     if exo then s.at, s.walk = exo.id, nil end
