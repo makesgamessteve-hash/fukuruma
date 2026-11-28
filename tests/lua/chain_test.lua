@@ -55,6 +55,48 @@ return {
     assert(a.positions[7] == b.positions[7], "greebles come from their seed")
     fails(function() hull.build({ { "blob" } }, 1) end, "unknown kind 'blob'")
   end,
+  ["every part kind is closed: no gaps"] = function()
+    local function closed(parts, what)
+      local mesh = hull.build(parts, 10)
+      local edges, key = {}, function(i)
+        local p = mesh.positions
+        local function r(v) return math.floor(v * 1e4 + 0.5) end -- (rounded: -0.0 and 0.0 are one point)
+        return r(p[i * 3 + 1]) .. "," .. r(p[i * 3 + 2]) .. "," .. r(p[i * 3 + 3])
+      end
+      for t = 0, #mesh.positions // 9 - 1 do
+        for e = 0, 2 do
+          local a, b = key(t * 3 + e), key(t * 3 + (e + 1) % 3)
+          if a ~= b then
+            local k = a < b and a .. "|" .. b or b .. "|" .. a
+            edges[k] = (edges[k] or 0) + 1
+          end
+        end
+      end
+      for k, n in pairs(edges) do assert(n % 2 == 0, what .. ": an open edge " .. k) end
+      return mesh
+    end
+    local c = { 1, 1, 1 }
+    closed({ { "box", at = { 0, 1, 0 }, size = { 1, 2, 3 }, color = c } }, "box")
+    closed({ { "taper", at = { 0, 1, 0 }, size = { 1, 1, 2 }, top = { 0.5, 1 }, shift = { 0.2, 0.3 }, color = c } }, "taper")
+    closed({ { "strut", from = { 0, 0, 0 }, to = { 1, 2, 0.5 }, size = { 0.2, 0.3 }, color = c } }, "strut")
+    closed({ { "strut", from = { 0, 0, 0 }, to = { 0, 2, 0 }, size = { 0.2, 0.2 }, color = c } }, "a vertical strut")
+    closed({ { "ball", at = { 0, 1, 0 }, r = 0.5, color = c } }, "ball")
+    closed({ { "lathe", at = { 0, 1, 0 }, stations = { { -1, 0.3 }, { 0, 0.5 }, { 1, 0.2 } }, color = c } }, "a capped lathe")
+    closed({ { "lathe", axis = "y", at = { 0, 1, 0 }, stations = { { -1, 0.3 }, { 1, 0.2 } }, color = c } }, "a capped lathe on y")
+    closed({ { "lathe", axis = "x", at = { 0, 1, 0 }, stations = { { -1, 0.3 }, { 1, 0.2 } }, color = c } }, "a capped lathe on x")
+    closed({ { "torus", at = { 0, 1, 0 }, r = 1, tube = 0.2, color = c } }, "torus")
+    closed({ { "box", at = { 1, 1, 0 }, size = { 1, 1, 1 }, mirror = true, array = { 3, { 0, 0, 2 } }, color = c } }, "mirrored arrays")
+    local glow = hull.build({ { "box", at = { 0, 0, 0 }, size = { 1, 1, 1 }, glow = true, color = c }, { "box", at = { 2, 0, 0 },
+      size = { 1, 1, 1 }, color = c } }, 1, "glow")
+    assert(#glow.indices == 36, "only the lights")
+    for _, d in ipairs(dolls.list) do
+      local hulls = {}
+      for _, p in ipairs(d.hull) do
+        if p[1] ~= "greebles" then hulls[#hulls + 1] = p end
+      end
+      closed(hulls, d.id) -- every doll's parts are closed
+    end
+  end,
   ["a new game: the chain stands out, the Commander on foot in the Exosuit"] = function()
     start()
     local s = chain.state()

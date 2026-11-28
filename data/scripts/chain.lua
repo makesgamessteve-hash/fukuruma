@@ -706,20 +706,33 @@ end
 -- their distance from the eye needs; a newly deployed one eases out of its parent (now: presentation time).
 function chain.draw(state, eye, now)
   state.meshes, state.emerging, now = state.meshes or {}, state.emerging or {}, now or 0
-  local n, walk = 0, chain.state().walk
+  local n, walk, nearest = 0, chain.state().walk, math.huge
   for _, real in ipairs(chain.state().dolls) do
     local d = shown(state, real, now)
     if real.kind ~= "exosuit" and here(real) and not (walk and walk.doll == real.id) then -- (inside it: its rooms instead)
       local def = dolls.by_id[real.kind]
       state.meshes[real.kind] = state.meshes[real.kind] or fk.gfx.mesh(hull.build(def.hull, def.size_m))
+      state.lights = state.lights or {}
+      if state.lights[real.kind] == nil then -- its lights (windows, engines, beacons): a second mesh, glowing
+        local m = hull.build(def.hull, def.size_m, "glow")
+        state.lights[real.kind] = #m.indices > 0 and fk.gfx.mesh(m) or false
+      end
       local dx, dy, dz = d.x - eye[1], d.y - eye[2], d.z - eye[3]
       local far = math.sqrt(dx * dx + dy * dy + dz * dz)
       -- the local slice reaches 400 m: a doll goes there only if all of it is nearer
       local slice = far + def.size_m * 0.75 < 400 and "local" or far < 2e7 and "planetary" or "celestial"
-      fk.gfx.draw(state.meshes[real.kind], chain.matrix(d, -0.05),
-        { roughness = def.roughness or 0.6, metalness = def.metalness or 0, slice = slice })
+      if slice == "planetary" then nearest = math.min(nearest, far - def.size_m * 0.75) end
+      local m = chain.matrix(d, -0.05)
+      fk.gfx.draw(state.meshes[real.kind], m, { roughness = def.roughness or 0.6, metalness = def.metalness or 0, slice = slice })
+      if state.lights[real.kind] then
+        fk.gfx.draw(state.lights[real.kind], m, { roughness = 0.3, emission = { 2.5, 2.5, 2.5 }, emissive_colors = true, slice = slice })
+      end
       n = n + 1
     end
+  end
+  if nearest < math.huge then -- the planetary slice starts where the ground is (terrain.lua): pulled in to the nearest doll in it
+    local frames = require("fk.frames")
+    fk.gfx.slices({ planetary = { math.max(frames.LOCAL_FAR, nearest * 0.5), frames.PLANETARY[2] } })
   end
   state.started = true -- dolls that appear from now on were deployed
   return n

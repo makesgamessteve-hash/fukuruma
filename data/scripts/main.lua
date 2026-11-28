@@ -650,9 +650,18 @@ function game.draw(alpha, dt)
           game.docked_meshes = game.docked_meshes or {}
           game.docked_meshes[r.docked] = game.docked_meshes[r.docked] or fk.gfx.mesh(hull.build(def.hull, def.size_m))
           local at = chain.frame_point(frame, 0, 0, cz)
+          game.docked_lights = game.docked_lights or {}
+          if game.docked_lights[r.docked] == nil then
+            local glow = hull.build(def.hull, def.size_m, "glow")
+            game.docked_lights[r.docked] = #glow.indices > 0 and fk.gfx.mesh(glow) or false
+          end
+          local m = chain.frame_matrix({ x = at[1], y = at[2], z = at[3], yaw = frame.yaw })
           for _, slice in ipairs(def.size_m > 200 and { "local", "planetary" } or { "local" }) do
-            fk.gfx.draw(game.docked_meshes[r.docked], chain.frame_matrix({ x = at[1], y = at[2], z = at[3], yaw = frame.yaw }),
+            fk.gfx.draw(game.docked_meshes[r.docked], m,
               { roughness = def.roughness or 0.6, metalness = def.metalness or 0, indoor = true, slice = slice })
+            if game.docked_lights[r.docked] then
+              fk.gfx.draw(game.docked_lights[r.docked], m, { emission = { 2.5, 2.5, 2.5 }, emissive_colors = true, indoor = true, slice = slice })
+            end
           end
         end
       end
