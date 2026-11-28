@@ -39,3 +39,30 @@ Commands that break these rules SHALL change nothing. Away from the Exosuit, the
 #### Scenario: The Exosuit in and out
 - **WHEN** from the Walker the Commander recalls the Exosuit and deploys it again
 - **THEN** the suit stands beside the Walker
+
+### Requirement: Watching the chain
+At a doll's controls, the survey drone SHALL circle that doll at a distance scaled to its size. The ship AI SHALL name
+each deploy, recall, boarding, teleport and autopilot event in a line of text. A deployed doll SHALL be seen easing
+out of its parent. Dolls SHALL be drawn at any distance.
+
+#### Scenario: From the Walker and the Land Explorer
+- **WHEN** the Commander boards the Walker, looks through the drone, then deploys a Walker from the Land Explorer
+- **THEN** the ship AI greets the Commander, the drone circles the Walker, the new Walker eases out of the Land
+  Explorer, and the views match the reference images
+
+### Requirement: Solid legs
+The legs of the dolls standing on the ground SHALL be solid to the suit and to other bodies. They SHALL move with
+their doll and be gone once it is recalled.
+
+#### Scenario: Walking into a Walker's leg
+- **WHEN** the suit walks straight at one of the Walker's legs
+- **THEN** it stops at the leg, and after a recalled Walker its legs are gone from the physics world
+
+### Requirement: The whole chain, down and back up
+The Commander SHALL be able to travel the whole chain in one run, in first person: up from the Exosuit to the Jump
+Ship, down again to a freshly deployed Exosuit and walk on, and back up with every new doll recalled into its parent's
+hold.
+
+#### Scenario: The Fukuruma test
+- **WHEN** the Fukuruma test runs from a new game
+- **THEN** every step succeeds, and the views on foot and back on the Jump Ship match the reference images
