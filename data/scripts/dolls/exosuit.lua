@@ -4,6 +4,7 @@ local HULL, DARK = { 0.85, 0.85, 0.82 }, { 0.3, 0.3, 0.32 }
 return {
   id = "exosuit", name = "Exosuit", size_m = 3.6, place = "ground", offset = { 40, 0, 30 },
   seat = { 0, 0.92, 0.05 }, roughness = 0.5, metalness = 0.3,
+  sensors = { range = 150, resolution = 0.01, kinds = { "thermal", "bio", "EM", "seismic", "chemical", "exotic" } },
   hull = {
     { "box", at = { 0.12, 0.24, 0 }, size = { 0.12, 0.48, 0.14 }, color = DARK, mirror = true },
     { "box", at = { 0, 0.66, 0 }, size = { 0.42, 0.36, 0.26 }, color = HULL },

@@ -37,6 +37,7 @@ local dig = require("dig")
 local chain = require("chain")
 local cockpit = require("dolls.cockpit")
 local interior = require("interior")
+local sensors = require("sensors")
 local hull = require("dolls.hull")
 local dolls = require("dolls")
 local ship_ai = require("ship_ai")
@@ -115,6 +116,7 @@ function game.init()
     game.world:set(s.body, { position = { x, y + SUIT_HEIGHT / 2 + 0.05, z }, velocity = { 0, 0, 0 } })
     s.x, s.y, s.z, s.vx, s.vy, s.vz = x, y, z, 0, 0, 0
   end, game.world)
+  sensors.install()
   sim.on("move", function(args) -- the wanted velocity and the direction the Commander looks (on foot only)
     local body = sim.get(game.suit, "suit")
     chain.walk_input(args.x, args.z) -- walking inside a doll: the human moves instead
@@ -128,13 +130,16 @@ function game.init()
   end
   sim.on("scan", function()
     local body = sim.get(game.suit, "suit")
-    if sim.tick < body.scan_at or not chain.on_foot() then return end
+    if sim.tick < body.scan_at or chain.walking() then return end -- (on foot or at a doll's controls)
     body.scan_at = sim.tick + SCAN_COOLDOWN
-    sim.emit("scan", { position = { body.x, 0, body.z } })
+    local d = chain.current()
+    sim.emit("scan", { position = chain.on_foot() and { body.x, 0, body.z } or { d.x, d.y, d.z } })
+    sensors.scan(d, true) -- the active ping (sensor-system spec)
   end)
   feel.listen(sim, { scan = feedback.scan, impact = feedback.impact, jump = feedback.jump, dig = feedback.dig,
     deploy = feedback.deploy, recall = feedback.recall, board = feedback.board, stomp = feedback.stomp,
-    teleport = feedback.teleport, autopilot = feedback.autopilot, arrived = feedback.arrived },
+    teleport = feedback.teleport, autopilot = feedback.autopilot, arrived = feedback.arrived, door = feedback.door,
+    tram = feedback.tram, alerted = feedback.alerted, hazard_stop = feedback.hazard_stop },
     function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
   game.ai, game.sway = {}, {}
@@ -336,6 +341,7 @@ function game.tick()
   local u = universe.state()
   dig.tick(game.world, u.seed .. "/" .. u.place)
   chain.tick(u.seed .. "/" .. u.place)
+  sensors.tick(u.seed .. "/" .. u.place)
   for _, b in sim.each(chain.suit_out() and "suit" or "suit_away") do -- the suit waits where it was left
     local dx, dz = b.wx - b.vx, b.wz - b.vz
     local d = math.sqrt(dx * dx + dz * dz)
@@ -603,6 +609,28 @@ function game.draw(alpha, dt)
   else
     hud.visor({ yaw = game.helmet.yaw, speed = speed, turn_rate = game.helmet.turn_rate, vignette = comfort.current.vignette,
       scan = math.max(0, math.min(1, 1 - (body.scan_at - sim.tick) / SCAN_COOLDOWN)) })
+  end
+  if game.view == "helmet" and not chain.walking() then -- scan data drawn where it is (augmented reality), ageing
+    local at = chain.current()
+    local reach, shown, listed = dolls.by_id[at.kind].sensors.range, {}, 0
+    for _, c in ipairs(sensors.contacts(at.x, at.z)) do -- the nearest within the doll's own range, none overlapping
+      if c.dist > reach or #shown >= 8 then break end
+      local x, y = cockpit.project({ c.x, chain.ground(c.x, c.z) + c.size * 0.5 + 1, c.z }, view, projection, w, h)
+      local text = "[" .. sensors.label(c) .. "]"
+      local free = x and x > 0 and x < w and y > 0 and y < h
+      for _, r in ipairs(shown) do
+        free = free and (math.abs(r[2] - y) >= 10 or math.abs(r[1] - x) >= (#text + r[3]) * 4)
+      end
+      local color = c.stale and { 0.4, 0.5, 0.55 } or { 0.3, 1, 0.9 }
+      if free then
+        shown[#shown + 1] = { x, y, #text }
+        fk.gfx.text(math.floor(x - #text * 4), math.floor(y), text, color)
+      end
+      if chain.on_foot() and listed < 3 then -- the visor's list: the nearest three
+        listed = listed + 1
+        fk.gfx.text(8, 40 + listed * 10, sensors.label(c), color)
+      end
+    end
   end
   local hint = game.view == "helmet" and chain.use_hint() -- what F does here
   if hint then

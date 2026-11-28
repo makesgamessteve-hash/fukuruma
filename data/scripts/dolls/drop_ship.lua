@@ -2,6 +2,7 @@
 local HULL, DARK, GLOW = { 0.78, 0.8, 0.84 }, { 0.3, 0.32, 0.36 }, { 0.5, 0.8, 1 }
 return {
   id = "drop_ship", name = "Drop Ship", size_m = 100, place = "sky", offset = { 300, 120, 0 },
+  sensors = { range = 2e5, resolution = 20, kinds = { "thermal", "EM", "seismic" } },
   seat = { 0, 0.12, 0.38 }, roughness = 0.4, metalness = 0.55,
   cockpit = { width = 6, height = 4.4, depth = 5, posts = 2, screens = 2, color = { 0.6, 0.62, 0.66 } },
   controller = { kind = "flight", speed = 180, accel = 25, turn = 0.45, climb = 120, min_altitude = 2 },

@@ -3,6 +3,7 @@ local ROCK, HULL, GLOW = { 0.42, 0.4, 0.37 }, { 0.58, 0.58, 0.6 }, { 1, 0.7, 0.3
 return {
   id = "continental_explorer", name = "Continental Explorer", size_m = 6700, place = "sky", offset = { 0, 3500, -14000 },
   carries = { land_explorer = 2, drop_ship = 1 }, seat = { 0, 0.3, 0.4 }, roughness = 0.75, metalness = 0.2,
+  sensors = { range = 1e6, resolution = 50, kinds = { "thermal", "EM", "seismic", "bio" } }, -- (sensor-system spec: how far, how small, which signatures)
   cockpit = { width = 22, height = 7, depth = 14, posts = 5, screens = 6 },
   controller = { kind = "flight", speed = 250, accel = 15, turn = 0.08, climb = 60, min_altitude = 1500 },
   hull = {

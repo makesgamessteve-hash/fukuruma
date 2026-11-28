@@ -3,6 +3,7 @@ local HULL, DARK, GLOW = { 0.6, 0.63, 0.68 }, { 0.32, 0.34, 0.38 }, { 0.95, 0.6,
 return {
   id = "jump_ship", name = "Jump Ship", size_m = 144000, place = "orbit", offset = { 0, 3.0e7, 0 },
   carries = { space_station = 2, drop_ship = 1 }, seat = { 0, 0.12, 0.42 }, roughness = 0.5, metalness = 0.5,
+  sensors = { range = 1.5e13, resolution = 1e6, kinds = { "thermal", "EM", "exotic" } }, -- (sensor-system spec: how far, how small, which signatures)
   cockpit = { width = 28, height = 8, depth = 18, posts = 6, screens = 8, color = { 0.4, 0.42, 0.46 } },
   controller = { kind = "orbit" },
   hull = {

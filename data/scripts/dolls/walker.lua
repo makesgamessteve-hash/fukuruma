@@ -3,6 +3,7 @@ local HULL, DARK, GLASS = { 0.82, 0.62, 0.3 }, { 0.28, 0.27, 0.27 }, { 0.2, 0.3,
 return {
   id = "walker", name = "Exploration Walker", size_m = 72, place = "ground", offset = { -260, 0, 160 },
   carries = { exosuit = 1 }, seat = { 0, 0.88, 0.32 }, roughness = 0.55, metalness = 0.4,
+  sensors = { range = 2000, resolution = 0.5, kinds = { "thermal", "bio", "seismic", "EM" } }, -- (sensor-system spec: how far, how small, which signatures)
   cockpit = { width = 8, height = 5, depth = 7, posts = 2, screens = 3, color = { 0.55, 0.42, 0.24 } },
   controller = { kind = "legged", speed = 9, accel = 2.5, turn = 0.35, stride = 22 },
   hull = {

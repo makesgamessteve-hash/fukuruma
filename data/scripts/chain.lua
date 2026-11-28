@@ -284,6 +284,7 @@ function chain.screens()
     { "ALTITUDE", metres(math.max(0, c.y - chain.ground(c.x, c.z))) }, { "B UP  N DOWN", "T DEPLOY  R RECALL" },
     target and { "AUTOPILOT", label(target.kind) .. " " .. metres(distance(c, target)) } or { "AUTOPILOT", "O: OFF" },
     { "TELEPORT", chain.TELEPORT[c.kind] and "P: READY" or "NO NODE" } }
+  if chain.sensor_screen then list[#list + 1] = chain.sensor_screen(c) end -- (sensors.lua)
   for i = #list + 1, 8 do list[i] = { "SYSTEMS", "NOMINAL" } end
   return list
 end
@@ -397,6 +398,11 @@ local function steer(d, dt)
   if not ctl or ctl.kind == "fixed" then return end
   d.yaw, d.speed, d.stride = d.yaw or 0, d.speed or 0, d.stride or 0 -- (games saved before the controllers)
   local drive = d.drive or { throttle = 0, turn = 0, lift = 0 }
+  local hazard = d.auto and chain.hazard_ahead and chain.hazard_ahead(d) -- (sensors.lua: a detected hazard in the way)
+  if hazard then -- the autopilot stops short of it, and hands back to the Commander
+    d.auto = nil
+    sim.emit("hazard_stop", { position = { d.x, d.y, d.z }, kind = d.kind, hazard = hazard.kind, strength = 0.7 })
+  end
   if d.auto then
     local t = chain.find(d.auto)
     drive = t and autopilot(d, t, ctl) or { throttle = 0, turn = 0, lift = 0 }
@@ -585,7 +591,7 @@ function chain.use()
     s.walk = { doll = d.id, x = ramp[2], z = ramp[3] + 1.5 }
   elseif f[1] == "tram" and not w.ride then -- on to the next stop (interior-transit: the hangars are kilometres long)
     local to = interior.next_stop(layout, f)
-    w.ride = { to[2], to[3], math.sqrt((to[2] - w.x) ^ 2 + (to[3] - w.z) ^ 2) }
+    w.ride = { to[2], to[3], math.sqrt((to[2] - w.x) * (to[2] - w.x) + (to[3] - w.z) * (to[3] - w.z)) }
     sim.emit("tram", { position = { d.x, d.y, d.z }, strength = 0.4 })
   elseif f[1] == "suit" and not w.docked then -- the Exosuit goes on: out beside the doll, on foot
     local exo = chain.deploy_from(d, "exosuit")

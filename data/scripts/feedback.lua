@@ -59,6 +59,10 @@ return {
   board = { trauma = 0.08, rumble = { 0.15, 0.25, 0.15 }, sound = "ui_confirm" },
   -- A door inside a doll slides: a light knock and a click.
   door = { trauma = 0.02, rumble = { 0.08, 0.1, 0.08 }, sound = "ui_move" },
+  -- A hostile heard the ping: a sharp jolt and a warning.
+  alerted = { trauma = 0.15, rumble = { 0.4, 0.2, 0.3 }, sound = "impact" },
+  -- The autopilot stops for a hazard: a hard brake.
+  hazard_stop = { trauma = 0.3, rumble = { 0.6, 0.4, 0.5 }, sound = "ui_open" },
   -- The tram pulls away: a push and a hum.
   tram = { trauma = 0.1, rumble = { 0.3, 0.2, 0.4 }, sound = "ui_open" },
   -- The Jump Ship's drive: a long, deep shake and rumble with the jump's roar.
