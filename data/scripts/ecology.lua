@@ -39,7 +39,7 @@ function ecology.species(key)
   return out
 end
 
--- Adds world key's herds and packs to its hazards (sensors.on_world).
+-- Adds world key's herds and packs to its hazards (a sensors.world_hooks entry).
 function ecology.populate(key, list, next_id)
   local rng, species = fk.rng("herds", key), ecology.species(key)
   local function add(role, hx, hz, i)
@@ -63,7 +63,7 @@ function ecology.state() return sim.get(ecology.id, "ecology") end
 function ecology.install()
   ecology.id = sim.create()
   sim.set(ecology.id, "ecology", { decoys = {}, stun_at = 0 })
-  sensors.on_world = ecology.populate
+  if sensors.world_hooks[1] ~= ecology.populate then table.insert(sensors.world_hooks, 1, ecology.populate) end
   sim.on("flare", function() -- a decoy, thrown ahead from the suit or fired from the doll's seat
     local d, p = chain.current(), chain.suit()
     if chain.walking() then return end

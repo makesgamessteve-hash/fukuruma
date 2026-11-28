@@ -32,7 +32,7 @@ return scenario {
     t.frames(sensors.PASSIVE + 2)
     t.expect(chain.on_foot() and known(gas), "the Exosuit's sensors find it")
     suit = chain.current()
-    game.helmet.yaw, game.helmet.pitch = math.atan(gas.x - suit.x, gas.z - suit.z) + math.pi, -0.3
+    game.helmet.yaw, game.helmet.pitch = math.atan(gas.x - suit.x, gas.z - suit.z), -0.3
     t.frames(3)
     t.screenshot("sensors_visor")
 

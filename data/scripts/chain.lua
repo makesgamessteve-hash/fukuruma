@@ -79,6 +79,7 @@ end
 -- ground only a Drop Ship goes.
 local function linked(a, b)
   if not here(a) or not here(b) then return false end
+  if a.stolen or b.stolen then return false end -- (thieves.lua: in other hands until recovered)
   if a.kind == "drop_ship" or b.kind == "drop_ship" then return near(a, b) end
   if b.parent ~= a.id and a.parent ~= b.id then return false end
   local ao, bo = dolls.by_id[a.kind].place == "orbit", dolls.by_id[b.kind].place == "orbit"
@@ -118,7 +119,7 @@ end
 -- Sets up the component and the commands. suit(): the suit's state {x, y, z}; move_suit(x, y, z): puts the suit
 -- (feet) there; world (optional): the physics world the legged dolls stand in.
 function chain.install(suit, move_suit, world)
-  chain.world = world
+  chain.world, chain.hands = world, {}
   chain.id = sim.create()
   local list, parent = {}, nil
   for i, s in ipairs(chain.START) do
@@ -518,9 +519,23 @@ function chain.frame_matrix(f)
 end
 
 -- What the use command would do now (presentation: the hint on the visor), or nil.
+-- What else the hand can do on foot (other modules: talking, pylons, recovering a stolen doll): {hint = function()
+-- -> text or nil, act = function()}, asked in order before entering the doll.
+chain.hands = {}
+
+local function hand()
+  if chain.current().kind ~= "exosuit" or chain.state().walk then return nil end
+  for _, h in ipairs(chain.hands) do
+    local text = h.hint()
+    if text then return h, text end
+  end
+end
+
 function chain.use_hint()
   local s = chain.state()
   local w, c = s.walk, chain.current()
+  local _, extra = hand()
+  if extra then return extra end
   if not w then
     if c.kind == "exosuit" then
       local p = c.parent and chain.find(c.parent)
@@ -545,6 +560,8 @@ end
 function chain.use()
   local s = chain.state()
   local w, c = s.walk, chain.current()
+  local h = hand()
+  if h then return h.act() end
   if not w then
     if c.kind == "exosuit" then -- out of the suit into its doll, through the suit bay (the suit goes into the hold)
       local p = c.parent and chain.find(c.parent)

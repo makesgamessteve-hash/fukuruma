@@ -40,13 +40,14 @@ function survival.codex()
   local ok, codex = pcall(function() return text and save.decode(text) end)
   codex = ok and type(codex) == "table" and codex or {}
   codex.hazards, codex.worlds, codex.species = codex.hazards or {}, codex.worlds or {}, codex.species or {}
+  codex.artifacts = codex.artifacts or {}
   codex.commanders = codex.commanders or 0
   return codex
 end
 
 function survival.codex_size(codex)
   local n = 0
-  for _, group in ipairs({ codex.hazards, codex.worlds, codex.species }) do
+  for _, group in ipairs({ codex.hazards, codex.worlds, codex.species, codex.artifacts or {} }) do
     for _ in pairs(group) do n = n + 1 end
   end
   return n
@@ -55,7 +56,7 @@ end
 function survival.install()
   survival.id = sim.create()
   sim.set(survival.id, "survival", { oxygen = 1, filter = 1, power = 1, integrity = 1, dose = 0,
-    mode = survival.setting().death, deaths = 0, over = false, found = { hazards = {}, worlds = {}, species = {} } })
+    mode = survival.setting().death, deaths = 0, over = false, found = { hazards = {}, worlds = {}, species = {}, artifacts = {} } })
   sim.on("mode", function(args) -- (a new run's mode; tests)
     if args.mode == "clone" or args.mode == "legacy" then survival.state().mode = args.mode end
   end)
@@ -146,7 +147,11 @@ function survival.tick()
       end
     end
     for _, c in pairs(sensors.state().contacts) do s.found.hazards[c.kind] = true end
-    if sensors.state().world then s.found.worlds[sensors.state().world] = true end
+    local key = sensors.state().world
+    if key then
+      s.found.worlds[key] = true
+      if require("artifacts").progress(key).solved then s.found.artifacts[key] = true end -- (artifacts.lua: a solved ruin)
+    end
   end
   if s.integrity <= 0 then die(s) end
 end

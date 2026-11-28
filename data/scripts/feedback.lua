@@ -94,6 +94,27 @@ return {
   -- A predator notices the Commander, or bites: a jolt.
   noticed = { trauma = 0.08, rumble = { 0.2, 0.1, 0.2 }, sound = "ui_move" },
   bite = { trauma = 0.45, rumble = { 0.8, 0.6, 0.3 }, sound = "impact" },
+  -- Thieves: a doll taken, a doll recovered, boarders aboard, sectors sealed, boarders repelled, the cargo looted.
+  theft = { trauma = 0.1, rumble = { 0.3, 0.2, 0.3 }, sound = "ui_open" },
+  recovered = { trauma = 0.15, rumble = { 0.3, 0.3, 0.3 }, sound = "ui_confirm" },
+  boarders = { trauma = 0.25, rumble = { 0.5, 0.4, 0.5 }, sound = "impact",
+    light = { color = { 1, 0.15, 0.1 }, intensity = 15, radius = 12, duration = 1.2 } },
+  sealed = { trauma = 0.12, rumble = { 0.4, 0.3, 0.4 }, sound = "ui_move" },
+  repelled = { trauma = 0.05, rumble = { 0.2, 0.1, 0.1 }, sound = "ui_confirm" },
+  looted = { trauma = 0.2, rumble = { 0.4, 0.3, 0.3 }, sound = "impact" },
+  -- The ruin: a pylon wakes with a chime and a cyan flash; the artifact with a burst; the guardian with a red pulse.
+  pylon = { trauma = 0.05, rumble = { 0.2, 0.2, 0.2 }, sound = "scan",
+    light = { color = { 0.3, 0.9, 1 }, intensity = 30, radius = 12, duration = 0.6 } },
+  artifact = { trauma = 0.3, rumble = { 0.5, 0.6, 0.5 }, sound = "scan",
+    particles = { { count = 120, radius = 2, direction = { 0, 1, 0 }, spread = 0.8, speed_min = 3, speed_max = 9, life_min = 0.8,
+      life_max = 1.6, size = 0.3, size_end = 0.05, drag = 0.6, color = { 0.4, 0.95, 1 }, intensity = 10, alpha = 1, alpha_end = 0,
+      glow = true } },
+    light = { color = { 0.4, 0.95, 1 }, intensity = 80, radius = 30, duration = 1.2 } },
+  guardian = { trauma = 0.35, rumble = { 0.7, 0.5, 0.6 }, sound = "impact",
+    light = { color = { 1, 0.2, 0.15 }, intensity = 60, radius = 40, duration = 0.5 } },
+  -- A native's spear hits; a talk begins.
+  spear = { trauma = 0.25, rumble = { 0.5, 0.3, 0.2 }, sound = "impact" },
+  talk = { trauma = 0, rumble = { 0.05, 0.05, 0.05 }, sound = "ui_confirm" },
   -- The tram pulls away: a push and a hum.
   tram = { trauma = 0.1, rumble = { 0.3, 0.2, 0.4 }, sound = "ui_open" },
   -- The Jump Ship's drive: a long, deep shake and rumble with the jump's roar.

@@ -24,8 +24,9 @@ return {
     end
     start()
     local list = sensors.hazards()
-    assert(#list == sensors.COUNT + 3 * 5 + 2 * 3, "made on the first tick, with the herds and packs (ecology.lua)")
-    for _, h in ipairs(list) do
+    assert(#list > sensors.COUNT, "made on the first tick, with the life of the world after them (ecology, settlements, ruins)")
+    for i = 1, sensors.COUNT do -- (the hazard table's own come first)
+      local h = list[i]
       local r = math.sqrt(h.hx * h.hx + h.hz * h.hz)
       assert(sensors.HAZARDS[h.kind] and r >= sensors.CLEAR - 1e-6 and r <= sensors.HAZARD_RANGE + 1e-6)
     end

@@ -1,6 +1,7 @@
 -- Interiors (vessel-interiors spec): every doll's inside, made for people, where the Commander walks as a human.
 -- A layout per doll kind, the same every time: a corridor spine with the bridge at its front (the doll's controls),
--- side rooms along it (quarters, a drone bay, the suit bay where the Exosuit goes on, the clone bay), and behind it a
+-- side rooms along it (quarters, a drone bay, the cargo deck, the suit bay where the Exosuit goes on, the clone bay),
+-- and behind it a
 -- hangar for each kind of doll the hold carries, with that doll docked at full scale and a ramp up into it.
 -- Coordinates: the doll's own frame, metres, floor at y = 0, +z towards the bridge. The free space is a list of
 -- rectangles the Commander's centre may be in (walls already set back by the body's radius; neighbours overlap where
@@ -36,6 +37,7 @@ function interior.layout(kind)
   if kind == "jump_ship" then sides[#sides + 1] = "clone bay" end
   sides[#sides + 1] = "quarters"
   if def.size_m >= 1000 then sides[#sides + 1] = "drone bay" end
+  sides[#sides + 1] = "cargo deck" -- (what boarding parties are after: thieves.lua)
   local spine = 6 + 12 * math.ceil(#sides / 2)
   rect(free, -1.2, 0, 1.2, spine) -- the corridor
   local corridor = { name = "corridor", x0 = -1.5, z0 = 0, x1 = 1.5, z1 = spine, open = { x0 = {}, x1 = {}, z1 = { { -1.5, 1.5 } } },

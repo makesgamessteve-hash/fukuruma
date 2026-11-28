@@ -28,6 +28,9 @@ sensors.STALE = 60          -- seconds: older contacts are shown as stale
 
 function sensors.state() return sim.get(sensors.id, "sensors") end
 
+-- What else lives on a new world: functions(key, hazards, next_id) that add to its hazards, in order.
+sensors.world_hooks = {}
+
 function sensors.install()
   sensors.id = sim.create()
   sim.set(sensors.id, "sensors", { worlds = {}, contacts = {}, world = nil, next = 1 })
@@ -137,8 +140,8 @@ function sensors.tick(world_key)
     s.world = world_key
     if not s.worlds[world_key] then
       s.worlds[world_key] = make(world_key)
-      if sensors.on_world then -- (ecology.lua: the world's creatures)
-        sensors.on_world(world_key, s.worlds[world_key], function()
+      for _, populate in ipairs(sensors.world_hooks) do -- (ecology.lua's creatures, settlements.lua's natives, ...)
+        populate(world_key, s.worlds[world_key], function()
           s.next = s.next + 1
           return s.next - 1
         end)

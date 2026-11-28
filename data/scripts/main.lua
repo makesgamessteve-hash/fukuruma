@@ -42,6 +42,11 @@ local survival = require("survival")
 local environment = require("environment")
 local ecology = require("ecology")
 local fire = require("fire")
+local factions = require("factions")
+local settlements = require("settlements")
+local artifacts = require("artifacts")
+local thieves = require("thieves")
+local dialogue = require("dialogue")
 local hull = require("dolls.hull")
 local dolls = require("dolls")
 local ship_ai = require("ship_ai")
@@ -66,6 +71,8 @@ function game.init()
   feel.reset()
   music.load({ surface = "music/surface.ogg", discovery = "music/discovery.ogg" })
   music.play("surface", 4)
+  for _, loop in ipairs({ game.wind, game.engine }) do fk.audio.stop(loop) end -- (a new run: the old loops end)
+  game.engine = nil
   game.wind = fk.audio.play("wind_loop", { loop = true, bus = "ambient", volume = 0.45 })
   reverb.clear()
   reverb.zone({ center = { 6, 3, 4 }, radius = 7, room = 0.85, damping = 0.3, wet = 0.35 }) -- the beacon tower rings
@@ -124,6 +131,11 @@ function game.init()
   ecology.install()
   survival.install()
   fire.install()
+  factions.install()
+  settlements.install()
+  artifacts.install()
+  thieves.install()
+  dialogue.install()
   ecology.ignite = function(x, z) if fire.dryness() > 0 then fire.ignite(x, z) end end -- (a flare in dry plants)
   sim.on("move", function(args) -- the wanted velocity and the direction the Commander looks (on foot only)
     local body = sim.get(game.suit, "suit")
@@ -149,7 +161,10 @@ function game.init()
     teleport = feedback.teleport, autopilot = feedback.autopilot, arrived = feedback.arrived, door = feedback.door,
     tram = feedback.tram, alerted = feedback.alerted, hazard_stop = feedback.hazard_stop, breach = feedback.breach,
     death = feedback.death, clone = feedback.clone, collapse = feedback.collapse, explosion = feedback.explosion,
-    flare = feedback.flare, stun = feedback.stun, noticed = feedback.noticed, bite = feedback.bite },
+    flare = feedback.flare, stun = feedback.stun, noticed = feedback.noticed, bite = feedback.bite, theft = feedback.theft,
+    recovered = feedback.recovered, boarders = feedback.boarders, sealed = feedback.sealed, repelled = feedback.repelled,
+    looted = feedback.looted, pylon = feedback.pylon, artifact = feedback.artifact, guardian = feedback.guardian,
+    spear = feedback.spear, talk = feedback.talk },
     function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
   game.ai, game.sway = {}, {}
@@ -181,6 +196,10 @@ function game.init()
   actions.define("use", { kind = "button", keys = { "F" }, gamepad = { "b" }, touch = "use" }) -- sit, doors, ramps, suit
   actions.define("stun", { kind = "button", keys = { "Q" }, gamepad = { "leftshoulder" }, touch = "stun" }) -- defensive tools
   actions.define("flare", { kind = "button", keys = { "C" }, gamepad = { "leftstick" }, touch = "flare" })
+  actions.define("seal", { kind = "button", keys = { "L" }, gamepad = { "rightstick" }, touch = "seal" }) -- all doors shut
+  for i, pad in ipairs({ "a", "x", "y" }) do -- a talk's options
+    actions.define("choice" .. i, { kind = "button", keys = { tostring(i) }, gamepad = { pad }, touch = "choice" .. i })
+  end
   actions.define("lift_up", { kind = "button", touch = "lift_up" }) -- touch: a flying doll's climb and dive
   actions.define("lift_down", { kind = "button", touch = "lift_down" })
   actions.define("recall", { kind = "button", keys = { "R" }, gamepad = { "dpleft" }, touch = "recall" })
@@ -192,6 +211,8 @@ function game.init()
   actions.touch_button("dig", 0.6, 0.9, 0.06)
   actions.touch_button("stun", 0.48, 0.9, 0.05)
   actions.touch_button("flare", 0.37, 0.9, 0.05)
+  actions.touch_button("seal", 0.48, 0.9, 0.05)
+  for i = 1, 3 do actions.touch_button("choice" .. i, 0.25 + i * 0.12, 0.42, 0.05) end
   actions.touch_button("menu", 0.94, 0.1, 0.06)
   actions.touch_button("view", 0.94, 0.27, 0.05)
   actions.touch_button("map", 0.94, 0.42, 0.05)
@@ -272,15 +293,20 @@ function game.touch_layout()
   local function add(name, ok) if ok then names[#names + 1] = name end end
   add("board_up", chain.up() ~= nil)
   add("use", chain.use_hint() ~= nil)
+  if dialogue.open() then
+    for i = 1, #dialogue.options() do add("choice" .. i, true) end
+    actions.touch_layout(names)
+    return names
+  end
   if chain.walking() then
-    add("sprint", true)
+    add("sprint", true) add("seal", true)
   elseif chain.on_foot() then
     add("sprint", true) add("scan", true) add("dig", true) add("stun", true) add("flare", true)
   else
     local c = chain.current()
     local ctl = dolls.by_id[c.kind].controller
     add("board_down", chain.down() ~= nil)
-    add("flare", true)
+    add("flare", true) add("seal", true)
     add("deploy", chain.next_kind() ~= nil)
     add("recall", chain.down() ~= nil)
     add("autopilot", chain.autopilot_target() ~= nil and ctl and ctl.kind ~= "orbit" and ctl.kind ~= "fixed")
@@ -312,7 +338,7 @@ function game.input()
     fk.input.capture(capture)
     game.captured = capture
   end
-  local busy = menu.open or navmap.open
+  local busy = menu.open or navmap.open or dialogue.open() -- (in a talk the suit holds still; its options are keys 1 to 3)
   if not busy then look() end
   local x, y = actions.value("move_x"), actions.value("move_y")
   local len = math.sqrt(x * x + y * y)
@@ -335,6 +361,12 @@ function game.input()
     sim.send("use", {})
   end
   if actions.pressed("stun") and not busy then sim.send("stun", {}) end
+  if actions.pressed("seal") and not busy then sim.send("seal", {}) end
+  if dialogue.open() then
+    for i = 1, 3 do
+      if actions.pressed("choice" .. i) then sim.send("choose", { option = i }) end
+    end
+  end
   if actions.pressed("flare") and not busy then sim.send("flare", {}) end
   if not chain.on_foot() and not chain.walking() then -- at a doll's controls: the move keys steer it (vehicle controllers)
     local lift = (busy or game.view == "drone") and 0 or
@@ -372,6 +404,9 @@ function game.tick()
   sensors.tick(u.seed .. "/" .. u.place)
   ecology.tick(survival.hurt)
   fire.tick(u.seed .. "/" .. u.place, survival.hurt)
+  settlements.tick(survival.hurt)
+  artifacts.tick(survival.hurt)
+  thieves.tick(u.seed .. "/" .. u.place)
   survival.tick()
   for _, b in sim.each(chain.suit_out() and "suit" or "suit_away") do -- the suit waits where it was left
     local dx, dz = b.wx - b.vx, b.wz - b.vz
@@ -557,6 +592,10 @@ function game.draw(alpha, dt)
   game.creature_view = game.creature_view or {}
   ecology.draw(game.creature_view, { inv_x, inv_y, inv_z }, feel.time)
   fire.draw({ inv_x, inv_y, inv_z }, pdt, feel.time)
+  game.settlement_view, game.ruin_view, game.boarder_view = game.settlement_view or {}, game.ruin_view or {}, game.boarder_view or {}
+  settlements.draw(game.settlement_view, { inv_x, inv_y, inv_z })
+  artifacts.draw(game.ruin_view, { inv_x, inv_y, inv_z }, feel.time)
+  thieves.draw(game.boarder_view, chain.interior_frame)
   game.cockpits = game.cockpits or {}
   game.cockpit_now = nil
   local walk = chain.walking()
@@ -648,7 +687,8 @@ function game.draw(alpha, dt)
     local at = chain.current()
     local reach, shown, listed = dolls.by_id[at.kind].sensors.range, {}, 0
     for _, c in ipairs(sensors.contacts(at.x, at.z)) do -- the nearest within the doll's own range, none overlapping
-      if c.dist > reach or #shown >= 8 then break end
+      if #shown >= 8 then break end
+      if c.dist > reach and c.by ~= "natives" then goto next end -- (what the natives told of shows however far)
       local x, y = cockpit.project({ c.x, chain.ground(c.x, c.z) + c.size * 0.5 + 1, c.z }, view, projection, w, h)
       local text = "[" .. sensors.label(c) .. "]"
       local free = x and x > 0 and x < w and y > 0 and y < h
@@ -664,8 +704,19 @@ function game.draw(alpha, dt)
         listed = listed + 1
         fk.gfx.text(8, 40 + listed * 10, sensors.label(c), color)
       end
+      ::next::
+    end
+    for _, s in ipairs(thieves.stolen_list(at.x, at.z)) do -- a stolen doll's beacon, however far
+      local d = s.doll
+      local x, y = cockpit.project({ d.x, d.y + dolls.by_id[d.kind].size_m * 0.5, d.z }, view, projection, w, h)
+      if x and x > 0 and x < w and y > 0 and y < h then
+        local dist = s.dist >= 1000 and string.format("%.1f KM", s.dist / 1000) or string.format("%.0f M", s.dist)
+        local text = "[STOLEN: " .. dolls.by_id[d.kind].name:upper() .. " " .. dist .. "]"
+        fk.gfx.text(math.floor(x - #text * 4), math.floor(y), text, { 1, 0.4, 0.3 })
+      end
     end
   end
+  dialogue.draw(w, h)
   local hint = game.view == "helmet" and chain.use_hint() -- what F does here
   if hint then
     local text = "F: " .. hint

@@ -22,12 +22,21 @@ function ship_ai.line(event, data, target)
   elseif event == "clone" then return "CLONE REVIVED IN THE JUMP SHIP'S CLONE BAY. YOUR SUIT IS LOST."
   elseif event == "collapse" then return "THE GROUND GAVE WAY UNDER THE " .. name(data.kind) .. "."
   elseif event == "noticed" then return "MOVEMENT. SOMETHING HAS SEEN YOU."
+  elseif event == "theft" then return "ALERT: THE " .. name(data.kind) .. " IS BEING STOLEN."
+  elseif event == "recovered" then return "THE " .. name(data.kind) .. " IS OURS AGAIN."
+  elseif event == "boarders" then return "INTRUDER ALERT: BOARDERS IN THE " .. name(data.kind) .. ". SEAL THE SECTORS (L)."
+  elseif event == "sealed" then return "SECTORS SEALED."
+  elseif event == "repelled" then return "THE BOARDERS ARE LEAVING. THE CARGO IS SAFE."
+  elseif event == "looted" then return "THE BOARDERS LOOTED THE CARGO DECK."
+  elseif event == "artifact" then return "ARTIFACT RECOVERED. ADDED TO THE CODEX."
+  elseif event == "guardian" then return "WARNING: THE RUIN'S GUARDIAN IS AWAKE."
   end
 end
 
 -- Listens to the chain's events. state: {text, until}; now(): presentation time; target(id): a doll's kind.
 function ship_ai.listen(sim, state, now, target)
-  for _, event in ipairs({ "deploy", "recall", "board", "teleport", "autopilot", "arrived", "hazard_stop", "alerted", "breach", "clone", "collapse", "noticed" }) do
+  for _, event in ipairs({ "deploy", "recall", "board", "teleport", "autopilot", "arrived", "hazard_stop", "alerted", "breach", "clone", "collapse", "noticed", "theft",
+    "recovered", "boarders", "sealed", "repelled", "looted", "artifact", "guardian" }) do
     sim.listen(event, function(data)
       state.text, state["until"] = ship_ai.line(event, data or {}, target), now() + ship_ai.SHOW
     end)
