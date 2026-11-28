@@ -684,6 +684,11 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 ### M8 — Interiors (L)
 
+- **Delivered (2026-11-28):** `add-vessel-interiors` (the human on foot, rooms, doors, the use command, hangar
+  boarding, launching from a docked doll's bridge) and `add-interior-transit` (trams, ambient drones). Layouts are fixed
+  per doll kind (a corridor grammar, not streamed sectors), so the plan's "50 sectors" check does not apply; lifts,
+  the sector grammar and hand-authored bridges remain open.
+
 - **OpenSpec:** `add-human-on-foot`, `add-vessel-interiors`, `add-hangar-boarding`, `add-interior-transit`,
   `add-drones`.
 - **Work:** the Commander on foot as a human inside every doll (human-scale controller, suit bay and
@@ -697,6 +702,9 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 ### M9 — Sensors and scanning (M)
 
+- **Delivered (2026-11-28):** `add-sensor-system` (signatures, suites, passive and active scans, ageing contacts,
+  AR markers on the visor and windows, the visor list, cockpit sensor screens, autopilot hazard stops).
+
 - **OpenSpec:** `add-sensor-system`, `add-scan-overlays`, `add-exosuit-hud`.
 - **Work:** the signature model, a sensor suite per doll, passive and active scans, ageing scan data,
   scan markings drawn onto the windows and the visor (augmented reality) and on the cockpit's sensor
@@ -705,6 +713,11 @@ and the showcase scenes are reviewed on desktop, phone and VR.
   Exosuit; an active ping alerts a hostile; autopilot stops at a detected sinkhole.
 
 ### M10 — Hazards, survival and life (XL)
+
+- **Delivered (2026-11-28):** `add-exosuit-survival` (environment model, suit systems, doll damage, Clone and Legacy
+  modes, the codex), `add-ecology` (species from a body-plan grammar, herds and packs, behaviours, stealth, flares and
+  the stun, procedural legs) and `add-fire-and-destruction` (spreading fire, explosions). Still open: skinned creature
+  meshes and ragdolls, biome ecology tables, sidearm and shields, lava and toxic-gas volumes drawn as fog.
 
 - **OpenSpec:** `add-environment-model`, `add-exosuit-survival`, `add-death-modes`, `add-ecology`,
   `add-creature-generation`, `add-procedural-animation`, `add-fire-and-destruction`,

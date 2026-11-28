@@ -20,7 +20,8 @@ explored. Every planet is worth going down to, and any planet can kill you.
 ## Status
 
 Milestones M0 (build, test and deployment pipeline), M1 (engine core), M2 (reference frames and scale), M3 (galaxy
-and star systems) and M4 (planets from space) are done. The
+and star systems), M4 (planets from space), M5 (planets up close), M6 (the Fukuruma chain), M7 (touch and WebXR), M8
+(interiors), M9 (sensors and scanning) and M10 (hazards, survival and life) are done. The
 sandbox: the Exosuit, a 3.6 m skinned mech, walks and runs over a test range at dusk and sends out sensor scans. Under the hood: a
 deterministic 60 Hz simulation, input for keyboard, gamepad and touch, a deferred PBR renderer at a low internal
 resolution (cascaded shadows, ambient occlusion, bloom, eye adaptation, temporal anti-aliasing), four graphics detail
@@ -41,7 +42,13 @@ there: the Jump Ship in high orbit, a Space Station going round the world, the C
 Land Explorer and the Walker on the ground and the Exosuit on foot. Every doll is steered from its own cockpit;
 Drop Ships fly between orbit and the ground on autopilot, the teleport links the Jump Ship and the stations, and
 star jumps start from the Jump Ship's bridge (B and N board up and down the chain, T deploys, R recalls, O engages
-the autopilot, P teleports). Walking the dolls' interiors comes in M8.
+the autopilot, P teleports). M7 brought touch controls per doll and VR in the browser. Since M8 the Commander walks as a
+human inside every doll: corridors, doors, the suit bay where the Exosuit goes on, hangars with the next doll docked
+at full scale and a tram along them; F does what is in reach. In M9 every doll got sensors that see what is big enough
+and of a kind they cover, contacts that age, markers on the visor and the windows, and autopilots that stop for
+hazards. M10 makes the worlds dangerous and alive: toxic zones, radiation, heat and sinkholes against the suit's
+oxygen, filter, power and integrity; Clone or Legacy mode when the Commander dies; species of grazers and predators
+from each world's seed that notice a careless Commander; flares, a stun, and fire that spreads through dry plants.
 
 - [Game concept](docs/CONCEPT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
@@ -54,7 +61,9 @@ the autopilot, P teleports). Walking the dolls' interiors comes in M8.
 | Look around | mouse (click into the browser window first) | right stick | drag on the right half of the screen |
 | Walk the Exosuit (towards where you look) | W A S D or the arrow keys | left stick | stick on the left half of the screen |
 | Sprint | Shift | A | RUN button |
-| Sensor scan | E | X | SCAN button |
+| Sensor scan (an active ping) | E | X | SCAN button |
+| Use what is in reach (doors, seats, ramps, trams, the suit bay) | F | B | USE button |
+| Stun pulse / flare (decoy) | Q / C | left shoulder / left stick | STUN / FLARE buttons |
 | Outside view (survey drone, for looking only) | V | Back | VIEW button |
 | Galaxy and system maps (Tab switches, ← → choose, Enter jumps) | M | Y (X switches) | MAP button |
 | Settings (graphics, comfort, audio) | Escape | Start | MENU button |
