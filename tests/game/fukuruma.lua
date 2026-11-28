@@ -32,8 +32,7 @@ return scenario {
     end
     -- up
     for _ = 1, 3 do act("board", { id = chain.up() }) end
-    act("deploy", { kind = "drop_ship" })
-    local drop = find("drop_ship")
+    local drop = find("drop_ship") -- the Drop Ship that brought the Continental Explorer down waits beside it
     act("board", { id = drop.id })
     fly(drop, find("space_station"))
     act("board", { id = find("space_station").id })

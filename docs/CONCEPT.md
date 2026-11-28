@@ -60,7 +60,7 @@ step can therefore carry a handful of the next doll, not a hundred.
 | 4 | **Continental Explorer** | 100 × Land Explorer volume | **≈ 6.7 km** | most of Mount Everest, flying |
 | 5 | **Space Station** | 100 × Continental Explorer volume | **≈ 31 km** | larger than Mars's moon Phobos |
 | 6 | **Jump Ship** | 100 × Space Station volume | **144 km** | a small moon |
-| — | **Drop Ship** | outside the chain | ≈ 100 m (proposal) | the Commander's shuttle between dolls |
+| — | **Drop Ship** | outside the chain | ≈ 12 km | carries a Continental Explorer between a station and the sky, and the Commander between dolls |
 
 Every size is Lua data (`data/scripts/dolls/*.lua`), so retuning the chain changes content, not code.
 
@@ -81,8 +81,10 @@ Every size is Lua data (`data/scripts/dolls/*.lua`), so retuning the chain chang
   Exosuit dock.
 - **Exosuit (3.6 m).** The only doll that fits into caves, ruins, native villages and ship corridors.
   It is the Commander's life.
-- **Drop Ship (≈ 100 m).** It takes the Commander from a station down to a Continental Explorer
-  ("board a drop ship to the planet"), and between any two dolls where there is no teleporter.
+- **Drop Ship (≈ 12 km).** A ball big enough to hold a Continental Explorer: it carries one from a station down to
+  the sky of its planet and sets it down there ("board a drop ship to the planet"), takes one back aboard, and flies
+  the Commander between any two dolls where there is no teleporter. (Owner's decision, 2026-11-28: it was 100 m,
+  which looked absurd next to what it carries.)
 
 ### 2.3 Scale is level of detail, made into gameplay
 

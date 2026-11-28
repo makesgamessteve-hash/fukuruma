@@ -4,7 +4,7 @@ local ROCK, ROCK2, HULL, DARK = { 0.4, 0.37, 0.34 }, { 0.32, 0.3, 0.28 }, { 0.62
 local GLASS, GLOW, WINDOW = { 0.15, 0.2, 0.26 }, { 1, 0.62, 0.3 }, { 1, 0.85, 0.55 }
 return {
   id = "continental_explorer", name = "Continental Explorer", size_m = 6700, place = "sky", offset = { 0, 3500, -14000 },
-  carries = { land_explorer = 2, drop_ship = 1 }, seat = { 0, 0.3, 0.4 }, roughness = 0.7, metalness = 0.25,
+  carries = { land_explorer = 2 }, -- (the Drop Ship that brought it down carries it: it is the bigger one) seat = { 0, 0.3, 0.4 }, roughness = 0.7, metalness = 0.25,
   sensors = { range = 1e6, resolution = 50, kinds = { "thermal", "EM", "seismic", "bio" } }, -- (sensor-system spec: how far, how small, which signatures)
   cockpit = { width = 22, height = 7, depth = 14, posts = 5, screens = 6 },
   controller = { kind = "flight", speed = 250, accel = 15, turn = 0.08, climb = 60, min_altitude = 1500 },

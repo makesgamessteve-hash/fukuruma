@@ -31,7 +31,7 @@ end
 return {
   ["the chain is Lua data, from the Jump Ship down to the Exosuit"] = function()
     local sizes = { jump_ship = 144000, space_station = 31000, continental_explorer = 6700, land_explorer = 1440,
-      walker = 72, exosuit = 3.6, drop_ship = 100 }
+      walker = 72, exosuit = 3.6, drop_ship = 12000 }
     for id, size in pairs(sizes) do assert(dolls.by_id[id].size_m == size, id) end
     assert(dolls.parent_of("walker").id == "land_explorer" and dolls.parent_of("jump_ship") == nil)
     fails(function() dolls.register({ id = "walker", size_m = 1, place = "ground" }) end, "a new string 'id'")
@@ -100,7 +100,7 @@ return {
   ["a new game: the chain stands out, the Commander on foot in the Exosuit"] = function()
     start()
     local s = chain.state()
-    assert(#s.dolls == 6 and chain.on_foot() and chain.current().kind == "exosuit")
+    assert(#s.dolls == 7 and chain.on_foot() and chain.current().kind == "exosuit", "the chain and the waiting Drop Ship")
     assert(find("walker").parent == find("land_explorer").id and find("exosuit").parent == find("walker").id)
     assert(find("walker").hold.exosuit == 0 and find("land_explorer").hold.walker == 1, "one out, one in the hold")
     assert(chain.up() == find("walker").id and chain.down() == nil and chain.next_kind() == nil)
@@ -156,9 +156,8 @@ return {
     sim.send("board", { id = chain.up() })
     step()
     assert(chain.current().kind == "continental_explorer", "no climbing straight into orbit")
-    sim.send("deploy", { kind = "drop_ship" })
-    step()
-    local drop = find("drop_ship")
+    local drop = find("drop_ship") -- (it brought the Continental Explorer down and waits beside it)
+    assert(drop and drop.hold.continental_explorer == 0, "the Drop Ship that brought it waits, empty")
     sim.send("board", { id = drop.id })
     step()
     assert(chain.current() == drop and chain.teleport_target() == nil)
@@ -307,6 +306,29 @@ return {
     step(2)
     assert(chain.here(walker) and chain.suit_out() and walker.bodies, "back home: the chain is there again")
   end,
+  ["the Drop Ship carries a Continental Explorer"] = function()
+    start()
+    local drop, station = find("drop_ship"), find("space_station")
+    assert(require("dolls").by_id.drop_ship.size_m > require("dolls").by_id.continental_explorer.size_m * 1.5, "big enough")
+    chain.state().at = station.id
+    sim.send("deploy", { kind = "continental_explorer" }) -- a second one, out of the station
+    step()
+    local fresh = chain.state().dolls[#chain.state().dolls]
+    assert(fresh.kind == "continental_explorer" and fresh.parent == station.id)
+    drop.x, drop.y, drop.z = fresh.x + 9000, fresh.y, fresh.z
+    chain.state().at = drop.id
+    sim.send("recall", { id = fresh.id }) -- into the Drop Ship's hold, though the station deployed it
+    step()
+    assert(chain.find(fresh.id) == nil and drop.hold.continental_explorer == 1, "taken aboard")
+    sim.send("recall", { id = find("continental_explorer").id }) -- the first one has its Land Explorer out
+    step()
+    assert(find("continental_explorer") and drop.hold.continental_explorer == 1, "not while its children are out")
+    sim.send("deploy", { kind = "continental_explorer" })
+    step()
+    local carried = chain.state().dolls[#chain.state().dolls]
+    assert(carried.kind == "continental_explorer" and carried.parent == drop.id and drop.hold.continental_explorer == 0,
+      "set down from the Drop Ship")
+  end,
   ["the chain is saved and drawn"] = function()
     start()
     sim.send("board", { id = find("walker").id })
@@ -316,7 +338,7 @@ return {
     step()
     sim.restore(snap)
     assert(chain.current().kind == "walker", "the saved chain comes back")
-    assert(chain.draw({}, { 0, 2, 0 }) == 5, "every doll but the Exosuit")
+    assert(chain.draw({}, { 0, 2, 0 }) == 6, "every doll but the Exosuit")
     chain.tick("another/world")
     local w = find("walker")
     assert(math.abs(w.y - chain.ground(w.x, w.z)) < 1e-6, "on another world, on its ground")

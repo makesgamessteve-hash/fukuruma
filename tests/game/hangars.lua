@@ -41,7 +41,11 @@ return scenario {
     t.expect(chain.use_hint() == "TRAM TO THE DROP SHIP HANGAR", "the tram stop: " .. tostring(chain.use_hint()))
     press(t, "F", 2)
     t.expect(chain.walking().ride, "riding the tram")
-    t.frames(60)
+    for _ = 1, 60 * chain.TRAM + 30 do -- (the ride along the Drop Ship's hangar, without drawing it)
+      sim.step(game)
+      if not chain.walking().ride then break end
+    end
+    t.frames(2)
     w = chain.walking()
     t.expect(not w.ride and chain.use_hint() == "TRAM TO THE SPACE STATION HANGAR", "at the Drop Ship's hangar")
     press(t, "F", 2)

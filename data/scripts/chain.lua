@@ -131,7 +131,14 @@ function chain.install(suit, move_suit, world)
       system = require("universe").state().seed }
     parent = i
   end
-  sim.set(chain.id, "chain", { dolls = list, at = #list, next = #list + 1 })
+  -- the Drop Ship that brought the Continental Explorer down waits beside it, its hold empty (from the station's)
+  local ce, station = list[3], list[2]
+  station.hold.drop_ship = (station.hold.drop_ship or 0) - 1
+  local drop = holds("drop_ship")
+  drop.continental_explorer = 0
+  list[#list + 1] = { id = #list + 1, kind = "drop_ship", parent = station.id, x = ce.x + 16000, y = ce.y, z = ce.z, yaw = 0,
+    speed = 0, stride = 0, hold = drop, system = ce.system }
+  sim.set(chain.id, "chain", { dolls = list, at = #list - 1, next = #list + 1 })
   chain.suit, chain.move_suit = suit, move_suit
 
   -- a docked doll of kind out of doll c, beside it; returns it (or nil when c holds none)
@@ -161,7 +168,8 @@ function chain.install(suit, move_suit, world)
   sim.on("recall", function(args) -- a child of the Commander's doll back into its hold (nobody in it, nothing out)
     local c, s = chain.current(), chain.state()
     local d = chain.find(args.id)
-    if not d or d.parent ~= c.id then return end
+    local carried = c.kind == "drop_ship" and d and dolls.by_id.drop_ship.carries[d.kind] and near(c, d) and here(d)
+    if not d or (d.parent ~= c.id and not carried) then return end -- (a Drop Ship takes in a doll it can carry, near it)
     for _, o in ipairs(s.dolls) do
       if o.parent == d.id then return end
     end

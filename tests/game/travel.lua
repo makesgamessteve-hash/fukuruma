@@ -20,9 +20,7 @@ return scenario {
       t.frames(1)
     end
     t.expect(chain.current().kind == "continental_explorer")
-    sim.send("deploy", { kind = "drop_ship" })
-    t.frames(1)
-    local drop = find("drop_ship")
+    local drop = find("drop_ship") -- the Drop Ship that brought the Continental Explorer down waits beside it
     sim.send("board", { id = drop.id })
     t.frames(1)
     local function fly_to(target) -- the autopilot, ticked without drawing until it arrives

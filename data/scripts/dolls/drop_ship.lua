@@ -1,13 +1,15 @@
--- The Drop Ship (100 m): outside the chain, the Commander's shuttle between dolls where there is no teleporter. A ball
--- of a hull with an armoured belt, small fins, huge engines and huge hangar bay doors in its flanks and belly.
+-- The Drop Ship (12 km): the carrier that takes a Continental Explorer between a station and the sky of its planet,
+-- and the Commander between dolls where there is no teleporter. A ball big enough to hold a Continental Explorer
+-- (7 km across), with an armoured belt, small fins, huge engines and huge hangar bay doors in its flanks and belly.
 local HULL, PANEL, DARK, DOOR = { 0.8, 0.82, 0.86 }, { 0.58, 0.62, 0.68 }, { 0.2, 0.22, 0.26 }, { 0.34, 0.36, 0.4 }
 local GLOW, WINDOW, NAV_R, NAV_G = { 0.45, 0.8, 1 }, { 1, 0.88, 0.6 }, { 1, 0.15, 0.1 }, { 0.2, 1, 0.3 }
 return {
-  id = "drop_ship", name = "Drop Ship", size_m = 100, place = "sky", offset = { 300, 120, 0 },
+  id = "drop_ship", name = "Drop Ship", size_m = 12000, place = "sky", offset = { 16000, 0, 0 },
+  carries = { continental_explorer = 1 },
   sensors = { range = 2e5, resolution = 20, kinds = { "thermal", "EM", "seismic" } },
   seat = { 0, 0.48, 0.3 }, roughness = 0.35, metalness = 0.6, -- (just in front of the ball: nothing ahead of the eye)
   cockpit = { width = 6, height = 4.4, depth = 5, posts = 2, screens = 2, color = { 0.6, 0.62, 0.66 } },
-  controller = { kind = "flight", speed = 180, accel = 25, turn = 0.45, climb = 120, min_altitude = 2 },
+  controller = { kind = "flight", speed = 220, accel = 18, turn = 0.15, climb = 120, min_altitude = 4000 },
   hull = {
     -- the ball and its armoured belt
     { "ball", at = { 0, 0.4, 0 }, r = 0.3, sides = 24, color = HULL },

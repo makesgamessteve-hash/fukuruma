@@ -685,7 +685,8 @@ function game.draw(alpha, dt)
       table.sort(lights, function(a, b) return a[2] < b[2] end)
       for i = 1, math.min(5, #lights) do
         local l = lights[i]
-        fk.gfx.light({ position = l[1], color = l[3], intensity = l[4] and l[4] * l[4] * 0.15 or 6, radius = l[4] and l[4] * 1.5 or 12 })
+        fk.gfx.light({ position = l[1], color = l[3], intensity = l[4] and math.min(1e6, l[4] * l[4] * 0.15) or 6, -- (at most the engine's limit)
+          radius = l[4] and l[4] * 1.5 or 12 })
       end
     end
   end
