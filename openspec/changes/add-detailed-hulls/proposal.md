@@ -23,7 +23,9 @@ redesigned: much more detailed, more interesting, science-fiction looking, and w
     tower;
   - the Continental Explorer: a rock mountain under a city platform with citadel towers, a lit rim, lift-engine
     nacelles and docking bays;
-  - the Drop Ship: a lifting body with delta wings, twin fins, a canopy, three engines and landing gear;
+  - the Drop Ship (reworked on the owner's request: not a shuttle): a ball with an armoured belt, small fins, two huge
+    engine nacelles and a big central engine, and huge hangar bay doors in its flanks and belly. Its seat moved to the
+    front of the ball, above the belt;
   - the Space Station: a spindle, twin habitat rings on spokes with window belts, solar arrays, docking arms and a
     command arm;
   - the Jump Ship: a spine with a hammerhead bow, the glowing jump ring, hangar bays, radiator wings, an engine cluster
