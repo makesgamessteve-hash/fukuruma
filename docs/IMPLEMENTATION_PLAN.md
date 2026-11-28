@@ -688,6 +688,12 @@ and the showcase scenes are reviewed on desktop, phone and VR.
   boarding, launching from a docked doll's bridge) and `add-interior-transit` (trams, ambient drones). Layouts are fixed
   per doll kind (a corridor grammar, not streamed sectors), so the plan's "50 sectors" check does not apply; lifts,
   the sector grammar and hand-authored bridges remain open.
+- **Delivered (2026-11-28):** `add-living-interiors`. It adds:
+  - a room plan per doll (galley, quarters, bath, med bay, engine room, cargo deck; from 1 km also a workshop, lab,
+    life support and drone bay; from 6 km a biotope) with furnished, lit rooms from `interior/rooms.lua`;
+  - per-room streaming (built within 40 m, two a frame, let go beyond 70 m);
+  - `living.lua`: needs, fixtures, engine wear, life support and crops;
+  - detailed cockpits.
 
 - **OpenSpec:** `add-human-on-foot`, `add-vessel-interiors`, `add-hangar-boarding`, `add-interior-transit`,
   `add-drones`.

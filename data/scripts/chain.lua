@@ -294,6 +294,7 @@ function chain.screens()
     target and { "AUTOPILOT", label(target.kind) .. " " .. metres(distance(c, target)) } or { "AUTOPILOT", "O: OFF" },
     { "TELEPORT", chain.TELEPORT[c.kind] and "P: READY" or "NO NODE" } }
   if chain.sensor_screen then list[#list + 1] = chain.sensor_screen(c) end -- (sensors.lua)
+  if chain.wear_screen then list[#list + 1] = chain.wear_screen(c) end -- (living.lua)
   for i = #list + 1, 8 do list[i] = { "SYSTEMS", "NOMINAL" } end
   return list
 end
@@ -348,10 +349,12 @@ end
 
 -- How fast a doll may go: flying dolls faster the higher they are (thin air; a Drop Ship from orbit), up to 15 km/s
 -- (an orbiting station goes round at about 7.7 km/s).
+-- Worn engines go slower (living.lua: chain.speed_factor).
 local function top_speed(d, ctl)
-  if ctl.kind ~= "flight" then return ctl.speed end
+  local worn = chain.speed_factor and chain.speed_factor(d) or 1
+  if ctl.kind ~= "flight" then return ctl.speed * worn end
   local r, ground = radial(d)
-  return math.min(15000, ctl.speed * (1 + math.max(0, r - ground) / 1000))
+  return math.min(15000, ctl.speed * (1 + math.max(0, r - ground) / 1000)) * worn
 end
 
 -- An orbiting doll goes round the world on a circle through the plane over the range (x up from its centre),
@@ -530,6 +533,8 @@ end
 -- What else the hand can do on foot (other modules: talking, pylons, recovering a stolen doll): {hint = function()
 -- -> text or nil, act = function()}, asked in order before entering the doll.
 chain.hands = {}
+-- What the rooms' fixtures do (living.lua): {[kind] = {hint = function(doll, fixture) -> text or nil, act = function(doll, fixture)}}.
+chain.fixtures = {}
 
 local function hand()
   if chain.current().kind ~= "exosuit" or chain.state().walk then return nil end
@@ -561,6 +566,7 @@ function chain.use_hint()
   elseif f[1] == "exit" then return "DOWN THE RAMP"
   elseif f[1] == "suit" then return (d.hold.exosuit or 0) > 0 and "SUIT UP AND GO OUT" or nil
   elseif f[1] == "tram" then return w.ride and "ON THE TRAM" or ("TRAM TO THE " .. interior.next_stop(interior.layout(kind), f).stop:upper())
+  elseif chain.fixtures[f[1]] and not w.docked then return chain.fixtures[f[1]].hint(d, f) -- (living.lua: the rooms' fixtures)
   end
 end
 
@@ -621,6 +627,7 @@ function chain.use()
   elseif f[1] == "suit" and not w.docked then -- the Exosuit goes on: out beside the doll, on foot
     local exo = chain.deploy_from(d, "exosuit")
     if exo then s.at, s.walk = exo.id, nil end
+  elseif chain.fixtures[f[1]] and not w.docked then chain.fixtures[f[1]].act(d, f)
   end
 end
 

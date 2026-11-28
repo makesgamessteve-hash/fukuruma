@@ -132,9 +132,10 @@ function survival.tick()
     if e.fire > 0 then hurt(s, dt * e.fire * 0.08) end
     s.dose = s.dose + e.radiation * dt
     if e.radiation > 0 then hurt(s, dt * e.radiation * 0.01) end
-  else -- inside a doll: air, a fresh filter, charge and repairs
-    survival.restore()
+  else -- inside a doll: air, a fresh filter, charge and repairs (if its life support works; living.lua)
+    if not survival.air or survival.air(chain.walking() and chain.find(chain.walking().doll) or chain.current()) then survival.restore() end
   end
+  if survival.weary and survival.weary() and chain.on_foot() then hurt(s, dt * 0.002) end -- (living.lua: starving or exhausted)
   local items = require("economy").state().items
   if s.integrity > 0 and s.integrity < 0.3 and (items.repair or 0) > 0 then -- a repair kit, used at once
     s.integrity, items.repair = math.min(1, s.integrity + 0.5), items.repair - 1
@@ -236,7 +237,7 @@ end
 function survival.restore()
   local s, r = survival.state(), sim.dt / survival.RESTORE
   s.oxygen, s.filter, s.power = math.min(1, s.oxygen + r), math.min(1, s.filter + r), math.min(1, s.power + r)
-  s.integrity = math.min(1, s.integrity + r)
+  s.integrity = math.min(1, s.integrity + r * (survival.weary and survival.weary() and 0 or 1)) -- (no mending when worn out)
 end
 
 -- The visor's suit lines (presentation).

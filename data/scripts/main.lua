@@ -51,6 +51,10 @@ local thieves = require("thieves")
 local dialogue = require("dialogue")
 local economy = require("economy")
 local research = require("research")
+local living = require("living")
+-- The light over each kind of room (presentation): warm where people live, clinical where they are treated, green over crops.
+local ROOM_LIGHT = { galley = { 1, 0.85, 0.65 }, quarters = { 1, 0.8, 0.6 }, bath = { 0.95, 0.95, 1 }, ["med bay"] = { 0.85, 1, 0.95 },
+  ["engine room"] = { 1, 0.75, 0.5 }, biotope = { 1, 0.95, 0.75 }, workshop = { 1, 0.9, 0.75 }, ["cargo deck"] = { 1, 0.9, 0.7 } }
 local story = require("story")
 mods.run() -- the mods register their content with the modules above
 local hull = require("dolls.hull")
@@ -143,6 +147,7 @@ function game.init()
   thieves.install()
   dialogue.install()
   economy.install()
+  living.install()
   research.install()
   survival.install_codex()
   story.install()
@@ -423,6 +428,7 @@ function game.tick()
   economy.tick(survival.restore)
   research.tick()
   story.tick()
+  living.tick()
   survival.tick()
   for _, b in sim.each(chain.suit_out() and "suit" or "suit_away") do -- the suit waits where it was left
     local dx, dz = b.wx - b.vx, b.wz - b.vz
@@ -622,17 +628,18 @@ function game.draw(alpha, dt)
     local kind = walk and chain.walk_kind(walk) or inside.kind
     local frame = chain.interior_frame(inside, walk and walk.docked)
     local layout, open = interior.layout(kind), chain.door_open(kind)
-    local key = kind
-    for _, r in ipairs(layout.rooms) do
-      if r.door and not open(r.name) then key = key .. "|" .. r.name end
-    end
-    game.interior_meshes = game.interior_meshes or {}
-    game.interior_meshes[key] = game.interior_meshes[key]
-      or fk.gfx.mesh(interior.mesh(layout, function(name) return not open(name) end))
-    if walk then -- (kilometre-long hangars reach on into the planetary slice)
+    if walk then -- the rooms near the Commander, streamed in and out (kilometre-long hangars reach into the planetary slice)
+      game.room_cache = game.room_cache or {}
+      game.room_cache[kind] = game.room_cache[kind] or {}
+      for other in pairs(game.room_cache) do if other ~= kind then game.room_cache[other] = nil end end -- (another doll's rooms go)
+      local near = interior.stream(game.room_cache[kind], layout, walk.x, walk.z, function(name) return not open(name) end, fk.gfx.mesh)
       if layout.length > 400 then fk.gfx.slices({ planetary = { frames.LOCAL_FAR, frames.PLANETARY[2] } }) end -- (no gap from orbit)
+      local m = chain.frame_matrix(frame)
       for _, slice in ipairs(layout.length > 400 and { "local", "planetary" } or { "local" }) do
-        fk.gfx.draw(game.interior_meshes[key], chain.frame_matrix(frame), { roughness = 0.7, metalness = 0.2, indoor = true, slice = slice })
+        for _, e in ipairs(near) do
+          fk.gfx.draw(e.mesh, m, { roughness = 0.7, metalness = 0.2, indoor = true, slice = slice })
+          if e.glow then fk.gfx.draw(e.glow, m, { emission = { 2.5, 2.5, 2.5 }, emissive_colors = true, indoor = true, slice = slice }) end
+        end
       end
     end
     game.cockpit_eye = chain.frame_point(frame, layout.seat[1], cockpit.EYE, layout.seat[2])
@@ -642,9 +649,9 @@ function game.draw(alpha, dt)
       local lights = { { chain.frame_point(frame, 0, interior.HEIGHT - 0.3, layout.seat[2] - 1), 0, { 1, 0.9, 0.75 } } }
       for _, r in ipairs(layout.rooms) do
         local cx, cz = (r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2
-        local p = chain.frame_point(frame, cx, (r.docked and (r.x1 - r.x0) * 0.6 or interior.HEIGHT) - 1, cz) -- (low enough to light the ceiling)
+        local p = chain.frame_point(frame, cx, (r.docked and (r.x1 - r.x0) * 0.6 or r.height or interior.HEIGHT) - 1, cz) -- (low enough to light the ceiling)
         local dx, dz = p[1] - game.eye[1], p[3] - game.eye[3]
-        lights[#lights + 1] = { p, dx * dx + dz * dz, { 0.9, 0.95, 1 }, r.docked and r.x1 - r.x0 }
+        lights[#lights + 1] = { p, dx * dx + dz * dz, ROOM_LIGHT[r.type] or { 0.9, 0.95, 1 }, r.docked and r.x1 - r.x0 }
         if r.docked and not walk.docked and (inside.hold[r.docked] or 0) > 0 then
           local def = dolls.by_id[r.docked]
           game.docked_meshes = game.docked_meshes or {}
@@ -749,6 +756,11 @@ function game.draw(alpha, dt)
   if hint then
     local text = "F: " .. hint
     fk.gfx.text(math.floor(w / 2 - #text * 4), h - 48, text, { 1, 0.85, 0.5 })
+  end
+  if game.view == "helmet" then -- the Commander's needs (living.lua), over the hint
+    for i, line in ipairs(living.warnings()) do
+      fk.gfx.text(math.floor(w / 2 - #line * 4), h - 48 - i * 12, line, { 1, 0.6, 0.3 })
+    end
   end
   local life = survival.state()
   if game.view == "helmet" and chain.on_foot() then -- the suit's systems on the visor, red when low

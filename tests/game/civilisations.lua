@@ -66,7 +66,7 @@ return scenario {
     steps(game, 60 * 25)
     t.frames(3)
     t.screenshot("civ_boarders")
-    steps(game, 60 * (thieves.PATIENCE + 10))
+    steps(game, 60 * (thieves.PATIENCE + 70)) -- (the walk down the corridor to the cargo deck, then the wait)
     t.expect(ship.looted == 1 and #thieves.state().parties == 0, "the sealed cargo deck held; they gave up")
 
     -- a native tells of the ruin

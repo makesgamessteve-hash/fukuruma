@@ -33,3 +33,9 @@ Generated for this project with the ElevenLabs API by `tools/audio/generate.py` 
 - `sample.ogg` (eleven_text_to_sound_v2, 2026-11-28): Small handheld sci-fi sampling tool click and suction, short glassy vial seal
 - `collapse.ogg` (eleven_text_to_sound_v2, 2026-11-28): Ground collapsing into a sinkhole under a giant walking machine, deep crumbling rumble with rocks falling
 - `breach.ogg` (eleven_text_to_sound_v2, 2026-11-28): Space suit hull breach warning, sharp air hiss with a short warning beep pattern inside a helmet
+- `eat.ogg` (eleven_text_to_sound_v2, 2026-11-28): Eating a meal in a spaceship galley: a tray set down on a metal table, cutlery clink, a food dispenser beep
+- `wash.ogg` (eleven_text_to_sound_v2, 2026-11-28): Short shower in a spaceship bath: water spray hiss on tiles then a warm air dryer whoosh
+- `maintain.ogg` (eleven_text_to_sound_v2, 2026-11-28): Spaceship engine maintenance: a heavy wrench turning on a bolt, a metal panel clunk, then machinery humming back to life
+- `harvest.ogg` (eleven_text_to_sound_v2, 2026-11-28): Picking ripe crops in a greenhouse: leaves rustling, stems snapping, produce dropped into a basket
+- `heal.ogg` (eleven_text_to_sound_v2, 2026-11-28): Sci-fi medical bay scanner: a soft rising hum with a gentle confirmation tone
+- `sleep.ogg` (eleven_text_to_sound_v2, 2026-11-28): Bunk in a quiet spaceship: a soft lights-down tone, a fabric rustle and a calm low ventilation hum

@@ -219,5 +219,47 @@
     "seconds": 1.2,
     "path": "sounds/breach.ogg",
     "prompt": "Space suit hull breach warning, sharp air hiss with a short warning beep pattern inside a helmet"
+  },
+  {
+    "id": "eat",
+    "kind": "sfx",
+    "seconds": 1.2,
+    "path": "sounds/eat.ogg",
+    "prompt": "Eating a meal in a spaceship galley: a tray set down on a metal table, cutlery clink, a food dispenser beep"
+  },
+  {
+    "id": "wash",
+    "kind": "sfx",
+    "seconds": 2.0,
+    "path": "sounds/wash.ogg",
+    "prompt": "Short shower in a spaceship bath: water spray hiss on tiles then a warm air dryer whoosh"
+  },
+  {
+    "id": "maintain",
+    "kind": "sfx",
+    "seconds": 2.0,
+    "path": "sounds/maintain.ogg",
+    "prompt": "Spaceship engine maintenance: a heavy wrench turning on a bolt, a metal panel clunk, then machinery humming back to life"
+  },
+  {
+    "id": "harvest",
+    "kind": "sfx",
+    "seconds": 1.2,
+    "path": "sounds/harvest.ogg",
+    "prompt": "Picking ripe crops in a greenhouse: leaves rustling, stems snapping, produce dropped into a basket"
+  },
+  {
+    "id": "heal",
+    "kind": "sfx",
+    "seconds": 1.5,
+    "path": "sounds/heal.ogg",
+    "prompt": "Sci-fi medical bay scanner: a soft rising hum with a gentle confirmation tone"
+  },
+  {
+    "id": "sleep",
+    "kind": "sfx",
+    "seconds": 2.0,
+    "path": "sounds/sleep.ogg",
+    "prompt": "Bunk in a quiet spaceship: a soft lights-down tone, a fabric rustle and a calm low ventilation hum"
   }
 ]

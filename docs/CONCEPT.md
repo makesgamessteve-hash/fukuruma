@@ -149,6 +149,36 @@ Hull (shape, zones)            e.g. Jump Ship: hangars, foundries, engineering, 
 - Interiors are not safe. Boarders, parasites carried up from planets and failing systems make
   the dolls places to explore and defend.
 
+#### Why the Commander walks the dolls (decided 2026-11-28)
+
+The dolls are homes and machines, not corridors to cross. The Commander is a person who has to eat, sleep and wash,
+and the dolls only keep going if someone looks after them. Every doll except the Exosuit holds what a person needs to
+live. The bigger the doll, the more it holds:
+
+| Room | In | What it is for |
+|------|----|----------------|
+| Galley | every doll but the Exosuit | Eat: hunger to zero. Meals come from the doll's stores, then from rations grown in a biotope. |
+| Quarters | every doll (more the bigger it is) | Sleep: fatigue to zero. |
+| Bath | every doll | Wash: the grime gathered outside (faster in toxins) to zero. |
+| Med bay | every doll | Treatment: the radiation dose cleared and the suit mended. |
+| Engine room | every doll | Maintain: engine wear to zero. Wear grows while the doll moves; above half it costs top speed. |
+| Life support | from 1 km | Service: the air plant wears while the Commander is aboard; when it is spent, the doll no longer restores the suit. |
+| Workshop, lab | from 1 km | The workshop and research menus at a bench. |
+| Drone bay, cargo deck | from 1 km / every doll | Drones; what boarders come for. |
+| Biotope | from 6 km (Drop Ship, Continental Explorer, station, Jump Ship) | A tall hall of soil beds, grow lights, fruit trees and a water channel. Its crop ripens and is harvested into rations. |
+| Suit bay, clone bay | where the Exosuit is carried / the Jump Ship | Out onto a planet; back after a death (Clone mode). |
+
+- **Needs.** Hunger fills in about 40 minutes and fatigue in about an hour. The visor warns when they near full. A
+  starving or exhausted Commander stops mending aboard and slowly wears down outside. Long expeditions therefore come
+  back to a doll, and a doll far from home needs its galley stocked and its biotope tended.
+- **Upkeep.** The cockpit screens show each doll's engine and air state. A worn doll is slow, and a doll with spent
+  life support is no refuge. Walking down to the engine room is part of travelling.
+- **Rooms are detailed and streamed.** Each room type has its own furniture and lights: tables and a serving counter,
+  bunks and lockers, showers, med beds under scanners, a reactor in glowing rings, crop beds under grow lights. A
+  Continental Explorer, a station or the Jump Ship has more rooms than are kept in memory. Only the rooms within
+  about 40 m of the Commander are built, a couple per frame. Rooms beyond 70 m are let go. The corridor and the big
+  plain hangars always stay.
+
 ### 2.6 The Commander's view
 
 The game is seen **only through the Commander's eyes**. There is no chase camera.

@@ -10,7 +10,7 @@ local cockpit = {}
 cockpit.EYE = 2.7 -- metres above the floor: the seated Exosuit's eye
 cockpit.LOOK = math.rad(110) -- how far the head turns left or right of the doll's front in the seat
 
--- The cabin's parts (metres, eye at the origin) and where its screens are.
+-- The cabin's parts (metres, eye at the origin), its screens, where they are, and its lights (buttons, strips).
 function cockpit.parts(c)
   local w, h, d, y0 = c.width, c.height, c.depth, -cockpit.EYE
   local col, trim, glove = c.color or { 0.32, 0.33, 0.36 }, c.trim or { 0.18, 0.18, 0.2 }, { 0.85, 0.85, 0.82 }
@@ -24,12 +24,45 @@ function cockpit.parts(c)
     { "box", at = { w / 2, y0 + h / 2, front - d / 2 }, size = { 0.1, h, d }, color = col, mirror = true }, -- sides
     { "box", at = { 0, y0 + sill / 2, front }, size = { w, sill, 0.15 }, color = col }, -- below the windows
     { "box", at = { 0, y0 + h - head / 2, front }, size = { w, head, 0.15 }, color = col }, -- above them
-    { "box", at = { 0, y0 + 1.6, front - 1.0 }, size = { math.min(w * 0.7, 6), 0.25, 1.2 }, color = trim }, -- console
-    { "box", at = { 0, y0 + 0.9, -0.5 }, size = { 1.6, 0.25, 1.5 }, color = trim }, -- the seat
-    { "box", at = { 0, y0 + 2.2, -1.25 }, size = { 1.6, 2.2, 0.25 }, color = trim },
+    -- the console: a sloped desk with a lip, on a pedestal
+    { "taper", at = { 0, y0 + 1.6, front - 1.0 }, size = { math.min(w * 0.7, 6), 0.25, 1.2 }, top = { math.min(w * 0.7, 6) - 0.1, 0.9 },
+      shift = { 0, -0.15 }, color = trim },
+    { "box", at = { 0, y0 + 0.75, front - 0.9 }, size = { math.min(w * 0.6, 5), 1.5, 0.6 }, color = col },
+    { "box", at = { 0, y0 + 1.75, front - 1.62 }, size = { math.min(w * 0.7, 6), 0.06, 0.08 }, color = { 0.5, 0.5, 0.52 } },
+    -- the seat: a pedestal, a cushion, a back with a headrest, and armrests
+    { "lathe", at = { 0, y0, -0.5 }, axis = "y", stations = { { 0, 0.45 }, { 0.15, 0.4 }, { 0.75, 0.2 } }, sides = 10, cap = true, color = trim },
+    { "taper", at = { 0, y0 + 0.9, -0.5 }, size = { 1.6, 0.25, 1.5 }, top = { 1.5, 1.4 }, color = { 0.22, 0.24, 0.28 } },
+    { "taper", at = { 0, y0 + 2.1, -1.25 }, size = { 1.6, 2.0, 0.25 }, top = { 1.3, 0.25 }, color = { 0.22, 0.24, 0.28 } },
+    { "box", at = { 0, y0 + 3.25, -1.3 }, size = { 0.8, 0.5, 0.3 }, color = { 0.22, 0.24, 0.28 } }, -- (the headrest)
+    { "box", at = { 0.9, y0 + 1.25, -0.5 }, size = { 0.2, 0.15, 1.3 }, color = trim, mirror = true },
+    { "box", at = { 0.9, y0 + 1.05, -1.0 }, size = { 0.1, 0.3, 0.1 }, color = trim, mirror = true },
     { "box", at = { 0.9, y0 + 1.45, 1.1 }, size = { 0.1, 0.5, 0.1 }, color = trim, mirror = true }, -- the sticks
     { "box", at = { 0.9, y0 + 1.75, 1.1 }, size = { 0.22, 0.16, 0.28 }, color = glove, mirror = true }, -- the hands
+    -- side consoles along the walls, the overhead panel, floor grating and wall ribs
+    { "taper", at = { w / 2 - 0.45, y0 + 0.55, front - d * 0.45 }, size = { 0.8, 1.1, d * 0.5 }, top = { 0.5, d * 0.5 }, shift = { 0.15, 0 },
+      color = trim, mirror = true },
+    { "box", at = { 0, y0 + h - 0.12, -0.2 }, size = { 2.2, 0.16, 1.6 }, color = trim },
   }
+  for i = 0, 3 do -- ribs up the walls and over the ceiling
+    local z = front - 0.6 - (d - 1) * i / 3
+    parts[#parts + 1] = { "box", at = { w / 2 - 0.12, y0 + h / 2, z }, size = { 0.16, h, 0.2 }, color = trim, mirror = true }
+    parts[#parts + 1] = { "box", at = { 0, y0 + h - 0.08, z }, size = { w, 0.12, 0.2 }, color = trim }
+  end
+  for i = -2, 2 do -- floor grating
+    parts[#parts + 1] = { "box", at = { i * 0.5, y0 + 0.01, front - d / 2 }, size = { 0.05, 0.02, d - 0.4 }, color = { 0.12, 0.12, 0.14 } }
+  end
+  local lights = {} -- glowing buttons and small screens (drawn with the screens)
+  local green, amber, red, cyan = { 0.2, 0.9, 0.4 }, { 1, 0.65, 0.2 }, { 1, 0.25, 0.2 }, { 0.3, 0.8, 1 }
+  for i = 0, 5 do -- button rows on the side consoles
+    local col = ({ green, amber, cyan, green, red, cyan })[i + 1]
+    lights[#lights + 1] = { "box", at = { w / 2 - 0.5, y0 + 1.12, front - d * 0.2 - i * d * 0.08 }, size = { 0.3, 0.03, 0.1 }, color = col, mirror = true }
+  end
+  for i = -3, 3 do -- switches on the overhead panel and on the desk's lip
+    lights[#lights + 1] = { "box", at = { i * 0.28, y0 + h - 0.21, -0.2 }, size = { 0.12, 0.02, 0.2 }, color = i % 2 == 0 and amber or green }
+    lights[#lights + 1] = { "box", at = { i * 0.5, y0 + 1.74, front - 0.45 }, size = { 0.2, 0.03, 0.12 }, color = i % 3 == 0 and red or cyan }
+  end
+  lights[#lights + 1] = { "box", at = { w / 2 - 0.4, y0 + 1.6, front - d * 0.55 }, size = { 0.04, 0.5, 0.7 }, color = { 0.05, 0.25, 0.3 }, mirror = true }
+  lights[#lights + 1] = { "box", at = { w / 2 - 0.12, y0 + h - 0.3, -0.5 }, size = { 0.08, 0.08, d * 0.6 }, color = { 0.9, 0.85, 0.7 }, mirror = true } -- (strip lights)
   for i = 1, c.posts do -- window posts, evenly across the front
     parts[#parts + 1] = { "box", at = { -w / 2 + w * i / (c.posts + 1), y0 + (sill + h - head) / 2, front },
       size = { 0.25, h - sill - head, 0.25 }, color = trim }
@@ -42,14 +75,15 @@ function cockpit.parts(c)
     screens[#screens + 1] = { "box", at = at, size = { half * 2, 0.8, 0.06 }, color = { 0.05, 0.16, 0.2 } }
     spots[#spots + 1] = { at[1], at[2], at[3] + 0.04, half }
   end
-  return parts, screens, spots
+  return parts, screens, spots, lights
 end
 
 -- Meshes for a doll kind's cockpit, built once ({shell, screens, spots}), or nil for a doll without one.
 function cockpit.build(state, def)
   if not def.cockpit then return nil end
   if not state[def.id] then
-    local parts, screens, spots = cockpit.parts(def.cockpit)
+    local parts, screens, spots, lights = cockpit.parts(def.cockpit)
+    for _, l in ipairs(lights) do screens[#screens + 1] = l end -- (the buttons glow with the screens)
     state[def.id] = { shell = fk.gfx.mesh(hull.build(parts, 1)), screens = fk.gfx.mesh(hull.build(screens, 1)), spots = spots }
   end
   return state[def.id]

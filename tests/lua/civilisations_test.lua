@@ -135,7 +135,7 @@ return {
     sim.send("seal", {})
     step()
     assert(not chain.door_open("jump_ship")("cargo deck"))
-    step(math.floor((thieves.PATIENCE + 60) / sim.dt))
+    step(math.floor((thieves.PATIENCE + 120) / sim.dt)) -- (the walk to the cargo deck, then the wait)
     assert(#thieves.state().parties == 0 and not ship.looted and p.waited >= thieves.PATIENCE)
     chain.state().at = find("walker").id
     thieves.state().raid_at = sim.tick

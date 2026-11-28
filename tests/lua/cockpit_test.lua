@@ -38,7 +38,8 @@ return {
     sim.step(game)
     local lines = chain.screens()
     assert(lines[1][1] == "EXPLORATION WALKER" and lines[2][2] == "EMPTY" and lines[3][2]:find("LAND EXPLORER", 1, true))
-    assert(#lines == 8 and lines[8][1] == "SENSORS", "the sensor screen (sensors.lua)")
+    assert(#lines == 9 and lines[8][1] == "SENSORS", "the sensor screen (sensors.lua)")
+    assert(lines[9][1] == "MAINTENANCE" and lines[9][2] == "ENGINES 100%", "the wear screen (living.lua)")
     local c = cockpit.build({}, dolls.by_id.walker)
     local eye = { 0, 0, 0 }
     local projection = mat4.perspective(math.rad(70), 16 / 9, 0.1, 1000)
