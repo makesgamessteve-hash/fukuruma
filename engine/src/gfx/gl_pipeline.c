@@ -349,6 +349,7 @@ static void draw_meshes(GLuint program, bool materials, unsigned slices) {
             gl.Uniform1f(LOC("u_normal_scale"), normal_map ? m->normal_scale : 0.0f); /* 0: no normal map */
             gl.Uniform1f(LOC("u_one_sided"), m->one_sided ? 1.0f : 0.0f);
             gl.Uniform1f(LOC("u_emissive_colors"), m->emissive_colors ? 1.0f : 0.0f);
+            gl.Uniform1f(LOC("u_indoor"), m->indoor ? 1.0f : 0.0f);
             gl.Uniform1f(LOC("u_clouds"), m->clouds);
             gl.Uniform1f(LOC("u_terrain"), (float)m->terrain);
             if (m->terrain) {

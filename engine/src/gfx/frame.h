@@ -27,6 +27,7 @@ typedef struct {
     float normal_scale;
     bool one_sided; /* closed surfaces seen from outside: back faces keep their normals (no two-sided flip) */
     bool emissive_colors; /* the vertex colours tint the emission (stars) */
+    bool indoor; /* rooms inside a doll: no starlight (their own lights and the fill only) */
     float clouds; /* 0..1: how much of the cloud cover stored in the vertices' u shows (planet chunks) */
     int terrain; /* the terrain material's quality (planet chunks near the ground), 0: none; 1 layers (rock, snow,
                     wetness, dust), 2 with detail, 3 with bumps as well */

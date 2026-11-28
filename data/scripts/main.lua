@@ -36,6 +36,8 @@ local scatter = require("scatter")
 local dig = require("dig")
 local chain = require("chain")
 local cockpit = require("dolls.cockpit")
+local interior = require("interior")
+local hull = require("dolls.hull")
 local dolls = require("dolls")
 local ship_ai = require("ship_ai")
 local weather = require("weather")
@@ -115,6 +117,7 @@ function game.init()
   end, game.world)
   sim.on("move", function(args) -- the wanted velocity and the direction the Commander looks (on foot only)
     local body = sim.get(game.suit, "suit")
+    chain.walk_input(args.x, args.z) -- walking inside a doll: the human moves instead
     if not chain.on_foot() then args = { x = 0, z = 0, fx = body.lx, fz = body.lz } end
     body.wx, body.wz, body.lx, body.lz = args.x, args.z, args.fx, args.fz
   end)
@@ -160,6 +163,7 @@ function game.init()
   actions.define("lift", { kind = "axis", negative = { "C" }, positive = { "Space" } }) -- flying dolls up and down
   actions.define("teleport", { kind = "button", keys = { "P" }, touch = "teleport" }) -- Jump Ship <-> stations
   actions.define("autopilot", { kind = "button", keys = { "O" }, touch = "autopilot" })
+  actions.define("use", { kind = "button", keys = { "F" }, gamepad = { "b" }, touch = "use" }) -- sit, doors, ramps, suit
   actions.define("lift_up", { kind = "button", touch = "lift_up" }) -- touch: a flying doll's climb and dive
   actions.define("lift_down", { kind = "button", touch = "lift_down" })
   actions.define("recall", { kind = "button", keys = { "R" }, gamepad = { "dpleft" }, touch = "recall" })
@@ -179,6 +183,7 @@ function game.init()
   actions.touch_button("recall", 0.6, 0.92, 0.05)
   actions.touch_button("autopilot", 0.86, 0.6, 0.06)
   actions.touch_button("teleport", 0.6, 0.74, 0.05)
+  actions.touch_button("use", 0.6, 0.6, 0.05)
   actions.touch_button("lift_up", 0.52, 0.72, 0.05)
   actions.touch_button("lift_down", 0.52, 0.88, 0.05)
   game.control = { x = 0, z = 0, fx = 0, fz = 1 }
@@ -224,7 +229,7 @@ local function look()
   local tdx, tdy = actions.touch_look()
   right, up = right + tdx * 4.0, up - tdy * 4.0 * h / w
   if game.view == "drone" then game.drone:look(right, up) else game.helmet:look(right, up, dt) end
-  if not chain.on_foot() and game.view ~= "drone" then -- in a seat: the head turns only so far from the doll's front
+  if not chain.on_foot() and not chain.walking() and game.view ~= "drone" then -- in a seat: the head turns only so far from the doll's front
     local yaw = (game.helmet.yaw + math.pi) % (2 * math.pi) - math.pi
     game.helmet.yaw = math.max(-cockpit.LOOK, math.min(cockpit.LOOK, yaw))
   end
@@ -239,7 +244,10 @@ function game.touch_layout()
   local names = { "menu", "view", "map" }
   local function add(name, ok) if ok then names[#names + 1] = name end end
   add("board_up", chain.up() ~= nil)
-  if chain.on_foot() then
+  add("use", chain.use_hint() ~= nil)
+  if chain.walking() then
+    add("sprint", true)
+  elseif chain.on_foot() then
     add("sprint", true) add("scan", true) add("dig", true)
   else
     local c = chain.current()
@@ -294,7 +302,8 @@ function game.input()
   if actions.pressed("scan") and not busy and game.view == "helmet" then sim.send("scan", {}) end
   if actions.pressed("dig") and not busy and game.view == "helmet" then sim.send("dig", {}) end
   game.touch_layout()
-  if not chain.on_foot() then -- at a doll's controls: the move keys steer it (vehicle controllers)
+  if actions.pressed("use") and not busy then sim.send("use", {}) end
+  if not chain.on_foot() and not chain.walking() then -- at a doll's controls: the move keys steer it (vehicle controllers)
     local lift = (busy or game.view == "drone") and 0 or
       math.max(-1, math.min(1, actions.value("lift") + (actions.held("lift_up") and 1 or 0) - (actions.held("lift_down") and 1 or 0)))
     local d = { throttle = -y, turn = -x, lift = lift }
@@ -451,7 +460,7 @@ function game.draw(alpha, dt)
   game.now = g and weather.present(game.weather, { seed = v.seed, desc = g.desc, air = v.air, t = sim.tick * sim.dt,
     cold = site and (site.temperature or 288) < 268, dt = pdt, eye = { body.x, body.y + 3, body.z }, wind = { 0.8, 0.35 },
     share = fk.gfx.settings().max_particles / 12000 }) or nil
-  game.daylight = dig.daylight(game.world, { body.x, body.y + 3.2, body.z })
+  game.daylight = chain.walking() and 0.4 or dig.daylight(game.world, { body.x, body.y + 3.2, body.z })
   draw_stage(pdt)
   local model, speed, head
   if chain.suit_out() then model, speed, head = draw_suit(body, alpha, pdt)
@@ -469,12 +478,18 @@ function game.draw(alpha, dt)
     view, projection = game.drone:matrices(target, w / h)
   else
     game.helmet.fov = comfort.current.fov
-    local seated = not chain.on_foot() and chain.current()
+    local walk = chain.walking()
+    local seated = not chain.on_foot() and not walk and chain.current()
     local eye = seated and chain.seat(seated) or eye_position(model, head) -- at a doll's controls: its seat
     if seated and not game.xr then eye[2] = eye[2] + chain.bob(seated) * comfort.current.head_bob end
+    local turn = seated and seated.yaw or 0
+    if walk then -- on foot inside a doll: a human's eyes in its rooms
+      local frame = chain.interior_frame(chain.find(walk.doll), walk.docked)
+      eye, turn = chain.frame_point(frame, walk.x, interior.EYE, walk.z), frame.yaw
+    end
     game.eye = eye
-    local look = game.helmet.yaw -- in a seat, the head turns from the doll's front
-    if seated then game.helmet.yaw = look + (seated.yaw or 0) end
+    local look = game.helmet.yaw -- in a seat or inside a doll, the head turns from the doll's front
+    game.helmet.yaw = look + turn
     local shake = { feel.shake() }
     if game.xr then shake = { 0, 0, 0, 0, 0 } end -- in VR the head is never moved by effects (CONCEPT 6.5)
     if seated and not game.xr then -- the cabin sways with the doll (comfort: head bob)
@@ -503,8 +518,47 @@ function game.draw(alpha, dt)
   game.chain_view = game.chain_view or {}
   chain.draw(game.chain_view, { inv_x, inv_y, inv_z }, feel.time)
   game.cockpits = game.cockpits or {}
-  game.cockpit_now = game.view == "helmet" and not chain.on_foot()
-    and cockpit.draw(game.cockpits, dolls.by_id[chain.current().kind], game.eye, chain.current().yaw) or nil
+  game.cockpit_now = nil
+  local walk = chain.walking()
+  local inside = walk and chain.find(walk.doll) or (not chain.on_foot() and chain.current())
+  if inside and game.view == "helmet" then -- the doll's cockpit at the seat and, on foot, its rooms (vessel-interiors spec)
+    local kind = walk and chain.walk_kind(walk) or inside.kind
+    local frame = chain.interior_frame(inside, walk and walk.docked)
+    local layout, open = interior.layout(kind), chain.door_open(kind)
+    local key = kind
+    for _, r in ipairs(layout.rooms) do
+      if r.door and not open(r.name) then key = key .. "|" .. r.name end
+    end
+    game.interior_meshes = game.interior_meshes or {}
+    game.interior_meshes[key] = game.interior_meshes[key]
+      or fk.gfx.mesh(interior.mesh(layout, function(name) return not open(name) end))
+    if walk then fk.gfx.draw(game.interior_meshes[key], chain.frame_matrix(frame), { roughness = 0.7, metalness = 0.2, indoor = true }) end
+    game.cockpit_eye = chain.frame_point(frame, layout.seat[1], cockpit.EYE, layout.seat[2])
+    game.cockpit_yaw = frame.yaw
+    game.cockpit_now = cockpit.draw(game.cockpits, dolls.by_id[kind], game.cockpit_eye, frame.yaw, walk ~= nil)
+    if walk then -- the bridge's light over the seat, the four nearest rooms' lights, and the dolls docked in hangars
+      local lights = { { chain.frame_point(frame, 0, interior.HEIGHT - 0.3, layout.seat[2] - 1), 0, { 1, 0.9, 0.75 } } }
+      for _, r in ipairs(layout.rooms) do
+        local cx, cz = (r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2
+        local p = chain.frame_point(frame, cx, (r.docked and (r.x1 - r.x0) * 0.6 or interior.HEIGHT) - 1, cz) -- (low enough to light the ceiling)
+        local dx, dz = p[1] - game.eye[1], p[3] - game.eye[3]
+        lights[#lights + 1] = { p, dx * dx + dz * dz, { 0.9, 0.95, 1 }, r.docked and r.x1 - r.x0 }
+        if r.docked and not walk.docked and (inside.hold[r.docked] or 0) > 0 then
+          local def = dolls.by_id[r.docked]
+          game.docked_meshes = game.docked_meshes or {}
+          game.docked_meshes[r.docked] = game.docked_meshes[r.docked] or fk.gfx.mesh(hull.build(def.hull, def.size_m))
+          local at = chain.frame_point(frame, 0, 0, cz)
+          fk.gfx.draw(game.docked_meshes[r.docked], chain.frame_matrix({ x = at[1], y = at[2], z = at[3], yaw = frame.yaw }),
+            { roughness = def.roughness or 0.6, metalness = def.metalness or 0, indoor = true })
+        end
+      end
+      table.sort(lights, function(a, b) return a[2] < b[2] end)
+      for i = 1, math.min(5, #lights) do
+        local l = lights[i]
+        fk.gfx.light({ position = l[1], color = l[3], intensity = l[4] and l[4] * 0.6 or 6, radius = l[4] or 12 })
+      end
+    end
+  end
   local g0 = universe.ground() -- rivers and lakes (rivers-and-lakes spec): meshed once per world
   if game.waters_for ~= g0 then game.waters_for, game.water_mesh = g0, g0 and g0.waters and g0.surface:water_mesh() end
   if game.water_mesh then
@@ -520,11 +574,16 @@ function game.draw(alpha, dt)
   feel.draw()
   ship_ai.draw(game.ai, feel.time, w, h)
   if game.view == "drone" then hud.drone(feel.time)
-  elseif game.cockpit_now then -- at a doll's controls: its screens instead of the visor
-    cockpit.text(game.cockpit_now, game.eye, chain.screens(), view, projection, w, h, { 1, 0.75, 0.3 }, chain.current().yaw)
+  elseif game.cockpit_now then -- inside a doll: its screens instead of the visor
+    cockpit.text(game.cockpit_now, game.cockpit_eye, chain.screens(), view, projection, w, h, { 1, 0.75, 0.3 }, game.cockpit_yaw)
   else
     hud.visor({ yaw = game.helmet.yaw, speed = speed, turn_rate = game.helmet.turn_rate, vignette = comfort.current.vignette,
       scan = math.max(0, math.min(1, 1 - (body.scan_at - sim.tick) / SCAN_COOLDOWN)) })
+  end
+  local hint = game.view == "helmet" and chain.use_hint() -- what F does here
+  if hint then
+    local text = "F: " .. hint
+    fk.gfx.text(math.floor(w / 2 - #text * 4), h - 48, text, { 1, 0.85, 0.5 })
   end
   if game.jump_fx then -- streaks racing out of the centre, then a flash that hides the arrival
     game.jump_fx = game.jump_fx + dt

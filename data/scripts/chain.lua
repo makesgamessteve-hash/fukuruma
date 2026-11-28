@@ -57,7 +57,7 @@ end
 function chain.current() return chain.find(chain.state().at) end
 
 -- The Commander is on foot (in the Exosuit, steering the suit of the range).
-function chain.on_foot() return chain.current().kind == "exosuit" end
+function chain.on_foot() return chain.current().kind == "exosuit" and not chain.state().walk end
 
 local function distance(a, b)
   local dx, dy, dz = a.x - b.x, a.y - b.y, a.z - b.z
@@ -133,10 +133,10 @@ function chain.install(suit, move_suit, world)
   sim.set(chain.id, "chain", { dolls = list, at = #list, next = #list + 1 })
   chain.suit, chain.move_suit = suit, move_suit
 
-  sim.on("deploy", function(args) -- a docked doll out of the one the Commander is in, beside it
-    local c, s = chain.current(), chain.state()
-    local kind = args.kind
-    if not (c.hold[kind] and c.hold[kind] > 0) then return end
+  -- a docked doll of kind out of doll c, beside it; returns it (or nil when c holds none)
+  local function deploy(c, kind)
+    local s = chain.state()
+    if not (c.hold[kind] and c.hold[kind] > 0) then return nil end
     local o = dolls.by_id[kind].offset
     local x, y, z = c.x + o[1], (dolls.by_id[kind].place == "orbit" and 0 or c.y) + o[2], c.z + o[3]
     if dolls.by_id[kind].place == "ground" then x, y, z = place(kind, x, o[2], z) end
@@ -147,7 +147,15 @@ function chain.install(suit, move_suit, world)
     s.dolls[#s.dolls + 1] = d
     if kind == "exosuit" then move_suit(x, y, z) end
     sim.emit("deploy", { position = { x, y, z }, kind = kind, id = d.id, strength = 1 })
+    return d
+  end
+  chain.deploy_from = deploy
+
+  sim.on("deploy", function(args) -- a docked doll out of the one the Commander is in, beside it
+    deploy(chain.current(), args.kind)
   end)
+
+  sim.on("use", function() chain.use() end) -- the Commander's hand: interior.lua's fixtures and doors
 
   sim.on("recall", function(args) -- a child of the Commander's doll back into its hold (nobody in it, nothing out)
     local c, s = chain.current(), chain.state()
@@ -424,6 +432,152 @@ local function steer(d, dt)
   end
 end
 
+-- On foot inside the dolls (vessel-interiors spec). state.walk = {doll (the doll whose hold or rooms), docked (the
+-- kind docked in its hangar the Commander is inside, or nil), x, z (interior frame), wx, wz (wanted velocity)} while
+-- the Commander walks as a human; nil when seated or in the Exosuit. Doors: state.doors[kind .. "/" .. room] = true
+-- while shut (saved: the doors' deltas).
+local interior = require("interior")
+
+chain.WALK = 0.55 -- the human's speed against the suit's move command (a 1.4 m/s walk)
+
+function chain.walking() return chain.state().walk end
+
+local function door_open(kind)
+  local doors = chain.state().doors or {}
+  return function(name) return not doors[kind .. "/" .. name] end
+end
+chain.door_open = door_open
+
+-- The walk's layout kind: the docked doll's, else the doll's own.
+function chain.walk_kind(w)
+  w = w or chain.state().walk
+  return w and (w.docked or chain.find(w.doll).kind)
+end
+
+-- The move command while walking: the wanted velocity in the doll's frame (main.lua's helmet turns from its front).
+function chain.walk_input(x, z)
+  local w = chain.state().walk
+  if w then w.wx, w.wz = x * chain.WALK, z * chain.WALK end
+end
+
+local function walk_tick(dt)
+  local w = chain.state().walk
+  if not w or not w.wx then return end
+  local kind = chain.walk_kind(w)
+  interior.move(interior.layout(kind), w, w.wx * dt, w.wz * dt, door_open(kind))
+end
+
+local function fixture(layout, name, kind)
+  for _, f in ipairs(layout.fixtures) do
+    if f[1] == name and (not kind or f.kind == kind) then return f end
+  end
+end
+
+-- Where a doll's interior stands: {x, y, z (its floor's origin in the range's frame), yaw}. Its bridge seat is where
+-- the doll's seat is (cockpit.EYE above the floor), so the cabin seen from the seat and walked into are the same
+-- place. A docked doll's interior stands at its ramp in its parent's hangar.
+function chain.interior_frame(d, docked)
+  local cockpit = require("dolls.cockpit")
+  local seat, layout = chain.seat(d), interior.layout(d.kind)
+  local c, s = fk.math.cos(d.yaw or 0), fk.math.sin(d.yaw or 0)
+  local sz = layout.seat[2]
+  local frame = { x = seat[1] - sz * s, y = seat[2] - cockpit.EYE, z = seat[3] - sz * c, yaw = d.yaw or 0 }
+  if docked then
+    local ramp, spawn = fixture(layout, "ramp", docked), interior.layout(docked).spawn
+    local x, z = ramp[2] - spawn[1], ramp[3] + 2 - spawn[2]
+    frame.x, frame.z = frame.x + x * c + z * s, frame.z - x * s + z * c
+  end
+  return frame
+end
+
+-- A point of an interior frame in the range's frame, and the frame as a column-major matrix.
+function chain.frame_point(f, x, y, z)
+  local c, s = fk.math.cos(f.yaw), fk.math.sin(f.yaw)
+  return { f.x + x * c + z * s, f.y + y, f.z - x * s + z * c }
+end
+
+function chain.frame_matrix(f)
+  local c, s = math.cos(f.yaw), math.sin(f.yaw)
+  return { c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, f.x, f.y, f.z, 1 }
+end
+
+-- What the use command would do now (presentation: the hint on the visor), or nil.
+function chain.use_hint()
+  local s = chain.state()
+  local w, c = s.walk, chain.current()
+  if not w then
+    if c.kind == "exosuit" then
+      local p = c.parent and chain.find(c.parent)
+      return p and linked(c, p) and here(p) and ("ENTER THE " .. label(p.kind)) or nil
+    end
+    return "STAND UP"
+  end
+  local kind = chain.walk_kind(w)
+  local f = interior.near(interior.layout(kind), w.x, w.z, w.docked ~= nil)
+  if not f then return nil end
+  local d = chain.find(w.doll)
+  if f[1] == "door" then return (door_open(kind)(f.name) and "CLOSE" or "OPEN") .. " THE " .. f.name:upper() .. " DOOR"
+  elseif f[1] == "seat" then return w.docked and ("LAUNCH THE " .. label(w.docked)) or "TAKE THE CONTROLS"
+  elseif f[1] == "ramp" then return (d.hold[f.kind] or 0) > 0 and ("BOARD THE " .. label(f.kind)) or nil
+  elseif f[1] == "exit" then return "DOWN THE RAMP"
+  elseif f[1] == "suit" then return (d.hold.exosuit or 0) > 0 and "SUIT UP AND GO OUT" or nil
+  end
+end
+
+-- The use command: what the Commander's hand does where the Commander is.
+function chain.use()
+  local s = chain.state()
+  local w, c = s.walk, chain.current()
+  if not w then
+    if c.kind == "exosuit" then -- out of the suit into its doll, through the suit bay (the suit goes into the hold)
+      local p = c.parent and chain.find(c.parent)
+      if not p or not linked(c, p) or not here(p) then return end
+      for i, o in ipairs(s.dolls) do
+        if o == c then table.remove(s.dolls, i) break end
+      end
+      p.hold.exosuit = (p.hold.exosuit or 0) + 1
+      local f = fixture(interior.layout(p.kind), "suit") or { 0, 0, 2 }
+      s.at, s.walk = p.id, { doll = p.id, x = f[2] - (f[2] > 0 and 1.2 or -1.2), z = f[3] } -- (towards the door)
+      sim.emit("board", { position = { p.x, p.y, p.z }, kind = p.kind, id = p.id, strength = 0.6 })
+    else -- up from the seat, onto the bridge
+      local f = fixture(interior.layout(c.kind), "seat")
+      s.walk = { doll = c.id, x = f[2], z = f[3] }
+    end
+    return
+  end
+  local kind = chain.walk_kind(w)
+  local layout = interior.layout(kind)
+  local f = interior.near(layout, w.x, w.z, w.docked ~= nil)
+  if not f then return end
+  local d = chain.find(w.doll)
+  if f[1] == "door" then
+    s.doors = s.doors or {}
+    local key = kind .. "/" .. f.name
+    for _, r in ipairs(layout.doors) do -- a door does not shut on the Commander standing in it
+      if r.name == f.name and not s.doors[key] and w.x >= r.x0 and w.x <= r.x1 and w.z >= r.z0 and w.z <= r.z1 then return end
+    end
+    s.doors[key] = not s.doors[key] or nil
+    sim.emit("door", { position = { d.x, d.y, d.z }, strength = 0.3 })
+  elseif f[1] == "seat" then
+    if w.docked then -- at a docked doll's controls: it launches out of the hold, with the Commander at its controls
+      local new = chain.deploy_from(d, w.docked)
+      if not new then return end
+      s.at, s.walk = new.id, nil
+    else
+      s.walk = nil -- at the controls
+    end
+  elseif f[1] == "ramp" and (d.hold[f.kind] or 0) > 0 and not w.docked then
+    local spawn = interior.layout(f.kind).spawn
+    s.walk = { doll = d.id, docked = f.kind, x = spawn[1], z = spawn[2] }
+  elseif f[1] == "exit" and w.docked then
+    local ramp = fixture(interior.layout(d.kind), "ramp", w.docked)
+    s.walk = { doll = d.id, x = ramp[2], z = ramp[3] + 1.5 }
+  elseif f[1] == "suit" and not w.docked then -- the Exosuit goes on: out beside the doll, on foot
+    local exo = chain.deploy_from(d, "exosuit")
+    if exo then s.at, s.walk = exo.id, nil end
+  end
+end
+
 -- Each tick: the doll the Commander steers moves; the Exosuit's place follows the suit; on another world (world_key), the dolls on the ground stand on its
 -- ground.
 -- shortcut: the whole chain goes along with a jump; stations staying behind in their systems come with the teleport
@@ -431,6 +585,7 @@ end
 function chain.tick(world_key)
   local s, state = chain.suit(), chain.state()
   local current = chain.current()
+  walk_tick(sim.dt)
   local moved_on = state.world ~= world_key and state.world ~= nil
   if moved_on and current.kind == "jump_ship" then current.system = require("universe").state().seed end -- it jumped
   steer(current, sim.dt)
@@ -513,10 +668,10 @@ end
 -- their distance from the eye needs; a newly deployed one eases out of its parent (now: presentation time).
 function chain.draw(state, eye, now)
   state.meshes, state.emerging, now = state.meshes or {}, state.emerging or {}, now or 0
-  local n = 0
+  local n, walk = 0, chain.state().walk
   for _, real in ipairs(chain.state().dolls) do
     local d = shown(state, real, now)
-    if real.kind ~= "exosuit" and here(real) then
+    if real.kind ~= "exosuit" and here(real) and not (walk and walk.doll == real.id) then -- (inside it: its rooms instead)
       local def = dolls.by_id[real.kind]
       state.meshes[real.kind] = state.meshes[real.kind] or fk.gfx.mesh(hull.build(def.hull, def.size_m))
       local dx, dy, dz = d.x - eye[1], d.y - eye[2], d.z - eye[3]

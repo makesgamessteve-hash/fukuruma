@@ -18,7 +18,9 @@ function cockpit.parts(c)
   local parts = {
     { "box", at = { 0, y0 - 0.05, front - d / 2 }, size = { w, 0.1, d }, color = trim }, -- floor
     { "box", at = { 0, y0 + h, front - d / 2 }, size = { w, 0.1, d }, color = col }, -- ceiling
-    { "box", at = { 0, y0 + h / 2, front - d }, size = { w, h, 0.1 }, color = col }, -- back wall
+    -- the back wall, its doorway into the doll's corridor (interior.lua) 3 m wide and 2.4 m high
+    { "box", at = { (w / 2 + 1.5) / 2, y0 + h / 2, front - d }, size = { w / 2 - 1.5, h, 0.1 }, color = col, mirror = true },
+    { "box", at = { 0, y0 + (h + 2.4) / 2, front - d }, size = { 3, h - 2.4, 0.1 }, color = col },
     { "box", at = { w / 2, y0 + h / 2, front - d / 2 }, size = { 0.1, h, d }, color = col, mirror = true }, -- sides
     { "box", at = { 0, y0 + sill / 2, front }, size = { w, sill, 0.15 }, color = col }, -- below the windows
     { "box", at = { 0, y0 + h - head / 2, front }, size = { w, head, 0.15 }, color = col }, -- above them
@@ -53,13 +55,14 @@ function cockpit.build(state, def)
   return state[def.id]
 end
 
--- Draws the cabin around the eye, turned with the doll (yaw; presentation). Returns the built cockpit, or nil.
-function cockpit.draw(state, def, eye, yaw)
+-- Draws the cabin around the eye, turned with the doll (yaw; presentation); indoor: out of the starlight (walked
+-- into from the doll's rooms). Returns the built cockpit, or nil.
+function cockpit.draw(state, def, eye, yaw, indoor)
   local c = cockpit.build(state, def)
   if not c then return nil end
   local cy, sy = math.cos(yaw or 0), math.sin(yaw or 0)
   local m = { cy, 0, -sy, 0, 0, 1, 0, 0, sy, 0, cy, 0, eye[1], eye[2], eye[3], 1 }
-  fk.gfx.draw(c.shell, m, { roughness = 0.6, metalness = 0.3, slice = "local" })
+  fk.gfx.draw(c.shell, m, { roughness = 0.6, metalness = 0.3, slice = "local", indoor = indoor })
   fk.gfx.draw(c.screens, m, { roughness = 0.3, emission = { 0.6, 0.6, 0.6 }, emissive_colors = true, slice = "local" })
   return c
 end

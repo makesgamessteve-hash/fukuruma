@@ -45,6 +45,7 @@ uniform float u_emissive_colors; // 1: the vertex colours tint the emission (sta
 uniform float u_normal_scale; // 0: no normal map
 uniform float u_clouds;       // planet chunks: how much of the cloud cover in v_uv.x shows (fades as one comes closer)
 uniform float u_one_sided;    // 1: keep normals on back faces (closed surfaces such as planets)
+uniform float u_indoor;       // 1: rooms inside a doll, out of the starlight (the normal's alpha tells the lighting)
 uniform sampler2D u_base_tex;        // sRGB texture: sampled as linear
 uniform sampler2D u_metal_rough_tex; // glTF layout: green roughness, blue metalness
 uniform sampler2D u_normal_tex;
@@ -149,7 +150,7 @@ void main() {
         if (!(base.r + base.g + base.b >= 0.0)) base = srgb_to_linear(v_color);
     }
     o_base = vec4(linear_to_srgb(base), u_metalness * mr.b); // sRGB colour: better precision in 8 bits than linear
-    o_normal = vec4(encode_normal(n), roughness, 1.0);
+    o_normal = vec4(encode_normal(n), roughness, 1.0 - u_indoor);
     vec3 e = u_emission * texture(u_emission_tex, v_uv).rgb;
     if (u_emissive_colors > 0.5) e *= srgb_to_linear(v_color);
     float strength = max(max(e.r, e.g), e.b);

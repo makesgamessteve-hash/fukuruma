@@ -390,6 +390,8 @@ static int l_draw(lua_State *L) {
         float color[3];
         lua_getfield(L, 3, "one_sided");
         mat.one_sided = lua_toboolean(L, -1);
+        lua_getfield(L, 3, "indoor");
+        mat.indoor = lua_toboolean(L, -1);
         lua_getfield(L, 3, "emissive_colors");
         mat.emissive_colors = lua_toboolean(L, -1);
         lua_pop(L, 2);
