@@ -16,6 +16,10 @@ local star_view = require("star_view")
 local universe = {}
 
 universe.RANGE = 20 -- light-years a jump reaches
+universe.range_factor = nil -- function() -> how far the drive's upgrades stretch the range (research.lua)
+
+-- How far a jump reaches now (light-years).
+function universe.reach() return universe.RANGE * (universe.range_factor and universe.range_factor() or 1) end
 local AU = units.AU
 local TAU = 2 * fk.math.pi
 local PREFERRED = { "terran", "ocean", "desert", "super_earth", "eyeball", "glacier", "barren", "ice", "iron", "lava",
@@ -72,7 +76,7 @@ function universe.install(on_gravity)
     if universe.can_jump and not universe.can_jump() then return end -- only from the Jump Ship's bridge (main.lua)
     local u = sim.get(universe.id, "universe")
     local from, to = universe.star(u.sector, u.seed), universe.star(args.sector, args.seed)
-    if not to or galaxy.distance(from.position, to.position) > universe.RANGE or to.seed == u.seed then return end
+    if not to or galaxy.distance(from.position, to.position) > universe.reach() or to.seed == u.seed then return end
     local target = systems.generate(to)
     local p = universe.place_for(target)
     u.seed, u.sector, u.place, u.jumps = to.seed, { args.sector[1], args.sector[2], args.sector[3] }, p or 0, u.jumps + 1

@@ -21,6 +21,7 @@ return {
     welcome = { text = "'Star-walker! The %s greet you. What do you seek?'", options = {
       { "Ask about the old ruins.", go = "ruins", effect = "reveal_ruin" },
       { "Ask about the thieves.", go = "thieves", effect = "reveal_hideout" },
+      { "Trade.", effect = "market", needs = "curious" },
       { "Goodbye.", },
     } },
     peace = { text = "'Then walk softly among the %s.'", options = {

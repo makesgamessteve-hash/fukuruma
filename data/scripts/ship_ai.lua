@@ -30,13 +30,17 @@ function ship_ai.line(event, data, target)
   elseif event == "looted" then return "THE BOARDERS LOOTED THE CARGO DECK."
   elseif event == "artifact" then return "ARTIFACT RECOVERED. ADDED TO THE CODEX."
   elseif event == "guardian" then return "WARNING: THE RUIN'S GUARDIAN IS AWAKE."
+  elseif event == "researched" then return "RESEARCH COMPLETE: " .. (data.name or "PROJECT") .. "."
+  elseif event == "outpost" then return "OUTPOST ESTABLISHED. K: THE WORKSHOP."
+  elseif event == "repaired" then return "REPAIR KIT APPLIED."
   end
 end
 
 -- Listens to the chain's events. state: {text, until}; now(): presentation time; target(id): a doll's kind.
 function ship_ai.listen(sim, state, now, target)
   for _, event in ipairs({ "deploy", "recall", "board", "teleport", "autopilot", "arrived", "hazard_stop", "alerted", "breach", "clone", "collapse", "noticed", "theft",
-    "recovered", "boarders", "sealed", "repelled", "looted", "artifact", "guardian" }) do
+    "recovered", "boarders", "sealed", "repelled", "looted", "artifact", "guardian", "researched", "outpost",
+    "repaired" }) do
     sim.listen(event, function(data)
       state.text, state["until"] = ship_ai.line(event, data or {}, target), now() + ship_ai.SHOW
     end)

@@ -87,6 +87,7 @@ end
 -- A scan by doll d (passive, or active: a ping). Returns how many hazards it saw.
 function sensors.scan(d, active)
   local suite = dolls.by_id[d.kind].sensors
+  if suite and sensors.upgrade then suite = sensors.upgrade(d.kind, suite) end -- (research.lua)
   if not suite then return 0 end
   local n = 0
   for _, h in ipairs(sensors.hazards()) do

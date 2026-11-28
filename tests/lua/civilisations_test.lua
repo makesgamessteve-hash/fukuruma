@@ -74,7 +74,7 @@ return {
     sim.send("use", {})
     step()
     assert(dialogue.open() and dialogue.text():find(settlements.faction().name, 1, true))
-    assert(#dialogue.options() == 3)
+    assert(#dialogue.options() == 4, "ruins, thieves, trade, goodbye")
     sim.send("choose", { option = 9 })
     step()
     assert(dialogue.open(), "no such option: nothing happens")

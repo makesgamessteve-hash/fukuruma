@@ -1,7 +1,8 @@
 -- Dialogue (dialogue spec): trees written in Lua (dialogue/*.lua), started by talking to a native on foot (F within
 -- reach). The open talk is simulation state: the tree, the node, the faction; choose {option} picks an option (keys 1 to
--- 3, the gamepad's A, X and Y, touch buttons), which may change the reputation or reveal something, and goes on or
--- ends the talk. Options that need a better attitude are not offered.
+-- 4, the gamepad's A, X, Y and B, touch buttons), which may change the reputation or reveal something, and goes on or
+-- ends the talk. The same trees make the game's menus (dialogue.menu), whose options may be made from the state and
+-- act on it. Options that need a better attitude are not offered.
 local sim = require("fk.sim")
 local chain = require("chain")
 local sensors = require("sensors")
@@ -50,17 +51,29 @@ function dialogue.options()
   local o = dialogue.open()
   if not o then return {} end
   local f = settlements.faction()
-  local out = {}
-  for _, opt in ipairs(dialogue.trees[o.tree].nodes[o.node].options) do
+  local out, options = {}, dialogue.trees[o.tree].nodes[o.node].options
+  if type(options) == "function" then options = options(o) end -- (menus: options made from the state)
+  for _, opt in ipairs(options) do
     if not opt.needs or rank(factions.attitude(f)) >= rank(opt.needs) then out[#out + 1] = opt end
   end
   return out
 end
 
--- The open node's text (with the faction's name).
+-- The open node's text (with the faction's name; a menu's text may be made from its state).
 function dialogue.text()
   local o = dialogue.open()
-  return o and string.format(dialogue.trees[o.tree].nodes[o.node].text, settlements.faction().name)
+  if not o then return nil end
+  local text = dialogue.trees[o.tree].nodes[o.node].text
+  if type(text) == "function" then return text(o) end
+  local f = settlements.faction()
+  return string.format(text, f and f.name or "")
+end
+
+-- Opens a menu: a tree's node, with its context (markets, the workshop, the lab: economy.lua and research.lua).
+function dialogue.menu(tree, node, ctx)
+  local o = { tree = tree, node = node }
+  for k, v in pairs(ctx or {}) do o[k] = v end
+  dialogue.state().open = o
 end
 
 local function talk_target()
@@ -85,8 +98,11 @@ function dialogue.install()
   sim.on("choose", function(args)
     local opt = dialogue.options()[args.option]
     if not opt then return end
+    local open = dialogue.state().open
     if opt.effect then dialogue.EFFECTS[opt.effect](settlements.faction()) end
-    dialogue.state().open.node = opt.go
+    if opt.act then opt.act(open) end -- (a menu's action: buy, sell, craft, research...)
+    if dialogue.state().open ~= open then return end -- (the action opened another menu)
+    open.node = opt.go
     if not opt.go then dialogue.state().open = nil end
   end)
 end
@@ -102,6 +118,7 @@ function dialogue.draw(w, h)
   end
   local said = #lines
   for i, opt in ipairs(dialogue.options()) do lines[#lines + 1] = i .. ": " .. opt[1] end
+  fk.gfx.rect(math.floor(w / 2 - 27 * 8), y - 6, 54 * 8, #lines * 11 + 18, { 0.02, 0.03, 0.06, 0.8 }) -- (a dark panel)
   for i, line in ipairs(lines) do
     fk.gfx.text(math.floor(w / 2 - 26 * 8), y + (i - 1) * 11 + (i > said and 6 or 0), line, i > said and { 1, 0.85, 0.5 } or { 0.9, 0.95, 1 })
   end

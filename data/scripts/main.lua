@@ -47,6 +47,8 @@ local settlements = require("settlements")
 local artifacts = require("artifacts")
 local thieves = require("thieves")
 local dialogue = require("dialogue")
+local economy = require("economy")
+local research = require("research")
 local hull = require("dolls.hull")
 local dolls = require("dolls")
 local ship_ai = require("ship_ai")
@@ -136,6 +138,9 @@ function game.init()
   artifacts.install()
   thieves.install()
   dialogue.install()
+  economy.install()
+  research.install()
+  survival.install_codex()
   ecology.ignite = function(x, z) if fire.dryness() > 0 then fire.ignite(x, z) end end -- (a flare in dry plants)
   sim.on("move", function(args) -- the wanted velocity and the direction the Commander looks (on foot only)
     local body = sim.get(game.suit, "suit")
@@ -164,7 +169,9 @@ function game.init()
     flare = feedback.flare, stun = feedback.stun, noticed = feedback.noticed, bite = feedback.bite, theft = feedback.theft,
     recovered = feedback.recovered, boarders = feedback.boarders, sealed = feedback.sealed, repelled = feedback.repelled,
     looted = feedback.looted, pylon = feedback.pylon, artifact = feedback.artifact, guardian = feedback.guardian,
-    spear = feedback.spear, talk = feedback.talk },
+    spear = feedback.spear, talk = feedback.talk, trade = feedback.trade, crafted = feedback.crafted, sample = feedback.sample,
+    outpost = feedback.outpost, research_started = feedback.research_started, researched = feedback.researched,
+    repaired = feedback.repaired, named = feedback.named },
     function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
   game.ai, game.sway = {}, {}
@@ -197,7 +204,10 @@ function game.init()
   actions.define("stun", { kind = "button", keys = { "Q" }, gamepad = { "leftshoulder" }, touch = "stun" }) -- defensive tools
   actions.define("flare", { kind = "button", keys = { "C" }, gamepad = { "leftstick" }, touch = "flare" })
   actions.define("seal", { kind = "button", keys = { "L" }, gamepad = { "rightstick" }, touch = "seal" }) -- all doors shut
-  for i, pad in ipairs({ "a", "x", "y" }) do -- a talk's options
+  actions.define("workshop", { kind = "button", keys = { "K" }, gamepad = { "dpleft" }, touch = "workshop" }) -- craft, research
+  actions.define("outpost", { kind = "button", keys = { "H" }, touch = "outpost" }) -- unpack an outpost kit
+  actions.define("codex", { kind = "button", keys = { "X" }, touch = "codex" })
+  for i, pad in ipairs({ "a", "x", "y", "b" }) do -- a talk's (or a menu's) options
     actions.define("choice" .. i, { kind = "button", keys = { tostring(i) }, gamepad = { pad }, touch = "choice" .. i })
   end
   actions.define("lift_up", { kind = "button", touch = "lift_up" }) -- touch: a flying doll's climb and dive
@@ -212,7 +222,10 @@ function game.init()
   actions.touch_button("stun", 0.48, 0.9, 0.05)
   actions.touch_button("flare", 0.37, 0.9, 0.05)
   actions.touch_button("seal", 0.48, 0.9, 0.05)
-  for i = 1, 3 do actions.touch_button("choice" .. i, 0.25 + i * 0.12, 0.42, 0.05) end
+  actions.touch_button("workshop", 0.37, 0.78, 0.05)
+  actions.touch_button("outpost", 0.25, 0.9, 0.05)
+  actions.touch_button("codex", 0.94, 0.57, 0.05)
+  for i = 1, 4 do actions.touch_button("choice" .. i, 0.19 + i * 0.12, 0.42, 0.05) end
   actions.touch_button("menu", 0.94, 0.1, 0.06)
   actions.touch_button("view", 0.94, 0.27, 0.05)
   actions.touch_button("map", 0.94, 0.42, 0.05)
@@ -289,7 +302,7 @@ end
 -- doll's controls up and down the chain, deploy and recall what there is, autopilot and teleport where they lead,
 -- climb and dive in flying dolls. Menu, view and map always.
 function game.touch_layout()
-  local names = { "menu", "view", "map" }
+  local names = { "menu", "view", "map", "codex" }
   local function add(name, ok) if ok then names[#names + 1] = name end end
   add("board_up", chain.up() ~= nil)
   add("use", chain.use_hint() ~= nil)
@@ -299,14 +312,15 @@ function game.touch_layout()
     return names
   end
   if chain.walking() then
-    add("sprint", true) add("seal", true)
+    add("sprint", true) add("seal", true) add("workshop", true)
   elseif chain.on_foot() then
     add("sprint", true) add("scan", true) add("dig", true) add("stun", true) add("flare", true)
+    add("outpost", (economy.state().items.outpost or 0) > 0) add("workshop", economy.outpost_near() ~= nil)
   else
     local c = chain.current()
     local ctl = dolls.by_id[c.kind].controller
     add("board_down", chain.down() ~= nil)
-    add("flare", true) add("seal", true)
+    add("flare", true) add("seal", true) add("workshop", true)
     add("deploy", chain.next_kind() ~= nil)
     add("recall", chain.down() ~= nil)
     add("autopilot", chain.autopilot_target() ~= nil and ctl and ctl.kind ~= "orbit" and ctl.kind ~= "fixed")
@@ -338,7 +352,7 @@ function game.input()
     fk.input.capture(capture)
     game.captured = capture
   end
-  local busy = menu.open or navmap.open or dialogue.open() -- (in a talk the suit holds still; its options are keys 1 to 3)
+  local busy = menu.open or navmap.open or dialogue.open() -- (in a talk or menu the suit holds still; its options are keys 1 to 4)
   if not busy then look() end
   local x, y = actions.value("move_x"), actions.value("move_y")
   local len = math.sqrt(x * x + y * y)
@@ -362,8 +376,11 @@ function game.input()
   end
   if actions.pressed("stun") and not busy then sim.send("stun", {}) end
   if actions.pressed("seal") and not busy then sim.send("seal", {}) end
+  for _, name in ipairs({ "workshop", "outpost", "codex" }) do
+    if actions.pressed(name) and not busy then sim.send(name, {}) end
+  end
   if dialogue.open() then
-    for i = 1, 3 do
+    for i = 1, 4 do
       if actions.pressed("choice" .. i) then sim.send("choose", { option = i }) end
     end
   end
@@ -407,6 +424,8 @@ function game.tick()
   settlements.tick(survival.hurt)
   artifacts.tick(survival.hurt)
   thieves.tick(u.seed .. "/" .. u.place)
+  economy.tick(survival.restore)
+  research.tick()
   survival.tick()
   for _, b in sim.each(chain.suit_out() and "suit" or "suit_away") do -- the suit waits where it was left
     local dx, dz = b.wx - b.vx, b.wz - b.vz
@@ -596,6 +615,8 @@ function game.draw(alpha, dt)
   settlements.draw(game.settlement_view, { inv_x, inv_y, inv_z })
   artifacts.draw(game.ruin_view, { inv_x, inv_y, inv_z }, feel.time)
   thieves.draw(game.boarder_view, chain.interior_frame)
+  game.outpost_view = game.outpost_view or {}
+  economy.draw(game.outpost_view, { inv_x, inv_y, inv_z })
   game.cockpits = game.cockpits or {}
   game.cockpit_now = nil
   local walk = chain.walking()
@@ -677,7 +698,7 @@ function game.draw(alpha, dt)
   feel.draw()
   ship_ai.draw(game.ai, feel.time, w, h)
   if game.view == "drone" then hud.drone(feel.time)
-  elseif game.cockpit_now then -- inside a doll: its screens instead of the visor
+  elseif game.cockpit_now and not dialogue.open() then -- inside a doll: its screens instead of the visor (a menu covers them)
     cockpit.text(game.cockpit_now, game.cockpit_eye, chain.screens(), view, projection, w, h, { 1, 0.75, 0.3 }, game.cockpit_yaw)
   else
     hud.visor({ yaw = game.helmet.yaw, speed = speed, turn_rate = game.helmet.turn_rate, vignette = comfort.current.vignette,

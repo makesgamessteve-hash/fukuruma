@@ -115,6 +115,18 @@ return {
   -- A native's spear hits; a talk begins.
   spear = { trauma = 0.25, rumble = { 0.5, 0.3, 0.2 }, sound = "impact" },
   talk = { trauma = 0, rumble = { 0.05, 0.05, 0.05 }, sound = "ui_confirm" },
+  -- The economy: a sale, a thing made, a sample taken, an outpost unpacked, research begun and done, a repair, a name.
+  trade = { trauma = 0, rumble = { 0.05, 0.05, 0.05 }, sound = "ui_confirm" },
+  crafted = { trauma = 0.05, rumble = { 0.2, 0.2, 0.2 }, sound = "dig" },
+  sample = { trauma = 0.03, rumble = { 0.15, 0.1, 0.1 }, sound = "ui_move",
+    light = { color = { 0.5, 1, 0.6 }, intensity = 8, radius = 4, duration = 0.3 } },
+  outpost = { trauma = 0.2, rumble = { 0.5, 0.4, 0.4 }, sound = "impact",
+    particles = { { count = 60, radius = 3, direction = { 0, 1, 0 }, spread = 0.6, speed_min = 1, speed_max = 3, life_min = 1,
+      life_max = 2, size = 1, size_end = 2.5, drag = 0.5, color = { 0.5, 0.45, 0.4 }, alpha = 0.6, alpha_end = 0 } } },
+  research_started = { trauma = 0, rumble = { 0.1, 0.1, 0.1 }, sound = "ui_open" },
+  researched = { trauma = 0.05, rumble = { 0.2, 0.3, 0.2 }, sound = "scan" },
+  repaired = { trauma = 0.05, rumble = { 0.2, 0.2, 0.2 }, sound = "ui_confirm" },
+  named = { trauma = 0, rumble = { 0.05, 0.05, 0.05 }, sound = "ui_confirm" },
   -- The tram pulls away: a push and a hum.
   tram = { trauma = 0.1, rumble = { 0.3, 0.2, 0.4 }, sound = "ui_open" },
   -- The Jump Ship's drive: a long, deep shake and rumble with the jump's roar.

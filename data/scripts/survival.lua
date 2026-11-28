@@ -40,7 +40,7 @@ function survival.codex()
   local ok, codex = pcall(function() return text and save.decode(text) end)
   codex = ok and type(codex) == "table" and codex or {}
   codex.hazards, codex.worlds, codex.species = codex.hazards or {}, codex.worlds or {}, codex.species or {}
-  codex.artifacts = codex.artifacts or {}
+  codex.artifacts, codex.names = codex.artifacts or {}, codex.names or {}
   codex.commanders = codex.commanders or 0
   return codex
 end
@@ -63,6 +63,7 @@ function survival.install()
 end
 
 local function hurt(s, amount)
+  amount = amount * (survival.armour and survival.armour() or 1) -- (research.lua: tougher armour)
   local before = s.integrity
   s.integrity = math.max(0, s.integrity - amount)
   if math.ceil(before * 4) > math.ceil(s.integrity * 4) and s.integrity > 0 then -- below each quarter: a breach
@@ -119,7 +120,10 @@ function survival.tick()
     if not e.breathable then s.oxygen = math.max(0, s.oxygen - dt / survival.OXYGEN) end
     if s.oxygen <= 0 then hurt(s, dt * 0.1) end
     if e.toxin > 0 then
-      if s.filter > 0 then s.filter = math.max(0, s.filter - dt * e.toxin / survival.FILTER)
+      local items = require("economy").state().items -- (economy.lua: crafted cartridges and kits)
+      if s.filter <= 0 and (items.filter or 0) > 0 then s.filter, items.filter = 1, items.filter - 1 end -- a fresh cartridge
+      local life = survival.FILTER * (survival.filter_factor and survival.filter_factor() or 1)
+      if s.filter > 0 then s.filter = math.max(0, s.filter - dt * e.toxin / life)
       else hurt(s, dt * e.toxin * 0.05) end
     end
     local extreme = math.max(0, math.abs(e.temperature - 293) - 60) / 100
@@ -129,9 +133,12 @@ function survival.tick()
     s.dose = s.dose + e.radiation * dt
     if e.radiation > 0 then hurt(s, dt * e.radiation * 0.01) end
   else -- inside a doll: air, a fresh filter, charge and repairs
-    local r = dt / survival.RESTORE
-    s.oxygen, s.filter, s.power = math.min(1, s.oxygen + r), math.min(1, s.filter + r), math.min(1, s.power + r)
-    s.integrity = math.min(1, s.integrity + r)
+    survival.restore()
+  end
+  local items = require("economy").state().items
+  if s.integrity > 0 and s.integrity < 0.3 and (items.repair or 0) > 0 then -- a repair kit, used at once
+    s.integrity, items.repair = math.min(1, s.integrity + 0.5), items.repair - 1
+    sim.emit("repaired", { position = { chain.suit().x, chain.suit().y + 1, chain.suit().z }, strength = 0.5 })
   end
   if sim.tick % survival.CHECK == 0 then
     for _, h in ipairs(sensors.hazards()) do -- a sinkhole gives way under whatever stands on it
@@ -146,7 +153,12 @@ function survival.tick()
         end
       end
     end
-    for _, c in pairs(sensors.state().contacts) do s.found.hazards[c.kind] = true end
+    for _, c in pairs(sensors.state().contacts) do
+      s.found.hazards[c.kind] = true
+      if (c.kind == "grazer" or c.kind == "predator") and sensors.state().world then -- (ecology.lua: its species)
+        s.found.species[require("ecology").species_cached(sensors.state().world)[c.kind].name] = true
+      end
+    end
     local key = sensors.state().world
     if key then
       s.found.worlds[key] = true
@@ -154,6 +166,76 @@ function survival.tick()
     end
   end
   if s.integrity <= 0 then die(s) end
+end
+
+-- The codex menu (codex spec; X): what is known, and names for the species found. Names are kept with the codex in
+-- fk.storage, for every Commander after.
+local SYLLABLES = { "al", "be", "cor", "da", "el", "fi", "gor", "hal", "in", "jo", "ka", "lu", "mer", "no" }
+
+function survival.names_for(species)
+  local rng, out = fk.rng("species-names", species), {}
+  for i = 1, 3 do
+    local n = ""
+    for _ = 1, rng:range(2, 3) do n = n .. SYLLABLES[rng:range(1, #SYLLABLES)] end
+    out[i] = n:upper()
+  end
+  return out
+end
+
+local function unnamed()
+  local codex, out = survival.codex(), {}
+  for name in pairs(survival.state().found.species) do
+    if not codex.names[name] then out[#out + 1] = name end
+  end
+  table.sort(out)
+  return out
+end
+
+function survival.install_codex()
+  local dialogue = require("dialogue")
+  dialogue.register("codex", { start = {}, nodes = {
+    codex = {
+      text = function()
+        local codex, run = survival.codex(), survival.state().found
+        local this = survival.codex_size({ hazards = run.hazards, worlds = run.worlds, species = run.species, artifacts = run.artifacts })
+        local named = {}
+        for k, v in pairs(codex.names) do named[#named + 1] = k .. " IS " .. v end
+        table.sort(named)
+        return string.format("CODEX: %d ENTRIES, %d THIS RUN, %d COMMANDERS. %s", survival.codex_size(codex), this,
+          codex.commanders, table.concat(named, ". "))
+      end,
+      options = function()
+        local out = {}
+        for _, name in ipairs(unnamed()) do
+          if #out < 3 then out[#out + 1] = { "Name the " .. name, go = "name", act = function(o) o.species = name end } end
+        end
+        out[#out + 1] = { "Done" }
+        return out
+      end },
+    name = {
+      text = function(o) return "NAME THE " .. o.species .. ":" end,
+      options = function(o)
+        local out = {}
+        for _, n in ipairs(survival.names_for(o.species)) do
+          out[#out + 1] = { n, go = "codex", act = function(open)
+            local codex = survival.codex()
+            codex.names[open.species] = n
+            fk.storage.save("codex", save.encode(codex))
+            sim.emit("named", { position = { chain.suit().x, chain.suit().y, chain.suit().z }, strength = 0.3 })
+          end }
+        end
+        out[#out + 1] = { "Back", go = "codex" }
+        return out
+      end },
+  } })
+  sim.on("codex", function() if not dialogue.open() then dialogue.menu("codex", "codex") end end)
+end
+
+-- A tick of restoring the suit (inside a doll, or by an outpost's power).
+function survival.restore()
+  local s, r = survival.state(), sim.dt / survival.RESTORE
+  s.oxygen, s.filter, s.power = math.min(1, s.oxygen + r), math.min(1, s.filter + r), math.min(1, s.power + r)
+  s.integrity = math.min(1, s.integrity + r)
 end
 
 -- The visor's suit lines (presentation).

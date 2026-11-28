@@ -68,7 +68,7 @@ function navmap.update(dt)
     navmap.time_offset = navmap.time_offset + rate * dt
   elseif p.confirm then
     local s = neighbourhood(v.star).stars[navmap.selected]
-    if s and galaxy.distance(s.position, v.star.position) <= universe.RANGE then
+    if s and galaxy.distance(s.position, v.star.position) <= universe.reach() then
       navmap.toggle()
       return { sector = { s.sector[1], s.sector[2], s.sector[3] }, seed = s.seed }
     end
@@ -94,7 +94,7 @@ local function draw_galaxy(w, h, time)
   local function at(p) return cx + (p[1] - here[1]) * scale, cy + (p[3] - here[3]) * scale - (p[2] - here[2]) * scale * 0.3 end
   for k = 0, 63 do -- the jump range
     local a = k / 64 * 2 * fk.math.pi
-    fk.gfx.rect(math.floor(cx + fk.math.cos(a) * universe.RANGE * scale), math.floor(cy + fk.math.sin(a) * universe.RANGE * scale), 1, 1, DIM)
+    fk.gfx.rect(math.floor(cx + fk.math.cos(a) * universe.reach() * scale), math.floor(cy + fk.math.sin(a) * universe.reach() * scale), 1, 1, DIM)
   end
   fk.gfx.rect(cx - 3, cy, 7, 1, TEXT)
   fk.gfx.rect(cx, cy - 3, 1, 7, TEXT)
@@ -126,7 +126,7 @@ local function draw_galaxy(w, h, time)
     string.format("%.1f LY", d), sys.archetype:gsub("_", " "):upper(), planets .. " PLANETS" }
   if sys.signature then lines[#lines + 1] = "SIGNATURE: " .. wonders.by_id[sys.signature].name:upper() end
   for i, line in ipairs(lines) do fk.gfx.text(px + 6, 64 + i * 11, fit(line, w - px - 8), i == 1 and TEXT or DIM) end
-  fk.gfx.text(px + 6, h - 44, d <= universe.RANGE and "ENTER: JUMP" or "OUT OF RANGE", d <= universe.RANGE and TEXT or WARN)
+  fk.gfx.text(px + 6, h - 44, d <= universe.reach() and "ENTER: JUMP" or "OUT OF RANGE", d <= universe.reach() and TEXT or WARN)
   fk.gfx.text(px + 6, h - 33, "TAB: SYSTEM MAP", DIM)
 end
 
