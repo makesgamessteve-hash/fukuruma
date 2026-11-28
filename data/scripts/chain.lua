@@ -177,14 +177,14 @@ function chain.install(suit, move_suit, world)
     local d = chain.find(args.id)
     if not d or not linked(c, d) then return end
     c.drive = nil -- the doll left behind stops
-    chain.state().at = d.id
+    chain.state().at, chain.state().walk = d.id, nil -- (at its controls)
     sim.emit("board", { position = { d.x, d.y, d.z }, kind = d.kind, id = d.id, strength = 0.6 })
   end)
 
   sim.on("teleport", function(args) -- between the Jump Ship and the stations, however far apart (teleport network)
     local c, d = chain.current(), chain.find(args.id)
     if not d or d == c or not chain.TELEPORT[c.kind] or not chain.TELEPORT[d.kind] then return end
-    chain.state().at = d.id
+    chain.state().at, chain.state().walk = d.id, nil
     sim.emit("teleport", { position = { d.x, d.y, d.z }, kind = d.kind, id = d.id, strength = 1 })
   end)
 

@@ -38,6 +38,10 @@ local chain = require("chain")
 local cockpit = require("dolls.cockpit")
 local interior = require("interior")
 local sensors = require("sensors")
+local survival = require("survival")
+local environment = require("environment")
+local ecology = require("ecology")
+local fire = require("fire")
 local hull = require("dolls.hull")
 local dolls = require("dolls")
 local ship_ai = require("ship_ai")
@@ -117,6 +121,10 @@ function game.init()
     s.x, s.y, s.z, s.vx, s.vy, s.vz = x, y, z, 0, 0, 0
   end, game.world)
   sensors.install()
+  ecology.install()
+  survival.install()
+  fire.install()
+  ecology.ignite = function(x, z) if fire.dryness() > 0 then fire.ignite(x, z) end end -- (a flare in dry plants)
   sim.on("move", function(args) -- the wanted velocity and the direction the Commander looks (on foot only)
     local body = sim.get(game.suit, "suit")
     chain.walk_input(args.x, args.z) -- walking inside a doll: the human moves instead
@@ -139,7 +147,9 @@ function game.init()
   feel.listen(sim, { scan = feedback.scan, impact = feedback.impact, jump = feedback.jump, dig = feedback.dig,
     deploy = feedback.deploy, recall = feedback.recall, board = feedback.board, stomp = feedback.stomp,
     teleport = feedback.teleport, autopilot = feedback.autopilot, arrived = feedback.arrived, door = feedback.door,
-    tram = feedback.tram, alerted = feedback.alerted, hazard_stop = feedback.hazard_stop },
+    tram = feedback.tram, alerted = feedback.alerted, hazard_stop = feedback.hazard_stop, breach = feedback.breach,
+    death = feedback.death, clone = feedback.clone, collapse = feedback.collapse, explosion = feedback.explosion,
+    flare = feedback.flare, stun = feedback.stun, noticed = feedback.noticed, bite = feedback.bite },
     function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
   game.ai, game.sway = {}, {}
@@ -169,6 +179,8 @@ function game.init()
   actions.define("teleport", { kind = "button", keys = { "P" }, touch = "teleport" }) -- Jump Ship <-> stations
   actions.define("autopilot", { kind = "button", keys = { "O" }, touch = "autopilot" })
   actions.define("use", { kind = "button", keys = { "F" }, gamepad = { "b" }, touch = "use" }) -- sit, doors, ramps, suit
+  actions.define("stun", { kind = "button", keys = { "Q" }, gamepad = { "leftshoulder" }, touch = "stun" }) -- defensive tools
+  actions.define("flare", { kind = "button", keys = { "C" }, gamepad = { "leftstick" }, touch = "flare" })
   actions.define("lift_up", { kind = "button", touch = "lift_up" }) -- touch: a flying doll's climb and dive
   actions.define("lift_down", { kind = "button", touch = "lift_down" })
   actions.define("recall", { kind = "button", keys = { "R" }, gamepad = { "dpleft" }, touch = "recall" })
@@ -178,6 +190,8 @@ function game.init()
   actions.touch_button("sprint", 0.86, 0.72, 0.09)
   actions.touch_button("scan", 0.72, 0.84, 0.07)
   actions.touch_button("dig", 0.6, 0.9, 0.06)
+  actions.touch_button("stun", 0.48, 0.9, 0.05)
+  actions.touch_button("flare", 0.37, 0.9, 0.05)
   actions.touch_button("menu", 0.94, 0.1, 0.06)
   actions.touch_button("view", 0.94, 0.27, 0.05)
   actions.touch_button("map", 0.94, 0.42, 0.05)
@@ -211,6 +225,14 @@ end
 function game.save()
   save.write("quick")
   game.notice("Game saved")
+end
+
+-- Legacy mode, after the run ended: a new Commander on a new run (the codex stays in fk.storage).
+function game.new_run()
+  sim.reset()
+  actions.reset()
+  game.init()
+  game.notice("A new Commander")
 end
 
 function game.load()
@@ -253,11 +275,12 @@ function game.touch_layout()
   if chain.walking() then
     add("sprint", true)
   elseif chain.on_foot() then
-    add("sprint", true) add("scan", true) add("dig", true)
+    add("sprint", true) add("scan", true) add("dig", true) add("stun", true) add("flare", true)
   else
     local c = chain.current()
     local ctl = dolls.by_id[c.kind].controller
     add("board_down", chain.down() ~= nil)
+    add("flare", true)
     add("deploy", chain.next_kind() ~= nil)
     add("recall", chain.down() ~= nil)
     add("autopilot", chain.autopilot_target() ~= nil and ctl and ctl.kind ~= "orbit" and ctl.kind ~= "fixed")
@@ -307,7 +330,12 @@ function game.input()
   if actions.pressed("scan") and not busy and game.view == "helmet" then sim.send("scan", {}) end
   if actions.pressed("dig") and not busy and game.view == "helmet" then sim.send("dig", {}) end
   game.touch_layout()
-  if actions.pressed("use") and not busy then sim.send("use", {}) end
+  if actions.pressed("use") and not busy then
+    if survival.state().over then return game.new_run() end -- (Legacy mode: the run ended; a new Commander)
+    sim.send("use", {})
+  end
+  if actions.pressed("stun") and not busy then sim.send("stun", {}) end
+  if actions.pressed("flare") and not busy then sim.send("flare", {}) end
   if not chain.on_foot() and not chain.walking() then -- at a doll's controls: the move keys steer it (vehicle controllers)
     local lift = (busy or game.view == "drone") and 0 or
       math.max(-1, math.min(1, actions.value("lift") + (actions.held("lift_up") and 1 or 0) - (actions.held("lift_down") and 1 or 0)))
@@ -342,6 +370,9 @@ function game.tick()
   dig.tick(game.world, u.seed .. "/" .. u.place)
   chain.tick(u.seed .. "/" .. u.place)
   sensors.tick(u.seed .. "/" .. u.place)
+  ecology.tick(survival.hurt)
+  fire.tick(u.seed .. "/" .. u.place, survival.hurt)
+  survival.tick()
   for _, b in sim.each(chain.suit_out() and "suit" or "suit_away") do -- the suit waits where it was left
     local dx, dz = b.wx - b.vx, b.wz - b.vz
     local d = math.sqrt(dx * dx + dz * dz)
@@ -523,6 +554,9 @@ function game.draw(alpha, dt)
   dig.lamp(game.world, { inv_x, inv_y, inv_z })
   game.chain_view = game.chain_view or {}
   chain.draw(game.chain_view, { inv_x, inv_y, inv_z }, feel.time)
+  game.creature_view = game.creature_view or {}
+  ecology.draw(game.creature_view, { inv_x, inv_y, inv_z }, feel.time)
+  fire.draw({ inv_x, inv_y, inv_z }, pdt, feel.time)
   game.cockpits = game.cockpits or {}
   game.cockpit_now = nil
   local walk = chain.walking()
@@ -636,6 +670,23 @@ function game.draw(alpha, dt)
   if hint then
     local text = "F: " .. hint
     fk.gfx.text(math.floor(w / 2 - #text * 4), h - 48, text, { 1, 0.85, 0.5 })
+  end
+  local life = survival.state()
+  if game.view == "helmet" and chain.on_foot() then -- the suit's systems on the visor, red when low
+    local low = math.min(life.oxygen, life.filter, life.power, life.integrity) < 0.25
+    for i, line in ipairs(survival.lines()) do
+      fk.gfx.text(8, 82 + i * 10, line, low and { 1, 0.3, 0.2 } or { 0.3, 1, 0.9 }) -- (under the contacts)
+    end
+    local e = environment.at(body.x, body.z)
+    local warn = e.toxin > 0 and (life.filter > 0 and "TOXINS: FILTERING" or "TOXINS: FILTER SATURATED")
+      or not e.breathable and life.oxygen < 0.25 and "OXYGEN LOW" or e.fire > 0 and "FIRE" or nil
+    if warn then fk.gfx.text(math.floor(w / 2 - #warn * 4), 90, warn, { 1, 0.35, 0.2 }) end
+  end
+  if life.over then -- Legacy mode: the run has ended
+    local codex = survival.codex()
+    local lines = { "THE COMMANDER IS DEAD. THE RUN HAS ENDED.", "CODEX: " .. survival.codex_size(codex) .. " ENTRIES, "
+      .. codex.commanders .. " COMMANDERS", "F: A NEW COMMANDER" }
+    for i, line in ipairs(lines) do fk.gfx.text(math.floor(w / 2 - #line * 4), math.floor(h / 2 - 20 + i * 14), line, { 1, 0.8, 0.5 }) end
   end
   if game.jump_fx then -- streaks racing out of the centre, then a flash that hides the arrival
     game.jump_fx = game.jump_fx + dt

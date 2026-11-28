@@ -180,6 +180,7 @@ await test('a VR headset: ENTER VR starts the session, the game renders its fram
   await page.addInitScript(() => { // a mocked headset (navigator.xr): two eyes 64 mm apart, looking straight ahead
     let ended;
     window.XRWebGLLayer = class { constructor() { this.framebuffer = null; } };
+    WebGL2RenderingContext.prototype.makeXRCompatible = async () => {}; // (the real one needs a real headset)
     const session = {
       inputSources: [{ handedness: 'right', gamepad: { axes: [0, 0, 0.3, 0], buttons: [{ pressed: false }],
         hapticActuators: [{ pulse: () => {} }] } }],

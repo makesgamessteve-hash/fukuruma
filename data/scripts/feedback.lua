@@ -63,6 +63,37 @@ return {
   alerted = { trauma = 0.15, rumble = { 0.4, 0.2, 0.3 }, sound = "impact" },
   -- The autopilot stops for a hazard: a hard brake.
   hazard_stop = { trauma = 0.3, rumble = { 0.6, 0.4, 0.5 }, sound = "ui_open" },
+  -- The suit is breached (a quarter of its integrity gone): a hard jolt, a red flash, a warning.
+  breach = { trauma = 0.35, rumble = { 0.7, 0.5, 0.4 }, sound = "impact",
+    light = { color = { 1, 0.15, 0.1 }, intensity = 20, radius = 8, duration = 0.4, offset = { 0, 2, 0 } } },
+  -- Death: everything shakes and goes dark; the clone wakes to a soft chime.
+  death = { trauma = 1, rumble = { 1, 1, 1 }, sound = "impact" },
+  clone = { trauma = 0.1, rumble = { 0.2, 0.2, 0.3 }, sound = "ui_confirm" },
+  -- Ground gives way under a doll: a deep lurch and a dust cloud.
+  collapse = { trauma = 0.7, rumble = { 0.9, 0.7, 0.8 }, sound = "impact",
+    particles = { { count = 80, radius = 6, direction = { 0, 1, 0 }, spread = 0.6, speed_min = 2, speed_max = 6, life_min = 1.5,
+      life_max = 3, size = 1.5, size_end = 4, drag = 0.5, color = { 0.45, 0.4, 0.33 }, alpha = 0.7, alpha_end = 0 } } },
+  -- A gas pocket explodes: a fireball, a flash and a blast.
+  explosion = { trauma = 0.8, rumble = { 1, 0.8, 0.9 }, sound = "impact",
+    particles = { { count = 120, radius = 1, direction = { 0, 1, 0 }, spread = 1, speed_min = 4, speed_max = 14, life_min = 0.4,
+      life_max = 1.2, size = 1.2, size_end = 0.2, drag = 0.8, color = { 1, 0.55, 0.15 }, intensity = 12, alpha = 1, alpha_end = 0,
+      glow = true } },
+    light = { color = { 1, 0.6, 0.25 }, intensity = 120, radius = 40, duration = 0.5, offset = { 0, 2, 0 } } },
+  -- A flare goes up: sparks and a red glow where it lands.
+  flare = { trauma = 0.05, rumble = { 0.2, 0.1, 0.1 }, sound = "ui_open",
+    particles = { { count = 40, radius = 0.3, direction = { 0, 1, 0 }, spread = 0.7, speed_min = 2, speed_max = 6, life_min = 0.5,
+      life_max = 1.2, size = 0.2, size_end = 0.05, gravity = -6, color = { 1, 0.35, 0.15 }, intensity = 10, alpha = 1,
+      alpha_end = 0, glow = true } },
+    light = { color = { 1, 0.3, 0.1 }, intensity = 40, radius = 30, duration = 0.8, offset = { 0, 1, 0 } } },
+  -- The stun pulse: a blue ring and a crackle.
+  stun = { trauma = 0.12, rumble = { 0.3, 0.5, 0.2 }, sound = "scan",
+    particles = { { count = 60, ring = true, direction = { 0, 1, 0 }, speed_min = 12, speed_max = 14, life_min = 0.3,
+      life_max = 0.4, size = 0.25, size_end = 0.05, color = { 0.5, 0.7, 1 }, intensity = 10, alpha = 1, alpha_end = 0,
+      glow = true } },
+    light = { color = { 0.5, 0.7, 1 }, intensity = 30, radius = 16, duration = 0.3 } },
+  -- A predator notices the Commander, or bites: a jolt.
+  noticed = { trauma = 0.08, rumble = { 0.2, 0.1, 0.2 }, sound = "ui_move" },
+  bite = { trauma = 0.45, rumble = { 0.8, 0.6, 0.3 }, sound = "impact" },
   -- The tram pulls away: a push and a hum.
   tram = { trauma = 0.1, rumble = { 0.3, 0.2, 0.4 }, sound = "ui_open" },
   -- The Jump Ship's drive: a long, deep shake and rumble with the jump's roar.

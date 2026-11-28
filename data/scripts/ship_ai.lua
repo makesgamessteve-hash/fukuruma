@@ -18,12 +18,16 @@ function ship_ai.line(event, data, target)
   elseif event == "hazard_stop" then
     return "AUTOPILOT HALTED: " .. (data.hazard or "HAZARD"):upper():gsub("_", " ") .. " AHEAD. YOU HAVE CONTROL."
   elseif event == "alerted" then return "WARNING: THE PING WAS HEARD. SOMETHING IS COMING."
+  elseif event == "breach" then return string.format("SUIT BREACH. INTEGRITY %d PERCENT.", math.floor((data.integrity or 0) * 100 + 0.5))
+  elseif event == "clone" then return "CLONE REVIVED IN THE JUMP SHIP'S CLONE BAY. YOUR SUIT IS LOST."
+  elseif event == "collapse" then return "THE GROUND GAVE WAY UNDER THE " .. name(data.kind) .. "."
+  elseif event == "noticed" then return "MOVEMENT. SOMETHING HAS SEEN YOU."
   end
 end
 
 -- Listens to the chain's events. state: {text, until}; now(): presentation time; target(id): a doll's kind.
 function ship_ai.listen(sim, state, now, target)
-  for _, event in ipairs({ "deploy", "recall", "board", "teleport", "autopilot", "arrived", "hazard_stop", "alerted" }) do
+  for _, event in ipairs({ "deploy", "recall", "board", "teleport", "autopilot", "arrived", "hazard_stop", "alerted", "breach", "clone", "collapse", "noticed" }) do
     sim.listen(event, function(data)
       state.text, state["until"] = ship_ai.line(event, data or {}, target), now() + ship_ai.SHOW
     end)

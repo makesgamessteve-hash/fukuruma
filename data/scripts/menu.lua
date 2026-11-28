@@ -81,6 +81,11 @@ function menu.draw(state, dt)
   comfort_option("Head bob", "head_bob", { "100%", "50%", "Off" })
   comfort_option("Field of view", "fov", { "70", "80", "90", "60" })
   comfort_option("Turning vignette", "vignette", { "On", "Off" })
+  local game_setting = require("survival").setting() -- death: the mode of the next new game
+  rows[#rows + 1] = option(game_setting, "Death (new games)", "death", { "Clone", "Legacy" }, function(value)
+    game_setting.death = value
+    require("survival").save_setting(game_setting)
+  end, require("survival").SETTING.death)
   local levels = { "100%", "75%", "50%", "25%", "Off" }
   for _, row in ipairs({ { "Music volume", "music" }, { "Effects volume", "effects" } }) do
     rows[#rows + 1] = option(audio.current, row[1], row[2], levels, function(value)

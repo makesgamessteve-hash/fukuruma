@@ -135,7 +135,15 @@ function sensors.tick(world_key)
   local s = sensors.state()
   if s.world ~= world_key then
     s.world = world_key
-    s.worlds[world_key] = s.worlds[world_key] or make(world_key)
+    if not s.worlds[world_key] then
+      s.worlds[world_key] = make(world_key)
+      if sensors.on_world then -- (ecology.lua: the world's creatures)
+        sensors.on_world(world_key, s.worlds[world_key], function()
+          s.next = s.next + 1
+          return s.next - 1
+        end)
+      end
+    end
     s.contacts = {} -- scan data is of a world
   end
   local t = sim.tick * sim.dt

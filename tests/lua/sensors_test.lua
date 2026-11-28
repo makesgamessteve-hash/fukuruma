@@ -24,7 +24,7 @@ return {
     end
     start()
     local list = sensors.hazards()
-    assert(#list == sensors.COUNT, "made on the first tick")
+    assert(#list == sensors.COUNT + 3 * 5 + 2 * 3, "made on the first tick, with the herds and packs (ecology.lua)")
     for _, h in ipairs(list) do
       local r = math.sqrt(h.hx * h.hx + h.hz * h.hz)
       assert(sensors.HAZARDS[h.kind] and r >= sensors.CLEAR - 1e-6 and r <= sensors.HAZARD_RANGE + 1e-6)
@@ -33,7 +33,7 @@ return {
     start()
     assert(sensors.hazards()[1].hx == first.hx and sensors.hazards()[1].kind == first.kind, "the same every time")
     sensors.tick("another/world")
-    assert(sensors.hazards() ~= list and #sensors.hazards() == sensors.COUNT, "another world, other hazards")
+    assert(sensors.hazards() ~= list and #sensors.hazards() == #list, "another world, other hazards")
   end,
   ["what a suite sees: kind, size, range, stealth, and a ping"] = function()
     local walker, suit = dolls.by_id.walker.sensors, dolls.by_id.exosuit.sensors
