@@ -734,6 +734,10 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 ### M11 — Civilisations and villains (XL)
 
+- **Delivered (2026-11-28):** `add-native-cultures` (factions, settlements, dialogue), `add-artifact-sites`,
+  `add-thieves-and-boarding`. Still open: tyrant story arcs, rival spacefarers as actors (they are a faction only),
+  boarding parties that path through every room.
+
 - **OpenSpec:** `add-factions`, `add-native-settlements`, `add-artifact-sites`,
   `add-thieves-and-boarding`, `add-dialogue`.
 - **Work:** faction model and reputation, settlements (animated natives, procedural buildings), dialogue
@@ -744,6 +748,9 @@ and the showcase scenes are reviewed on desktop, phone and VR.
 
 ### M12 — Progression and economy (L)
 
+- **Delivered (2026-11-28):** `add-progression` (samples, research, markets, crafting, outposts, the codex with
+  naming). Still open: currencies per faction, doll modules beyond the sensor suites.
+
 - **OpenSpec:** `add-research`, `add-trading`, `add-crafting`, `add-outposts`, `add-codex`.
 - **Work:** samples and the research tree, upgrades and doll modules, markets with supply, demand and
   reputation pricing, currencies, crafting recipes, outpost building (power, storage, pads,
@@ -752,6 +759,11 @@ and the showcase scenes are reviewed on desktop, phone and VR.
   markets; build an outpost, leave and come back to find it unchanged.
 
 ### M13 — Story threads, content and polish (L)
+
+- **Delivered (2026-11-28):** `add-story-threads` (the thread framework and "The Signal", 40 marvels, mods with
+  `docs/MODDING.md` and an example mod, an audio pass, the style guide and art replacement notes) and
+  `add-accessibility` (key bindings, colour vision, string tables for the ship AI). Still open: more threads, a
+  visual and juice pass per archetype, music layers, the rest of the UI text in string tables, balancing.
 
 - **OpenSpec:** `add-story-threads`, `add-accessibility`, plus content changes.
 - **Work:** the mystery arc framework and its first threads; at least 40 marvels; an audio pass with
@@ -762,6 +774,9 @@ and the showcase scenes are reviewed on desktop, phone and VR.
   colour-blind palette option, motion comfort); text kept in string tables for later translation.
 
 ### M14 — Release 1.0 (M)
+
+- **Delivered (2026-11-28):** `add-release` (save compatibility with a 1.0 fixture, release packaging on tags, the
+  press kit on Pages). Still open: the performance pass on target devices.
 
 - Performance pass on the target devices, save compatibility tests, release packaging, a press kit
   page on Pages.

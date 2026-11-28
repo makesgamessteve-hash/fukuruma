@@ -11,6 +11,12 @@
     { "name": "windows-msvc", "inherits": "base", "generator": "Visual Studio 17 2022",
       "cacheVariables": { "FK_WERROR": "ON" } },
     { "name": "macos", "inherits": "base", "generator": "Unix Makefiles", "cacheVariables": { "FK_WERROR": "ON" } },
+    { "name": "linux-release", "inherits": "base", "generator": "Ninja",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "FK_WERROR": "ON" } },
+    { "name": "windows-release", "inherits": "base", "generator": "Visual Studio 17 2022",
+      "cacheVariables": { "FK_WERROR": "ON" } },
+    { "name": "macos-release", "inherits": "base", "generator": "Unix Makefiles",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "FK_WERROR": "ON" } },
     { "name": "web", "inherits": "base", "generator": "Ninja",
       "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "FK_WERROR": "ON" } }
@@ -21,7 +27,10 @@
     { "name": "linux-asan", "configurePreset": "linux-asan" },
     { "name": "windows-msvc", "configurePreset": "windows-msvc", "configuration": "Debug" },
     { "name": "macos", "configurePreset": "macos" },
-    { "name": "web", "configurePreset": "web" }
+    { "name": "web", "configurePreset": "web" },
+    { "name": "linux-release", "configurePreset": "linux-release" },
+    { "name": "windows-release", "configurePreset": "windows-release", "configuration": "Release" },
+    { "name": "macos-release", "configurePreset": "macos-release" }
   ],
   "testPresets": [
     { "name": "base", "hidden": true, "output": { "outputOnFailure": true } },

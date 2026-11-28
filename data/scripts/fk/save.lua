@@ -3,10 +3,12 @@
 -- what the writer produces (tables, strings, numbers, booleans): a save file can never run code.
 local sim = require("fk.sim")
 
-local save = { VERSION = 1 }
+local save = { VERSION = 2 } -- 2: the format of release 1.0 (tests/lua/save_compat_test.lua keeps it loadable)
 
 -- save.MIGRATIONS[n](data) turns version n data into version n + 1 (filled in as the format changes).
-save.MIGRATIONS = {}
+save.MIGRATIONS = {
+  [1] = function() error("save: made by a development version from before release 1.0, which this game cannot load", 0) end,
+}
 
 local HEADER = "-- fukuruma save\n"
 local MAX_DEPTH = 24

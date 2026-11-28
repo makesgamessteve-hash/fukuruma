@@ -21,7 +21,9 @@ explored. Every planet is worth going down to, and any planet can kill you.
 
 Milestones M0 (build, test and deployment pipeline), M1 (engine core), M2 (reference frames and scale), M3 (galaxy
 and star systems), M4 (planets from space), M5 (planets up close), M6 (the Fukuruma chain), M7 (touch and WebXR), M8
-(interiors), M9 (sensors and scanning) and M10 (hazards, survival and life) are done. The
+(interiors), M9 (sensors and scanning), M10 (hazards, survival and life), M11 (civilisations and villains), M12
+(progression and economy), M13 (story threads, content and polish) and M14 (release 1.0) are done; what each still
+leaves open is in the plan. The
 sandbox: the Exosuit, a 3.6 m skinned mech, walks and runs over a test range at dusk and sends out sensor scans. Under the hood: a
 deterministic 60 Hz simulation, input for keyboard, gamepad and touch, a deferred PBR renderer at a low internal
 resolution (cascaded shadows, ambient occlusion, bloom, eye adaptation, temporal anti-aliasing), four graphics detail
@@ -48,7 +50,10 @@ at full scale and a tram along them; F does what is in reach. In M9 every doll g
 and of a kind they cover, contacts that age, markers on the visor and the windows, and autopilots that stop for
 hazards. M10 makes the worlds dangerous and alive: toxic zones, radiation, heat and sinkholes against the suit's
 oxygen, filter, power and integrity; Clone or Legacy mode when the Commander dies; species of grazers and predators
-from each world's seed that notice a careless Commander; flares, a stun, and fire that spreads through dry plants.
+from each world's seed that notice a careless Commander; flares, a stun, and fire that spreads through dry plants. M11 brings peoples: natives in settlements who talk and trade, ruins with
+puzzles and guardians, and thieves who steal what is left alone and board the dolls. M12 adds samples and research,
+markets, crafting and outposts, and a codex that carries across Commanders; M13 a first mystery thread, mods, 40
+marvels, new sounds and accessibility; M14 release packaging and a [press kit](web/presskit.html).
 
 - [Game concept](docs/CONCEPT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
@@ -64,13 +69,18 @@ from each world's seed that notice a careless Commander; flares, a stun, and fir
 | Sensor scan (an active ping) | E | X | SCAN button |
 | Use what is in reach (doors, seats, ramps, trams, the suit bay) | F | B | USE button |
 | Stun pulse / flare (decoy) | Q / C | left shoulder / left stick | STUN / FLARE buttons |
+| Seal the sectors (all doors) | L | right stick | SEAL button |
+| Workshop (craft, research, outpost modules) / codex | K / X | – | WORKSHOP / CODEX buttons |
+| Unpack an outpost kit | H | – | OUTPOST button |
+| Choose in a talk or menu | 1 to 4 | A, X, Y, B | numbered buttons |
 | Outside view (survey drone, for looking only) | V | Back | VIEW button |
 | Galaxy and system maps (Tab switches, ← → choose, Enter jumps) | M | Y (X switches) | MAP button |
 | Settings (graphics, comfort, audio) | Escape | Start | MENU button |
 | Quick save / quick load | F5 / F9 | in the settings menu | in the settings menu |
 | In the menu: choose, change, close | ↑ / ↓, ← / →, Escape (or the mouse) | d-pad or stick, A, B | tap a row, tap left or right of a value |
 
-The settings are saved (in the browser in its local storage). The graphics start on a level that suits the
+The settings are saved (in the browser in its local storage). Every key can be changed in the settings menu, which
+also has a colour vision correction. The graphics start on a level that suits the
 device: Low on phones and software renderers, Medium in desktop browsers, High elsewhere. Camera shake,
 light flashes, rumble and head bob can be turned down in the menu, which also sets the field of view and the
 vignette while turning.

@@ -91,12 +91,13 @@ return {
   ["versions and slots"] = function()
     fails(function() save.restore({}) end, "no version")
     fails(function() save.restore({ version = save.VERSION + 1 }) end, "made by a newer version of the game")
-    save.MIGRATIONS[0] = function(data) data.version, data.game = 1, { migrated = true } return data end
+    local refuse = save.MIGRATIONS[save.VERSION - 1] -- (a step that migrates instead, for this test)
+    save.MIGRATIONS[save.VERSION - 1] = function(data) data.version, data.game = save.VERSION, { migrated = true } return data end
     sim.reset()
     local old = save.snapshot()
-    old.version = 0
+    old.version = save.VERSION - 1
     assert(save.restore(old).migrated, "older saves are migrated")
-    save.MIGRATIONS[0] = nil
+    save.MIGRATIONS[save.VERSION - 1] = refuse
     assert(save.read("never_written") == nil)
     save.write("slot_test", { x = 1 })
     assert(save.read("slot_test").x == 1)

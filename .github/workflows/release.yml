@@ -1,0 +1,63 @@
+# Release packaging: a tag v* builds the game in Release for Windows, Linux and macOS, runs the unit tests, and attaches
+# a zip per platform (the executable, data/, mods/, the licences and notices) to the tag's GitHub Release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LINUX_PACKAGES: >-
+    ninja-build libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxfixes-dev
+    libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl-dev libegl1 libegl-mesa0 libgl1-mesa-dri
+
+jobs:
+  package:
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-24.04, preset: linux-release, platform: linux, exe: fukuruma }
+          - { os: windows-2022, preset: windows-release, platform: windows, exe: Release/fukuruma.exe }
+          - { os: macos-latest, preset: macos-release, platform: macos, exe: fukuruma }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
+      - run: cmake --preset ${{ matrix.preset }}
+      - run: cmake --build --preset ${{ matrix.preset }}
+      - name: Unit tests
+        run: ctest --test-dir build/${{ matrix.preset }} -C Release -L unit --output-on-failure
+      - name: Package
+        shell: bash
+        run: |
+          out="fukuruma-${GITHUB_REF_NAME}-${{ matrix.platform }}"
+          dir="build/${{ matrix.preset }}"
+          mkdir -p "$out"
+          cp "$dir/${{ matrix.exe }}" "$out/"
+          cp -R data mods "$out/"
+          cp LICENSE LICENSE-ASSETS.md THIRD_PARTY_NOTICES.md README.md "$out/"
+          if [ "${{ matrix.platform }}" = windows ]; then 7z a "$out.zip" "$out" > /dev/null; else zip -qr "$out.zip" "$out"; fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.platform }}
+          path: fukuruma-*.zip
+
+  publish:
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          merge-multiple: true
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" fukuruma-*.zip --repo "$GITHUB_REPOSITORY" --title "Fukuruma $GITHUB_REF_NAME" --generate-notes

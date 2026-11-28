@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fukuruma – Press kit</title>
+<meta name="description" content="Fukuruma: a procedurally generated space exploration game of nested vehicles, from a 144 km Jump Ship down to a 3.6 m Exosuit.">
+<style>
+  :root { --bg: #070912; --panel: #10142a; --text: #e8ecf5; --dim: #9aa3bd; --accent: #f0a040; --cyan: #5ff0e0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.55 system-ui, sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 3rem; margin: 0; letter-spacing: 0.08em; color: var(--accent); }
+  h2 { color: var(--cyan); margin-top: 2.2em; font-size: 1.3rem; letter-spacing: 0.05em; text-transform: uppercase; }
+  .tagline { color: var(--dim); font-size: 1.25rem; margin-top: 0.2em; }
+  a { color: var(--accent); }
+  .play { display: inline-block; margin-top: 1.2em; padding: 0.7em 1.4em; background: var(--accent); color: #05060f;
+          border-radius: 0.4em; font-weight: bold; text-decoration: none; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .facts div { background: var(--panel); padding: 12px 14px; border-radius: 8px; }
+  .facts b { display: block; color: var(--dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .shots figure { margin: 0; background: var(--panel); border-radius: 8px; overflow: hidden; }
+  .shots img { width: 100%; display: block; image-rendering: pixelated; }
+  .shots figcaption { padding: 8px 12px; color: var(--dim); font-size: 0.9rem; }
+  ul { padding-left: 1.2em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>FUKURUMA</h1>
+  <p class="tagline">One galaxy, seven vehicles nested like Russian dolls, and every one of them walked on foot.</p>
+  <a class="play" href="./">Play in the browser</a>
+
+  <h2>About</h2>
+  <p>Fukuruma is a space exploration game where the Commander travels a procedurally generated galaxy in a chain of
+  nested vehicles: a 144 km Jump Ship carries Space Stations, which carry Continental Explorers, which carry Land
+  Explorers, which carry Walkers, which carry the Commander's 3.6 m Exosuit. Each one is steered from its own cockpit,
+  and each one can be walked through as a person, from the bridge to the suit bay to the hangar where the next doll
+  waits.</p>
+  <p>Out on the worlds, danger is read through sensors: every doll sees only what its sensors resolve. What kills you
+  is smaller than your vehicle can see, and what kills your vehicle is at least its own size. Natives trade and talk,
+  ruins hide puzzles and guardians, and thieves take what you leave unattended. Survival comes first: scan, avoid,
+  outsmart.</p>
+
+  <h2>Facts</h2>
+  <div class="facts">
+    <div><b>Platforms</b>Windows, Linux, macOS, the browser (with touch and WebXR)</div>
+    <div><b>Engine</b>Own C11 engine with SDL3 and OpenGL / WebGL 2; game logic in Lua</div>
+    <div><b>World</b>A procedural galaxy; 40 kinds of marvels; worlds with weather, rivers, life and peoples</div>
+    <div><b>Licences</b>Code MIT, art CC BY 4.0; audio generated with ElevenLabs ships only with the game</div>
+    <div><b>Modding</b>Mods overlay the game's files and register content</div>
+    <div><b>Accessibility</b>Rebindable keys, colour-vision correction, motion comfort, on-screen ship AI</div>
+  </div>
+
+  <h2>Features</h2>
+  <ul>
+    <li>Seven nested dolls with their own cockpits, controllers and rooms made for people.</li>
+    <li>A seamless descent from orbit to the ground: planets with atmospheres, clouds, oceans, rivers and weather.</li>
+    <li>Sensors with range and resolution, passive scans and active pings, and scan data that ages.</li>
+    <li>Survival: suit systems, toxic zones, radiation, predators, fire, Clone and Legacy modes.</li>
+    <li>Natives with dialogue and markets, ruins with puzzles, thieves and boarding parties.</li>
+    <li>Research, crafting, outposts, a codex that carries across Commanders, and a mystery to follow.</li>
+  </ul>
+
+  <h2>Screenshots</h2>
+  <div class="shots">
+    <figure><img src="presskit/travel_jump_ship_bridge.png" alt="The Jump Ship's bridge in high orbit"><figcaption>The Jump Ship's bridge, 30,000 km above a world.</figcaption></figure>
+    <figure><img src="presskit/chain_from_range.png" alt="The Exploration Walker on the range"><figcaption>The Exploration Walker, seen from the Exosuit.</figcaption></figure>
+    <figure><img src="presskit/hangars_tram.png" alt="Riding the tram through a hangar"><figcaption>The tram along the hangars of the Jump Ship.</figcaption></figure>
+    <figure><img src="presskit/sensors_window.png" alt="A sinkhole marked through the Walker's window"><figcaption>The autopilot stops: a sinkhole its sensors found.</figcaption></figure>
+    <figure><img src="presskit/civ_talk.png" alt="Talking to natives"><figcaption>Talking to the natives of a hot world.</figcaption></figure>
+    <figure><img src="presskit/weather_rain.png" alt="Rain on an alien world"><figcaption>Rain over the range.</figcaption></figure>
+  </div>
+
+  <h2>Contact and source</h2>
+  <p>The game and its source are on <a href="https://github.com/makesgamessteve-hash/fukuruma">GitHub</a>; releases
+  are on its Releases page. Screenshots on this page may be used to write about the game.</p>
+</main>
+</body>
+</html>

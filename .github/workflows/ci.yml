@@ -105,6 +105,9 @@ jobs:
         run: |
           mkdir -p site
           cp build/web/index.html build/web/fukuruma.js build/web/fukuruma.wasm build/web/fukuruma.data site/
+          mkdir -p site/presskit
+          cp web/presskit.html site/
+          for f in travel_jump_ship_bridge chain_from_range hangars_tram sensors_window civ_talk weather_rain; do cp "tests/golden/$f.png" site/presskit/; done
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site
