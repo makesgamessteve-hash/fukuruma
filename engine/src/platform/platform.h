@@ -86,6 +86,7 @@ int fk_input_key_code(const char *name);     /* SDL key name such as "W" or "Spa
 int fk_input_axis_code(const char *name);    /* SDL gamepad axis name such as "leftx"; -1 when unknown */
 int fk_input_button_code(const char *name);  /* SDL gamepad button name such as "a"; -1 when unknown */
 bool fk_input_key(int code);
+const char *fk_input_last_key(void); /* the name of the key pressed this frame (for rebinding), or NULL */
 bool fk_input_mouse_button(int button); /* 1 left, 2 middle, 3 right */
 void fk_input_mouse(float *x, float *y, float *dx, float *dy);
 float fk_input_axis(int code); /* sticks -1..1, triggers 0..1 */

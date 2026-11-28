@@ -97,6 +97,14 @@ static int l_key(lua_State *L) {
     return 1;
 }
 
+/* fk.input.last_key(): the name of the key pressed this frame, or nil (rebinding keys). */
+static int l_last_key(lua_State *L) {
+    const char *name = fk_input_last_key();
+    if (name && *name) lua_pushstring(L, name);
+    else lua_pushnil(L);
+    return 1;
+}
+
 static int l_axis(lua_State *L) {
     lua_pushnumber(L, fk_input_axis(fk_script_control(L, 1, fk_input_axis_code, "gamepad axis")));
     return 1;
@@ -212,6 +220,67 @@ static bool valid_module(const char *name) {
     return true;
 }
 
+/* --- fk.mods and fk.vfs_mods (mods: mods/<name>/mod.lua) ------------------------------------------------- */
+
+typedef struct {
+    lua_State *L;
+    size_t prefix;
+} mods_ctx;
+
+/* One mods/<name>/mod.lua: its manifest, run as data (an empty environment), appended to the list on the stack. */
+static void mod_found(const char *path, void *user) {
+    mods_ctx *ctx = user;
+    lua_State *L = ctx->L;
+    const char *name = path + ctx->prefix, *slash = strchr(name, '/');
+    if (!slash) slash = strchr(name, '\\');
+    if (!slash || strcmp(slash + 1, "mod.lua") != 0 || slash - name >= 64) return; /* only mods/<name>/mod.lua */
+    char folder[64];
+    memcpy(folder, name, (size_t)(slash - name));
+    folder[slash - name] = 0;
+    size_t size;
+    char *code = fk_platform_read_file(path, &size);
+    if (!code) return;
+    int ok = luaL_loadbufferx(L, code, size, path, "t") == LUA_OK;
+    fk_platform_free(code);
+    if (ok) {
+        lua_newtable(L); /* nothing to call: a manifest is data */
+        lua_setupvalue(L, -2, 1);
+        ok = lua_pcall(L, 0, 1, 0) == LUA_OK && lua_istable(L, -1);
+    }
+    if (!ok) {
+        fk_log("mod %s: mod.lua must return a table: %s", folder, lua_isstring(L, -1) ? lua_tostring(L, -1) : "");
+        lua_pop(L, 1);
+        return;
+    }
+    lua_pushstring(L, folder);
+    lua_setfield(L, -2, "folder");
+    lua_rawseti(L, -2, (lua_Integer)luaL_len(L, -2) + 1);
+}
+
+/* fk.mods(): the manifests of the mods beside the executable, each {folder, name, order, script, ...} as written. */
+static int l_mods(lua_State *L) {
+    char dir[1024];
+    snprintf(dir, sizeof dir, "%smods/", fk_vfs_base());
+    lua_newtable(L);
+    mods_ctx ctx = {L, strlen(dir)};
+    fk_platform_find_files(dir, "mod.lua", mod_found, &ctx);
+    return 1;
+}
+
+/* fk.vfs_mods({folder, ...}): the mods whose files overlay data/, in load order (the last wins). Returns how many. */
+static int l_vfs_mods(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    const char *names[FK_VFS_MAX_MODS];
+    int n = 0;
+    for (lua_Integer i = 1; i <= luaL_len(L, 1) && n < FK_VFS_MAX_MODS; i++) {
+        lua_rawgeti(L, 1, i);
+        if (lua_isstring(L, -1)) names[n++] = lua_tostring(L, -1);
+        lua_pop(L, 1);
+    }
+    lua_pushinteger(L, fk_vfs_set_mods(names, n));
+    return 1;
+}
+
 static int l_require(lua_State *L) {
     const char *name = luaL_checkstring(L, 1);
     lua_getfield(L, LUA_REGISTRYINDEX, "fk.loaded");
@@ -298,6 +367,10 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     lua_setfield(L, -2, "rng");
     lua_pushcfunction(L, l_hash);
     lua_setfield(L, -2, "hash");
+    lua_pushcfunction(L, l_mods);
+    lua_setfield(L, -2, "mods");
+    lua_pushcfunction(L, l_vfs_mods);
+    lua_setfield(L, -2, "vfs_mods");
     fk_lua_gfx_open(L, render);
     lua_setfield(L, -2, "gfx");
     fk_lua_storage_open(L);
@@ -315,7 +388,7 @@ lua_State *fk_script_open(bool render, uint64_t seed, bool coverage) {
     lua_setfield(L, -2, "noise");
     fk_lua_planet_open(L);
     lua_setfield(L, -2, "planet");
-    static const luaL_Reg input[] = {{"key", l_key},       {"axis", l_axis},       {"button", l_button},
+    static const luaL_Reg input[] = {{"key", l_key},       {"last_key", l_last_key}, {"axis", l_axis},       {"button", l_button},
                                      {"mouse", l_mouse},   {"mouse_button", l_mouse_button},
                                      {"touches", l_touches}, {"xr", l_xr}, {"device", l_device}, {"rumble", l_rumble}, {"capture", l_capture}, {NULL, NULL}};
     luaL_newlib(L, input);

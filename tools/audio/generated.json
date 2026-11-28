@@ -1,11 +1,43 @@
 {
+ "alarm": {
+  "date": "2026-11-28",
+  "hash": "856a8d73dd998fea"
+ },
+ "bite": {
+  "date": "2026-11-28",
+  "hash": "fdb2282610aa3c3a"
+ },
+ "breach": {
+  "date": "2026-11-28",
+  "hash": "d9a540bf9bc7850b"
+ },
+ "chime": {
+  "date": "2026-11-28",
+  "hash": "f18ddd874f5a8367"
+ },
+ "collapse": {
+  "date": "2026-11-28",
+  "hash": "34269b18456c333d"
+ },
  "dig": {
   "date": "2026-11-27",
   "hash": "793797573e8a9495"
  },
+ "door": {
+  "date": "2026-11-28",
+  "hash": "065fdabb3a07ab87"
+ },
  "engine_loop": {
   "date": "2026-11-27",
   "hash": "b67a7eeaa5aec677"
+ },
+ "explosion": {
+  "date": "2026-11-28",
+  "hash": "1839a8460e124524"
+ },
+ "flare": {
+  "date": "2026-11-28",
+  "hash": "d64930c73169236a"
  },
  "footstep_1": {
   "date": "2026-11-26",
@@ -18,6 +50,10 @@
  "footstep_3": {
   "date": "2026-11-26",
   "hash": "4bf8fa741ef6fea1"
+ },
+ "guardian": {
+  "date": "2026-11-28",
+  "hash": "4e23dd6055c575b4"
  },
  "impact": {
   "date": "2026-11-26",
@@ -35,9 +71,17 @@
   "date": "2026-11-26",
   "hash": "f8bd3dca6a2c646f"
  },
+ "pylon": {
+  "date": "2026-11-28",
+  "hash": "194ee60af21528f7"
+ },
  "rain_loop": {
   "date": "2026-11-27",
   "hash": "2960656509b9297d"
+ },
+ "sample": {
+  "date": "2026-11-28",
+  "hash": "d28aa867766b6ada"
  },
  "sandstorm_loop": {
   "date": "2026-11-27",
@@ -47,9 +91,21 @@
   "date": "2026-11-26",
   "hash": "c127a5f76962fa36"
  },
+ "spear": {
+  "date": "2026-11-28",
+  "hash": "8de770386f2e50d7"
+ },
+ "stun": {
+  "date": "2026-11-28",
+  "hash": "0a1b31e0c68240ec"
+ },
  "thunder": {
   "date": "2026-11-27",
   "hash": "f2dbf27df8b48324"
+ },
+ "tram": {
+  "date": "2026-11-28",
+  "hash": "874237f630a6441a"
  },
  "ui_confirm": {
   "date": "2026-11-26",

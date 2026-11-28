@@ -1,125 +1,223 @@
 [
- {
-  "id": "footstep_1",
-  "kind": "sfx",
-  "seconds": 0.9,
-  "path": "sounds/footstep_1.ogg",
-  "prompt": "Heavy armored mech exosuit footstep on a concrete deck, deep metallic thud with a short hydraulic hiss, close, punchy"
- },
- {
-  "id": "footstep_2",
-  "kind": "sfx",
-  "seconds": 0.9,
-  "path": "sounds/footstep_2.ogg",
-  "prompt": "Heavy robotic exosuit foot stomping on concrete, low metal impact with a servo whine and a little grit crunch, close"
- },
- {
-  "id": "footstep_3",
-  "kind": "sfx",
-  "seconds": 0.9,
-  "path": "sounds/footstep_3.ogg",
-  "prompt": "Giant mech suit step on a steel and concrete floor, weighty thump with rattling armor plates and a hydraulic release"
- },
- {
-  "id": "scan",
-  "kind": "sfx",
-  "seconds": 2.0,
-  "path": "sounds/scan.ogg",
-  "prompt": "Epic futuristic sensor scan pulse, a deep sonar ping that blooms into a shimmering energy sweep racing outwards, sci-fi"
- },
- {
-  "id": "impact",
-  "kind": "sfx",
-  "seconds": 0.8,
-  "path": "sounds/impact.ogg",
-  "prompt": "Heavy metal cargo crate slamming onto a concrete deck, deep hollow boom with a short scrape and rattle, close, punchy"
- },
- {
-  "id": "dig",
-  "kind": "sfx",
-  "seconds": 1.6,
-  "path": "sounds/dig.ogg",
-  "prompt": "Heavy mech exosuit plasma excavator blasting a hole into rocky ground, a deep thumping burst of earth and gravel spraying out, hissing energy and falling pebbles, close, punchy"
- },
- {
-  "id": "jump",
-  "kind": "sfx",
-  "seconds": 2.5,
-  "path": "sounds/jump.ogg",
-  "prompt": "Starship jump drive engaging, a deep rising hum that tears into a huge whooshing warp boom and fades into a shimmering echo, sci-fi"
- },
- {
-  "id": "ui_move",
-  "kind": "sfx",
-  "seconds": 0.5,
-  "path": "sounds/ui_move.ogg",
-  "prompt": "Soft short sci-fi interface tick, a subtle clean digital click for moving through a menu"
- },
- {
-  "id": "ui_confirm",
-  "kind": "sfx",
-  "seconds": 0.6,
-  "path": "sounds/ui_confirm.ogg",
-  "prompt": "Bright short sci-fi interface confirm chime, clean and pleasant, spaceship computer"
- },
- {
-  "id": "ui_open",
-  "kind": "sfx",
-  "seconds": 0.8,
-  "path": "sounds/ui_open.ogg",
-  "prompt": "Holographic menu opening, a soft airy whoosh with a gentle digital shimmer"
- },
- {
-  "id": "wind_loop",
-  "kind": "sfx",
-  "seconds": 12,
-  "loop": true,
-  "path": "sounds/wind_loop.ogg",
-  "prompt": "Gentle alien wind over a vast empty plain at dusk with a distant low rumble, calm continuous ambience"
- },
- {
-  "id": "rain_loop",
-  "kind": "sfx",
-  "seconds": 12,
-  "loop": true,
-  "path": "sounds/rain_loop.ogg",
-  "prompt": "Steady heavy rain falling on open grassland and rocks, soft hiss with patters and drips, continuous ambience, no thunder"
- },
- {
-  "id": "thunder",
-  "kind": "sfx",
-  "seconds": 5,
-  "path": "sounds/thunder.ogg",
-  "prompt": "Close lightning strike with a sharp crack splitting into a huge rolling thunder rumble that echoes across a wide valley and fades"
- },
- {
-  "id": "sandstorm_loop",
-  "kind": "sfx",
-  "seconds": 12,
-  "loop": true,
-  "path": "sounds/sandstorm_loop.ogg",
-  "prompt": "Fierce desert sandstorm, howling gusting wind with hissing blown sand and grit rattling against metal armor, continuous ambience"
- },
- {
-  "id": "music_surface",
-  "kind": "music",
-  "seconds": 90,
-  "path": "music/surface.ogg",
-  "prompt": "Epic ambient space music, slow evolving warm synth pads, distant wordless choir and deep sub bass, a sense of wonder and vastness on an alien world at dusk, cinematic, no drums, loopable"
- },
- {
-  "id": "music_discovery",
-  "kind": "music",
-  "seconds": 60,
-  "path": "music/discovery.ogg",
-  "prompt": "Uplifting cinematic space exploration theme, shimmering arpeggiated synths over warm strings with soft timpani swells, a sense of discovery and awe, epic but calm, instrumental"
- },
- {
-  "id": "engine_loop",
-  "kind": "sfx",
-  "seconds": 10,
-  "loop": true,
-  "path": "sounds/engine_loop.ogg",
-  "prompt": "Huge flying ship engines heard from inside its bridge, a deep steady turbine drone with a low rumble and faint metallic vibration, continuous loop"
- }
+  {
+    "id": "footstep_1",
+    "kind": "sfx",
+    "seconds": 0.9,
+    "path": "sounds/footstep_1.ogg",
+    "prompt": "Heavy armored mech exosuit footstep on a concrete deck, deep metallic thud with a short hydraulic hiss, close, punchy"
+  },
+  {
+    "id": "footstep_2",
+    "kind": "sfx",
+    "seconds": 0.9,
+    "path": "sounds/footstep_2.ogg",
+    "prompt": "Heavy robotic exosuit foot stomping on concrete, low metal impact with a servo whine and a little grit crunch, close"
+  },
+  {
+    "id": "footstep_3",
+    "kind": "sfx",
+    "seconds": 0.9,
+    "path": "sounds/footstep_3.ogg",
+    "prompt": "Giant mech suit step on a steel and concrete floor, weighty thump with rattling armor plates and a hydraulic release"
+  },
+  {
+    "id": "scan",
+    "kind": "sfx",
+    "seconds": 2.0,
+    "path": "sounds/scan.ogg",
+    "prompt": "Epic futuristic sensor scan pulse, a deep sonar ping that blooms into a shimmering energy sweep racing outwards, sci-fi"
+  },
+  {
+    "id": "impact",
+    "kind": "sfx",
+    "seconds": 0.8,
+    "path": "sounds/impact.ogg",
+    "prompt": "Heavy metal cargo crate slamming onto a concrete deck, deep hollow boom with a short scrape and rattle, close, punchy"
+  },
+  {
+    "id": "dig",
+    "kind": "sfx",
+    "seconds": 1.6,
+    "path": "sounds/dig.ogg",
+    "prompt": "Heavy mech exosuit plasma excavator blasting a hole into rocky ground, a deep thumping burst of earth and gravel spraying out, hissing energy and falling pebbles, close, punchy"
+  },
+  {
+    "id": "jump",
+    "kind": "sfx",
+    "seconds": 2.5,
+    "path": "sounds/jump.ogg",
+    "prompt": "Starship jump drive engaging, a deep rising hum that tears into a huge whooshing warp boom and fades into a shimmering echo, sci-fi"
+  },
+  {
+    "id": "ui_move",
+    "kind": "sfx",
+    "seconds": 0.5,
+    "path": "sounds/ui_move.ogg",
+    "prompt": "Soft short sci-fi interface tick, a subtle clean digital click for moving through a menu"
+  },
+  {
+    "id": "ui_confirm",
+    "kind": "sfx",
+    "seconds": 0.6,
+    "path": "sounds/ui_confirm.ogg",
+    "prompt": "Bright short sci-fi interface confirm chime, clean and pleasant, spaceship computer"
+  },
+  {
+    "id": "ui_open",
+    "kind": "sfx",
+    "seconds": 0.8,
+    "path": "sounds/ui_open.ogg",
+    "prompt": "Holographic menu opening, a soft airy whoosh with a gentle digital shimmer"
+  },
+  {
+    "id": "wind_loop",
+    "kind": "sfx",
+    "seconds": 12,
+    "loop": true,
+    "path": "sounds/wind_loop.ogg",
+    "prompt": "Gentle alien wind over a vast empty plain at dusk with a distant low rumble, calm continuous ambience"
+  },
+  {
+    "id": "rain_loop",
+    "kind": "sfx",
+    "seconds": 12,
+    "loop": true,
+    "path": "sounds/rain_loop.ogg",
+    "prompt": "Steady heavy rain falling on open grassland and rocks, soft hiss with patters and drips, continuous ambience, no thunder"
+  },
+  {
+    "id": "thunder",
+    "kind": "sfx",
+    "seconds": 5,
+    "path": "sounds/thunder.ogg",
+    "prompt": "Close lightning strike with a sharp crack splitting into a huge rolling thunder rumble that echoes across a wide valley and fades"
+  },
+  {
+    "id": "sandstorm_loop",
+    "kind": "sfx",
+    "seconds": 12,
+    "loop": true,
+    "path": "sounds/sandstorm_loop.ogg",
+    "prompt": "Fierce desert sandstorm, howling gusting wind with hissing blown sand and grit rattling against metal armor, continuous ambience"
+  },
+  {
+    "id": "music_surface",
+    "kind": "music",
+    "seconds": 90,
+    "path": "music/surface.ogg",
+    "prompt": "Epic ambient space music, slow evolving warm synth pads, distant wordless choir and deep sub bass, a sense of wonder and vastness on an alien world at dusk, cinematic, no drums, loopable"
+  },
+  {
+    "id": "music_discovery",
+    "kind": "music",
+    "seconds": 60,
+    "path": "music/discovery.ogg",
+    "prompt": "Uplifting cinematic space exploration theme, shimmering arpeggiated synths over warm strings with soft timpani swells, a sense of discovery and awe, epic but calm, instrumental"
+  },
+  {
+    "id": "engine_loop",
+    "kind": "sfx",
+    "seconds": 10,
+    "loop": true,
+    "path": "sounds/engine_loop.ogg",
+    "prompt": "Huge flying ship engines heard from inside its bridge, a deep steady turbine drone with a low rumble and faint metallic vibration, continuous loop"
+  },
+  {
+    "id": "door",
+    "kind": "sfx",
+    "seconds": 1.0,
+    "path": "sounds/door.ogg",
+    "prompt": "Heavy sci-fi spaceship interior door sliding open with a pneumatic hiss and a metal clunk, close, clean"
+  },
+  {
+    "id": "tram",
+    "kind": "sfx",
+    "seconds": 3.0,
+    "path": "sounds/tram.ogg",
+    "prompt": "Magnetic tram inside a huge starship accelerating away, rising electric hum and a soft whoosh, interior"
+  },
+  {
+    "id": "flare",
+    "kind": "sfx",
+    "seconds": 1.5,
+    "path": "sounds/flare.ogg",
+    "prompt": "Emergency signal flare ignited and thrown, sharp pop then fizzing crackling burn, outdoors"
+  },
+  {
+    "id": "stun",
+    "kind": "sfx",
+    "seconds": 1.0,
+    "path": "sounds/stun.ogg",
+    "prompt": "Sci-fi electric stun pulse discharge, crackling zap with a short rising whine and a thump"
+  },
+  {
+    "id": "explosion",
+    "kind": "sfx",
+    "seconds": 2.5,
+    "path": "sounds/explosion.ogg",
+    "prompt": "Gas pocket explosion outdoors, deep whump fireball with rumble and debris falling"
+  },
+  {
+    "id": "bite",
+    "kind": "sfx",
+    "seconds": 0.8,
+    "path": "sounds/bite.ogg",
+    "prompt": "Alien predator snapping bite against metal armour, wet snarl and a hard clack, close"
+  },
+  {
+    "id": "guardian",
+    "kind": "sfx",
+    "seconds": 2.0,
+    "path": "sounds/guardian.ogg",
+    "prompt": "Ancient alien machine guardian waking, deep resonant pulse with a menacing electronic drone swell"
+  },
+  {
+    "id": "pylon",
+    "kind": "sfx",
+    "seconds": 1.5,
+    "path": "sounds/pylon.ogg",
+    "prompt": "Ancient alien stone pylon activating, soft crystalline chime with a low humming resonance"
+  },
+  {
+    "id": "spear",
+    "kind": "sfx",
+    "seconds": 0.7,
+    "path": "sounds/spear.ogg",
+    "prompt": "Thrown wooden spear hitting metal armour plate, quick whoosh then sharp clang"
+  },
+  {
+    "id": "alarm",
+    "kind": "sfx",
+    "seconds": 2.0,
+    "path": "sounds/alarm.ogg",
+    "prompt": "Starship intruder alert klaxon, two short urgent electronic alarm tones in a metal corridor"
+  },
+  {
+    "id": "chime",
+    "kind": "sfx",
+    "seconds": 1.5,
+    "path": "sounds/chime.ogg",
+    "prompt": "Calm sci-fi computer notification chime, two bright soft tones, discovery, clean and gentle"
+  },
+  {
+    "id": "sample",
+    "kind": "sfx",
+    "seconds": 0.8,
+    "path": "sounds/sample.ogg",
+    "prompt": "Small handheld sci-fi sampling tool click and suction, short glassy vial seal"
+  },
+  {
+    "id": "collapse",
+    "kind": "sfx",
+    "seconds": 3.0,
+    "path": "sounds/collapse.ogg",
+    "prompt": "Ground collapsing into a sinkhole under a giant walking machine, deep crumbling rumble with rocks falling"
+  },
+  {
+    "id": "breach",
+    "kind": "sfx",
+    "seconds": 1.2,
+    "path": "sounds/breach.ogg",
+    "prompt": "Space suit hull breach warning, sharp air hiss with a short warning beep pattern inside a helmet"
+  }
 ]

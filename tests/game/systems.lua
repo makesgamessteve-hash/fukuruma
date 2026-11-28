@@ -6,7 +6,7 @@ local checks = require("gen.checks")
 local galaxy = require("fk.galaxy")
 local wonders = require("gen.wonders")
 
-local RECORDED_HASH = "3303036238709328"
+local RECORDED_HASH = "6714788dfb5f02b4"
 local COUNT = 10000
 
 local function encode(v, out) -- a canonical text of plain data (sorted keys, exact numbers)

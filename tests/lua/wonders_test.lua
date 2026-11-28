@@ -52,7 +52,7 @@ return {
     assert(#wonders.by_id.binary_sunset.candidates(fake) == 0, "only rocky worlds see the binary sunset")
   end,
   ["marvels are a registry"] = function()
-    assert(#wonders.list >= 10)
+    assert(#wonders.list >= 40, "at least 40 marvels (plan M13)")
     assert(not pcall(wonders.register, { id = "polar_ring", rarity = 1, candidates = function() return {} end }))
     assert(not pcall(wonders.register, { id = "test_x" }))
   end,

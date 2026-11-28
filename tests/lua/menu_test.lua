@@ -12,6 +12,7 @@ local fake = {
   mouse_button = function() return false end,
   touches = function() return {} end,
   device = function() return "keyboard" end,
+  last_key = function() return nil end,
 }
 
 local function tap(state, key)
@@ -52,6 +53,9 @@ return {
       tap(state, "Down"); tap(state, "Right"); assert(comfort.current.head_bob == 0.5, "head bob")
       tap(state, "Down"); tap(state, "Right"); assert(comfort.current.fov == 80, "field of view")
       tap(state, "Down"); tap(state, "Right"); assert(comfort.current.vignette == false, "turning vignette")
+      tap(state, "Down"); tap(state, "Right"); assert(comfort.current.colour_vision == "protanopia", "colour vision")
+      local m = comfort.colour_matrix("protanopia")
+      assert(#m == 9 and m[1] == 1 and comfort.colour_matrix("normal") == nil and #comfort.colour_matrix("tritanopia") == 9)
       assert(fk.storage.load("comfort"):find("rumble=false", 1, true), "comfort saved")
       comfort.current = comfort.defaults()
       comfort.save()
@@ -64,7 +68,21 @@ return {
       assert(fk.storage.load("audio"):find("effects=0", 1, true), "audio saved")
       audio.current = audio.defaults()
       audio.save()
-      tap(state, "Down"); tap(state, "Return"); assert(not menu.open, "Close")
+      local controls = require("settings.controls")
+      tap(state, "Down"); tap(state, "Return"); assert(menu.rebinding == "use", "a key row waits for a key")
+      fake.last_key = function() return "J" end
+      menu.draw(state)
+      fake.last_key = function() return nil end
+      assert(controls.key("use") == "J" and controls.load().use == "J", "rebound and saved")
+      tap(state, "Return"); assert(menu.rebinding == "use")
+      fake.last_key = function() return "Escape" end
+      menu.draw(state)
+      fake.last_key = function() return nil end
+      assert(not menu.rebinding and controls.key("use") == "J" and menu.open, "Escape keeps the key")
+      controls.rebind("use", "F")
+      fk.storage.save("controls", "")
+      menu.toggle(); menu.toggle() -- (open again on the first row)
+      tap(state, "Up"); tap(state, "Return"); assert(not menu.open, "Close (the last row)")
       menu.toggle()
       tap(state, "Escape"); assert(not menu.open, "Escape closes")
       graphics.apply(graphics.defaults({ renderer = "none", web = false, phone = false }))
@@ -72,5 +90,6 @@ return {
     fk.input = real
     keys = {}
     assert(ok, err)
+    assert(not require("settings.controls").rebind("use", "NoSuchKey"), "only keys the game knows")
   end,
 }

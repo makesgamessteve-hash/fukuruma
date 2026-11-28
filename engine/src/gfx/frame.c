@@ -40,6 +40,8 @@ void fk_frame_reset(void) {
     frame.ground[0] = 0.08f, frame.ground[1] = 0.07f, frame.ground[2] = 0.06f;
     frame.exposure = 0, frame.contrast = 1, frame.saturation = 1;
     frame.palette_size = 0;
+    const float identity[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
+    memcpy(frame.colour, identity, sizeof identity);
     const float near[FK_SLICE_COUNT] = {0.01f, 0, 400.0f, 5e4f}, far[FK_SLICE_COUNT] = {4.0f, 0, 2e7f, 1e9f};
     memcpy(frame.slice_near, near, sizeof near);
     memcpy(frame.slice_far, far, sizeof far);

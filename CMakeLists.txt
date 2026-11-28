@@ -93,9 +93,10 @@ if(EMSCRIPTEN)
   return()
 endif()
 
-# The game reads data/ beside the executable. shortcut: files deleted from data/ stay in the build folder until it is cleaned.
+# The game reads data/ and mods/ beside the executable. shortcut: files deleted from data/ stay in the build folder until it is cleaned.
 add_custom_target(fk_data ALL
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:fukuruma>/data)
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:fukuruma>/data
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/mods $<TARGET_FILE_DIR:fukuruma>/mods)
 
 # --- Tests -------------------------------------------------------------------
 enable_testing()

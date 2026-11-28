@@ -753,6 +753,7 @@ static void render_once(double dt, int window_w, int window_h, bool to_window) {
     program = use(P_POST);
     sampler(program, "u_input", 0, GL_TEXTURE_2D, scene);
     gl.Uniform1i(LOC("u_palette_size"), f->palette_size);
+    gl.UniformMatrix3fv(LOC("u_colour"), 1, GL_FALSE, f->colour);
     if (f->palette_size) gl.Uniform3fv(LOC("u_palette"), f->palette_size, &f->palette[0][0]);
     sampler(program, "u_bloom", 1, GL_TEXTURE_2D, R.s.hdr && R.s.bloom ? R.bloom[0] : R.white);
     sampler(program, "u_exposure", 2, GL_TEXTURE_2D, R.s.hdr ? R.exposure[R.exposure_index] : R.white);

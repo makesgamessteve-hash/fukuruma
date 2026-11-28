@@ -104,6 +104,55 @@ W({ id = "great_canyon", name = "A canyon ten times Valles Marineris", rarity = 
   apply = function(sys, i) mark(sys, i, "surface", "great_canyon") end })
 W({ id = "comet_swarm", name = "Comet swarm", rarity = 0.05, signature = 1, fallback = true,
   candidates = function(sys) return bodies(sys, function(b) return b.kind == "comet" end) end })
+-- (M13: more marvels; none is a fallback, so the guaranteed pick of a system stays the same)
+local function aired(sys) return bodies(sys, function(b) return b.kind ~= "star" and b.atmosphere and (b.atmosphere.pressure or 0) > 0.05 end) end
+W({ id = "auroras", name = "Auroras brighter than day", rarity = 0.15, signature = 3, candidates = aired,
+  apply = function(sys, i) sys.bodies[i].aurora = true end })
+W({ id = "hexagon_storm", name = "A hexagonal polar storm", rarity = 0.1, signature = 3, candidates = class_is("gas_giant", "ice_giant"),
+  apply = function(sys, i) sys.bodies[i].storm_hexagon = true end })
+W({ id = "floating_islands", name = "Floating islands", rarity = 0.01, signature = 5, candidates = class_is("terran", "ocean", "super_earth"),
+  apply = function(sys, i) mark(sys, i, "surface", "floating_islands") end })
+W({ id = "diamond_ocean", name = "An ocean of liquid diamond", rarity = 0.05, signature = 4, candidates = class_is("ice_giant"),
+  apply = function(sys, i) sys.bodies[i].core = "diamond_ocean" end })
+W({ id = "mega_tides", name = "Kilometre-high tides", rarity = 0.05, signature = 3,
+  candidates = function(sys)
+    return bodies(sys, function(b, i)
+      if b.class ~= "ocean" then return false end
+      for _, m in ipairs(sys.bodies) do if m.kind == "moon" and m.parent == i and m.mass > 0.01 then return true end end
+      return false
+    end)
+  end,
+  apply = function(sys, i) sys.bodies[i].tides = "mega" end })
+W({ id = "singing_dunes", name = "Singing dunes", rarity = 0.15, signature = 2, candidates = class_is("desert"),
+  apply = function(sys, i) mark(sys, i, "surface", "singing_dunes") end })
+W({ id = "glowing_seas", name = "Bioluminescent seas", rarity = 0.1, signature = 4, candidates = class_is("ocean", "terran"),
+  apply = function(sys, i) sys.bodies[i].life = "glowing" end })
+W({ id = "mercury_lakes", name = "Mirror lakes of mercury", rarity = 0.05, signature = 3, candidates = class_is("lava", "iron"),
+  apply = function(sys, i) mark(sys, i, "surface", "mercury_lakes") end })
+W({ id = "city_ruins", name = "Ruins of a planet-wide city", rarity = 0.02, signature = 5, candidates = class_is("terran", "super_earth", "desert"),
+  apply = function(sys, i) sys.bodies[i].ruins = "city" end })
+W({ id = "rogue_moon", name = "A rogue moon passing through", rarity = 0.02, signature = 4,
+  candidates = function(sys) return bodies(sys, function(b) return b.kind == "planet" and b.orbit end) end,
+  apply = function(sys, i, rng) sys.bodies[i].rogue_pass = { days = rng:range(10, 900) } end })
+W({ id = "twin_worlds", name = "Twin worlds", rarity = 0.02, signature = 4,
+  candidates = function(sys) return bodies(sys, function(b) return b.kind == "planet" and b.mass > 0.3 and b.mass < 5 end) end,
+  apply = function(sys, i) sys.bodies[i].twin = true end })
+W({ id = "geyser_fields", name = "Geyser fields", rarity = 0.1, signature = 2, candidates = class_is("barren", "ice", "glacier"),
+  apply = function(sys, i) mark(sys, i, "surface", "geysers") end })
+W({ id = "ice_cathedrals", name = "Ice cathedrals", rarity = 0.05, signature = 3, candidates = class_is("glacier", "ice"),
+  apply = function(sys, i) mark(sys, i, "surface", "ice_spires") end })
+W({ id = "endless_meteors", name = "A sky of endless meteors", rarity = 0.08, signature = 2, candidates = aired,
+  apply = function(sys, i) sys.bodies[i].meteors = true end })
+W({ id = "ancient_beacon", name = "An ancient beacon, still sending", rarity = 0.01, signature = 5,
+  candidates = function() return { 0 } end,
+  apply = function(sys) sys.beacon = true end })
+W({ id = "coral_continents", name = "Coral continents", rarity = 0.05, signature = 3, candidates = class_is("ocean"),
+  apply = function(sys, i) sys.bodies[i].life = "coral" end })
+W({ id = "nebula_sky", name = "A sky inside a nebula", rarity = 0.03, signature = 3,
+  candidates = function() return { 0 } end,
+  apply = function(sys, _, rng) sys.nebula = { hue = units.uniform(rng, 0, 1) } end })
+W({ id = "hollow_caves", name = "A world of endless caves", rarity = 0.05, signature = 2, candidates = class_is("barren", "iron", "carbon"),
+  apply = function(sys, i) mark(sys, i, "surface", "caves") end })
 W({ id = "strange_echo", name = "A strange sensor echo", rarity = 0, signature = 1, fallback = true,
   candidates = function() return { 0 } end })
 

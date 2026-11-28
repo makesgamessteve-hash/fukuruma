@@ -119,6 +119,7 @@ typedef struct {
     int nbones, bone_cap;
     float palette[FK_MAX_PALETTE][3]; /* sRGB */
     int palette_size;                 /* 0: palette mode off */
+    float colour[9];                  /* a 3x3 colour matrix (column-major) on the final linear colour (colour vision) */
     float slice_near[FK_SLICE_COUNT], slice_far[FK_SLICE_COUNT]; /* metres; FK_SLICE_LOCAL's are unused */
     int slice; /* the slice of the next draws */
     int triangles; /* drawn this frame (budgets) */

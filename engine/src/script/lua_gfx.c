@@ -686,6 +686,15 @@ static int l_palette(lua_State *L) {
     return 0;
 }
 
+/* fk.gfx.colour({9 numbers, column-major}) for this frame: a colour matrix on the final image (colour vision). */
+static int l_colour(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    if (luaL_len(L, 1) != 9) return luaL_error(L, "colour: a 3x3 matrix needs 9 numbers");
+    fk_frame *f = fk_frame_get();
+    for (int i = 0; i < 9; i++) f->colour[i] = (float)number_at(L, 1, i + 1, "colour");
+    return 0;
+}
+
 static int l_device(lua_State *L) {
     lua_createtable(L, 0, 3);
     lua_pushstring(L, rendering ? fk_gfx_renderer() : "none");
@@ -826,7 +835,7 @@ void fk_lua_gfx_open(lua_State *L, bool render) {
                                    {"camera", l_camera},   {"sun", l_sun},           {"ambient", l_ambient},
                                    {"light", l_light},     {"clear", l_clear},       {"grade", l_grade},
                                    {"configure", l_configure}, {"settings", l_settings}, {"size", l_size},
-                                   {"text", l_text},       {"rect", l_rect},         {"origin", l_origin},         {"stereo", l_stereo},         {"palette", l_palette},
+                                   {"text", l_text},       {"rect", l_rect},         {"origin", l_origin},         {"stereo", l_stereo},         {"palette", l_palette}, {"colour", l_colour},
                                    {"device", l_device},   {"emit", l_emit},         {"particles", l_particles},
                                    {"slices", l_slices},   {"starfield", l_starfield}, {"sky", l_sky}, {"stats", l_stats}, {"atmosphere", l_atmosphere}, {"sun2", l_sun2},
                                    {"instances", l_instances}, {"wind", l_wind}, {"water", l_water},

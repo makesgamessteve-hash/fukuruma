@@ -19,3 +19,17 @@ Generated for this project with the ElevenLabs API by `tools/audio/generate.py` 
 - `thunder.ogg` (eleven_text_to_sound_v2, 2026-11-27): Close lightning strike with a sharp crack splitting into a huge rolling thunder rumble that echoes across a wide valley and fades
 - `sandstorm_loop.ogg` (eleven_text_to_sound_v2, 2026-11-27): Fierce desert sandstorm, howling gusting wind with hissing blown sand and grit rattling against metal armor, continuous ambience
 - `engine_loop.ogg` (eleven_text_to_sound_v2, 2026-11-27): Huge flying ship engines heard from inside its bridge, a deep steady turbine drone with a low rumble and faint metallic vibration, continuous loop
+- `door.ogg` (eleven_text_to_sound_v2, 2026-11-28): Heavy sci-fi spaceship interior door sliding open with a pneumatic hiss and a metal clunk, close, clean
+- `tram.ogg` (eleven_text_to_sound_v2, 2026-11-28): Magnetic tram inside a huge starship accelerating away, rising electric hum and a soft whoosh, interior
+- `flare.ogg` (eleven_text_to_sound_v2, 2026-11-28): Emergency signal flare ignited and thrown, sharp pop then fizzing crackling burn, outdoors
+- `stun.ogg` (eleven_text_to_sound_v2, 2026-11-28): Sci-fi electric stun pulse discharge, crackling zap with a short rising whine and a thump
+- `explosion.ogg` (eleven_text_to_sound_v2, 2026-11-28): Gas pocket explosion outdoors, deep whump fireball with rumble and debris falling
+- `bite.ogg` (eleven_text_to_sound_v2, 2026-11-28): Alien predator snapping bite against metal armour, wet snarl and a hard clack, close
+- `guardian.ogg` (eleven_text_to_sound_v2, 2026-11-28): Ancient alien machine guardian waking, deep resonant pulse with a menacing electronic drone swell
+- `pylon.ogg` (eleven_text_to_sound_v2, 2026-11-28): Ancient alien stone pylon activating, soft crystalline chime with a low humming resonance
+- `spear.ogg` (eleven_text_to_sound_v2, 2026-11-28): Thrown wooden spear hitting metal armour plate, quick whoosh then sharp clang
+- `alarm.ogg` (eleven_text_to_sound_v2, 2026-11-28): Starship intruder alert klaxon, two short urgent electronic alarm tones in a metal corridor
+- `chime.ogg` (eleven_text_to_sound_v2, 2026-11-28): Calm sci-fi computer notification chime, two bright soft tones, discovery, clean and gentle
+- `sample.ogg` (eleven_text_to_sound_v2, 2026-11-28): Small handheld sci-fi sampling tool click and suction, short glassy vial seal
+- `collapse.ogg` (eleven_text_to_sound_v2, 2026-11-28): Ground collapsing into a sinkhole under a giant walking machine, deep crumbling rumble with rocks falling
+- `breach.ogg` (eleven_text_to_sound_v2, 2026-11-28): Space suit hull breach warning, sharp air hiss with a short warning beep pattern inside a helmet

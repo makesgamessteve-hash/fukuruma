@@ -8,6 +8,8 @@
 -- Jump Ship jumps the range to another star (the sky, the light and gravity follow).
 -- Simulation (sim.*) uses only arithmetic and sqrt, so it is the same on every platform; animation, camera
 -- and effects are presentation.
+local mods = require("mods")
+mods.load() -- (first: the mods' files overlay data/ for every module after)
 local mat4 = require("mat4")
 local jump_ship = require("jump_ship")
 local sim = require("fk.sim")
@@ -49,6 +51,8 @@ local thieves = require("thieves")
 local dialogue = require("dialogue")
 local economy = require("economy")
 local research = require("research")
+local story = require("story")
+mods.run() -- the mods register their content with the modules above
 local hull = require("dolls.hull")
 local dolls = require("dolls")
 local ship_ai = require("ship_ai")
@@ -141,6 +145,7 @@ function game.init()
   economy.install()
   research.install()
   survival.install_codex()
+  story.install()
   ecology.ignite = function(x, z) if fire.dryness() > 0 then fire.ignite(x, z) end end -- (a flare in dry plants)
   sim.on("move", function(args) -- the wanted velocity and the direction the Commander looks (on foot only)
     local body = sim.get(game.suit, "suit")
@@ -161,17 +166,7 @@ function game.init()
     sim.emit("scan", { position = chain.on_foot() and { body.x, 0, body.z } or { d.x, d.y, d.z } })
     sensors.scan(d, true) -- the active ping (sensor-system spec)
   end)
-  feel.listen(sim, { scan = feedback.scan, impact = feedback.impact, jump = feedback.jump, dig = feedback.dig,
-    deploy = feedback.deploy, recall = feedback.recall, board = feedback.board, stomp = feedback.stomp,
-    teleport = feedback.teleport, autopilot = feedback.autopilot, arrived = feedback.arrived, door = feedback.door,
-    tram = feedback.tram, alerted = feedback.alerted, hazard_stop = feedback.hazard_stop, breach = feedback.breach,
-    death = feedback.death, clone = feedback.clone, collapse = feedback.collapse, explosion = feedback.explosion,
-    flare = feedback.flare, stun = feedback.stun, noticed = feedback.noticed, bite = feedback.bite, theft = feedback.theft,
-    recovered = feedback.recovered, boarders = feedback.boarders, sealed = feedback.sealed, repelled = feedback.repelled,
-    looted = feedback.looted, pylon = feedback.pylon, artifact = feedback.artifact, guardian = feedback.guardian,
-    spear = feedback.spear, talk = feedback.talk, trade = feedback.trade, crafted = feedback.crafted, sample = feedback.sample,
-    outpost = feedback.outpost, research_started = feedback.research_started, researched = feedback.researched,
-    repaired = feedback.repaired, named = feedback.named },
+  feel.listen(sim, feedback, -- every bundle plays on its event (mods add bundles to feedback)
     function() return game.listener() end)
   sim.listen("jump", function() game.jump_fx = 0 end) -- the streaks and the flash (presentation)
   game.ai, game.sway = {}, {}
@@ -204,7 +199,7 @@ function game.init()
   actions.define("stun", { kind = "button", keys = { "Q" }, gamepad = { "leftshoulder" }, touch = "stun" }) -- defensive tools
   actions.define("flare", { kind = "button", keys = { "C" }, gamepad = { "leftstick" }, touch = "flare" })
   actions.define("seal", { kind = "button", keys = { "L" }, gamepad = { "rightstick" }, touch = "seal" }) -- all doors shut
-  actions.define("workshop", { kind = "button", keys = { "K" }, gamepad = { "dpleft" }, touch = "workshop" }) -- craft, research
+  actions.define("workshop", { kind = "button", keys = { "K" }, touch = "workshop" }) -- craft, research (gamepad: none free yet)
   actions.define("outpost", { kind = "button", keys = { "H" }, touch = "outpost" }) -- unpack an outpost kit
   actions.define("codex", { kind = "button", keys = { "X" }, touch = "codex" })
   for i, pad in ipairs({ "a", "x", "y", "b" }) do -- a talk's (or a menu's) options
@@ -215,6 +210,7 @@ function game.init()
   actions.define("recall", { kind = "button", keys = { "R" }, gamepad = { "dpleft" }, touch = "recall" })
   actions.define("save", { kind = "button", keys = { "F5" } })
   actions.define("load", { kind = "button", keys = { "F9" } })
+  require("settings.controls").apply() -- the player's own key bindings
   menu.actions = { save = function() game.save() end, load = function() game.load() end }
   actions.touch_button("sprint", 0.86, 0.72, 0.09)
   actions.touch_button("scan", 0.72, 0.84, 0.07)
@@ -426,6 +422,7 @@ function game.tick()
   thieves.tick(u.seed .. "/" .. u.place)
   economy.tick(survival.restore)
   research.tick()
+  story.tick()
   survival.tick()
   for _, b in sim.each(chain.suit_out() and "suit" or "suit_away") do -- the suit waits where it was left
     local dx, dz = b.wx - b.vx, b.wz - b.vz

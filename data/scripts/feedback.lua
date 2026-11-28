@@ -58,77 +58,80 @@ return {
   -- The Commander at another doll's controls: the seat settles, the instruments chime.
   board = { trauma = 0.08, rumble = { 0.15, 0.25, 0.15 }, sound = "ui_confirm" },
   -- A door inside a doll slides: a light knock and a click.
-  door = { trauma = 0.02, rumble = { 0.08, 0.1, 0.08 }, sound = "ui_move" },
+  door = { trauma = 0.02, rumble = { 0.08, 0.1, 0.08 }, sound = "door" },
   -- A hostile heard the ping: a sharp jolt and a warning.
-  alerted = { trauma = 0.15, rumble = { 0.4, 0.2, 0.3 }, sound = "impact" },
+  alerted = { trauma = 0.15, rumble = { 0.4, 0.2, 0.3 }, sound = "alarm" },
   -- The autopilot stops for a hazard: a hard brake.
   hazard_stop = { trauma = 0.3, rumble = { 0.6, 0.4, 0.5 }, sound = "ui_open" },
   -- The suit is breached (a quarter of its integrity gone): a hard jolt, a red flash, a warning.
-  breach = { trauma = 0.35, rumble = { 0.7, 0.5, 0.4 }, sound = "impact",
+  breach = { trauma = 0.35, rumble = { 0.7, 0.5, 0.4 }, sound = "breach",
     light = { color = { 1, 0.15, 0.1 }, intensity = 20, radius = 8, duration = 0.4, offset = { 0, 2, 0 } } },
   -- Death: everything shakes and goes dark; the clone wakes to a soft chime.
   death = { trauma = 1, rumble = { 1, 1, 1 }, sound = "impact" },
   clone = { trauma = 0.1, rumble = { 0.2, 0.2, 0.3 }, sound = "ui_confirm" },
   -- Ground gives way under a doll: a deep lurch and a dust cloud.
-  collapse = { trauma = 0.7, rumble = { 0.9, 0.7, 0.8 }, sound = "impact",
+  collapse = { trauma = 0.7, rumble = { 0.9, 0.7, 0.8 }, sound = "collapse",
     particles = { { count = 80, radius = 6, direction = { 0, 1, 0 }, spread = 0.6, speed_min = 2, speed_max = 6, life_min = 1.5,
       life_max = 3, size = 1.5, size_end = 4, drag = 0.5, color = { 0.45, 0.4, 0.33 }, alpha = 0.7, alpha_end = 0 } } },
   -- A gas pocket explodes: a fireball, a flash and a blast.
-  explosion = { trauma = 0.8, rumble = { 1, 0.8, 0.9 }, sound = "impact",
+  explosion = { trauma = 0.8, rumble = { 1, 0.8, 0.9 }, sound = "explosion",
     particles = { { count = 120, radius = 1, direction = { 0, 1, 0 }, spread = 1, speed_min = 4, speed_max = 14, life_min = 0.4,
       life_max = 1.2, size = 1.2, size_end = 0.2, drag = 0.8, color = { 1, 0.55, 0.15 }, intensity = 12, alpha = 1, alpha_end = 0,
       glow = true } },
     light = { color = { 1, 0.6, 0.25 }, intensity = 120, radius = 40, duration = 0.5, offset = { 0, 2, 0 } } },
   -- A flare goes up: sparks and a red glow where it lands.
-  flare = { trauma = 0.05, rumble = { 0.2, 0.1, 0.1 }, sound = "ui_open",
+  flare = { trauma = 0.05, rumble = { 0.2, 0.1, 0.1 }, sound = "flare",
     particles = { { count = 40, radius = 0.3, direction = { 0, 1, 0 }, spread = 0.7, speed_min = 2, speed_max = 6, life_min = 0.5,
       life_max = 1.2, size = 0.2, size_end = 0.05, gravity = -6, color = { 1, 0.35, 0.15 }, intensity = 10, alpha = 1,
       alpha_end = 0, glow = true } },
     light = { color = { 1, 0.3, 0.1 }, intensity = 40, radius = 30, duration = 0.8, offset = { 0, 1, 0 } } },
   -- The stun pulse: a blue ring and a crackle.
-  stun = { trauma = 0.12, rumble = { 0.3, 0.5, 0.2 }, sound = "scan",
+  stun = { trauma = 0.12, rumble = { 0.3, 0.5, 0.2 }, sound = "stun",
     particles = { { count = 60, ring = true, direction = { 0, 1, 0 }, speed_min = 12, speed_max = 14, life_min = 0.3,
       life_max = 0.4, size = 0.25, size_end = 0.05, color = { 0.5, 0.7, 1 }, intensity = 10, alpha = 1, alpha_end = 0,
       glow = true } },
     light = { color = { 0.5, 0.7, 1 }, intensity = 30, radius = 16, duration = 0.3 } },
   -- A predator notices the Commander, or bites: a jolt.
   noticed = { trauma = 0.08, rumble = { 0.2, 0.1, 0.2 }, sound = "ui_move" },
-  bite = { trauma = 0.45, rumble = { 0.8, 0.6, 0.3 }, sound = "impact" },
+  bite = { trauma = 0.45, rumble = { 0.8, 0.6, 0.3 }, sound = "bite" },
   -- Thieves: a doll taken, a doll recovered, boarders aboard, sectors sealed, boarders repelled, the cargo looted.
-  theft = { trauma = 0.1, rumble = { 0.3, 0.2, 0.3 }, sound = "ui_open" },
+  theft = { trauma = 0.1, rumble = { 0.3, 0.2, 0.3 }, sound = "alarm" },
   recovered = { trauma = 0.15, rumble = { 0.3, 0.3, 0.3 }, sound = "ui_confirm" },
-  boarders = { trauma = 0.25, rumble = { 0.5, 0.4, 0.5 }, sound = "impact",
+  boarders = { trauma = 0.25, rumble = { 0.5, 0.4, 0.5 }, sound = "alarm",
     light = { color = { 1, 0.15, 0.1 }, intensity = 15, radius = 12, duration = 1.2 } },
   sealed = { trauma = 0.12, rumble = { 0.4, 0.3, 0.4 }, sound = "ui_move" },
   repelled = { trauma = 0.05, rumble = { 0.2, 0.1, 0.1 }, sound = "ui_confirm" },
   looted = { trauma = 0.2, rumble = { 0.4, 0.3, 0.3 }, sound = "impact" },
   -- The ruin: a pylon wakes with a chime and a cyan flash; the artifact with a burst; the guardian with a red pulse.
-  pylon = { trauma = 0.05, rumble = { 0.2, 0.2, 0.2 }, sound = "scan",
+  pylon = { trauma = 0.05, rumble = { 0.2, 0.2, 0.2 }, sound = "pylon",
     light = { color = { 0.3, 0.9, 1 }, intensity = 30, radius = 12, duration = 0.6 } },
-  artifact = { trauma = 0.3, rumble = { 0.5, 0.6, 0.5 }, sound = "scan",
+  artifact = { trauma = 0.3, rumble = { 0.5, 0.6, 0.5 }, sound = "chime",
     particles = { { count = 120, radius = 2, direction = { 0, 1, 0 }, spread = 0.8, speed_min = 3, speed_max = 9, life_min = 0.8,
       life_max = 1.6, size = 0.3, size_end = 0.05, drag = 0.6, color = { 0.4, 0.95, 1 }, intensity = 10, alpha = 1, alpha_end = 0,
       glow = true } },
     light = { color = { 0.4, 0.95, 1 }, intensity = 80, radius = 30, duration = 1.2 } },
-  guardian = { trauma = 0.35, rumble = { 0.7, 0.5, 0.6 }, sound = "impact",
+  guardian = { trauma = 0.35, rumble = { 0.7, 0.5, 0.6 }, sound = "guardian",
     light = { color = { 1, 0.2, 0.15 }, intensity = 60, radius = 40, duration = 0.5 } },
   -- A native's spear hits; a talk begins.
-  spear = { trauma = 0.25, rumble = { 0.5, 0.3, 0.2 }, sound = "impact" },
+  spear = { trauma = 0.25, rumble = { 0.5, 0.3, 0.2 }, sound = "spear" },
   talk = { trauma = 0, rumble = { 0.05, 0.05, 0.05 }, sound = "ui_confirm" },
   -- The economy: a sale, a thing made, a sample taken, an outpost unpacked, research begun and done, a repair, a name.
   trade = { trauma = 0, rumble = { 0.05, 0.05, 0.05 }, sound = "ui_confirm" },
   crafted = { trauma = 0.05, rumble = { 0.2, 0.2, 0.2 }, sound = "dig" },
-  sample = { trauma = 0.03, rumble = { 0.15, 0.1, 0.1 }, sound = "ui_move",
+  sample = { trauma = 0.03, rumble = { 0.15, 0.1, 0.1 }, sound = "sample",
     light = { color = { 0.5, 1, 0.6 }, intensity = 8, radius = 4, duration = 0.3 } },
   outpost = { trauma = 0.2, rumble = { 0.5, 0.4, 0.4 }, sound = "impact",
     particles = { { count = 60, radius = 3, direction = { 0, 1, 0 }, spread = 0.6, speed_min = 1, speed_max = 3, life_min = 1,
       life_max = 2, size = 1, size_end = 2.5, drag = 0.5, color = { 0.5, 0.45, 0.4 }, alpha = 0.6, alpha_end = 0 } } },
   research_started = { trauma = 0, rumble = { 0.1, 0.1, 0.1 }, sound = "ui_open" },
-  researched = { trauma = 0.05, rumble = { 0.2, 0.3, 0.2 }, sound = "scan" },
+  researched = { trauma = 0.05, rumble = { 0.2, 0.3, 0.2 }, sound = "chime" },
   repaired = { trauma = 0.05, rumble = { 0.2, 0.2, 0.2 }, sound = "ui_confirm" },
-  named = { trauma = 0, rumble = { 0.05, 0.05, 0.05 }, sound = "ui_confirm" },
+  named = { trauma = 0, rumble = { 0.05, 0.05, 0.05 }, sound = "chime" },
+  -- A story step: a low swell and a slow pulse of light.
+  story = { trauma = 0.05, rumble = { 0.2, 0.15, 0.3 }, sound = "chime",
+    light = { color = { 0.6, 0.5, 1 }, intensity = 25, radius = 20, duration = 1.5 } },
   -- The tram pulls away: a push and a hum.
-  tram = { trauma = 0.1, rumble = { 0.3, 0.2, 0.4 }, sound = "ui_open" },
+  tram = { trauma = 0.1, rumble = { 0.3, 0.2, 0.4 }, sound = "tram" },
   -- The Jump Ship's drive: a long, deep shake and rumble with the jump's roar.
   jump = { trauma = 0.6, rumble = { 0.8, 0.6, 0.9 }, sound = "jump" },
   -- The suit's sensor pulse: a ring of light racing over the ground, a cyan flash, a ping.

@@ -52,6 +52,7 @@ typedef struct {
 
 static struct {
     bool keys[SDL_SCANCODE_COUNT];
+    int last; /* the key pressed this frame (scancode), 0: none */
     unsigned mouse_buttons;
     float mx, my, mdx, mdy;
     float axes[SDL_GAMEPAD_AXIS_COUNT];
@@ -142,6 +143,7 @@ void fk_input_event(const void *sdl_event) {
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP:
         if (e->key.scancode < SDL_SCANCODE_COUNT) in.keys[e->key.scancode] = e->type == SDL_EVENT_KEY_DOWN;
+        if (e->type == SDL_EVENT_KEY_DOWN && !e->key.repeat && e->key.scancode < SDL_SCANCODE_COUNT) in.last = (int)e->key.scancode;
         in.device = "keyboard";
         break;
     case SDL_EVENT_MOUSE_MOTION:
@@ -198,6 +200,7 @@ void fk_input_event(const void *sdl_event) {
 
 void fk_input_frame_end(void) {
     in.mdx = in.mdy = 0;
+    in.last = 0;
     in.nfresh = 0;
     SDL_Event late[MAX_FRESH];
     int n = in.nlate;
@@ -214,6 +217,8 @@ int fk_input_key_code(const char *name) {
 int fk_input_axis_code(const char *name) { return (int)SDL_GetGamepadAxisFromString(name); }
 int fk_input_button_code(const char *name) { return (int)SDL_GetGamepadButtonFromString(name); }
 bool fk_input_key(int code) { return in.keys[code]; }
+
+const char *fk_input_last_key(void) { return in.last ? SDL_GetScancodeName((SDL_Scancode)in.last) : NULL; }
 bool fk_input_mouse_button(int button) { return button >= 1 && button <= 8 && (in.mouse_buttons & (1u << button)); }
 float fk_input_axis(int code) { return in.axes[code]; }
 bool fk_input_button(int code) { return in.buttons[code]; }

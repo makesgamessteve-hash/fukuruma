@@ -19,6 +19,9 @@ function actions.define(name, def)
 end
 
 -- Replaces fields of an action's bindings, e.g. bind("turn", { negative = { "J" }, positive = { "L" } }).
+-- An action's definition (read only: change it with actions.bind), or nil.
+function actions.def(name) return defs[name] end
+
 function actions.bind(name, changes)
   local def = assert(defs[name], "unknown action '" .. tostring(name) .. "'")
   for k, v in pairs(changes) do def[k] = v end

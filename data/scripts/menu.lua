@@ -29,6 +29,14 @@ end
 
 function menu.draw(state, dt)
   if not menu.open then return end
+  if menu.rebinding then -- waiting for the new key (Escape keeps the old one)
+    local key = fk.input.last_key()
+    if key then
+      if key ~= "Escape" then require("settings.controls").rebind(menu.rebinding, key) end
+      menu.rebinding = nil
+      return
+    end
+  end
   local function changed()
     graphics.apply(state)
     graphics.save(state)
@@ -73,6 +81,7 @@ function menu.draw(state, dt)
     rows[#rows + 1] = option(comfort.current, label, key, labels, function(value)
       comfort.current[key] = value
       comfort.save()
+      comfort.apply()
     end, comfort.CHOICES[key])
   end
   comfort_option("Camera shake", "shake", { "100%", "50%", "Off" })
@@ -81,6 +90,7 @@ function menu.draw(state, dt)
   comfort_option("Head bob", "head_bob", { "100%", "50%", "Off" })
   comfort_option("Field of view", "fov", { "70", "80", "90", "60" })
   comfort_option("Turning vignette", "vignette", { "On", "Off" })
+  comfort_option("Colour vision", "colour_vision", { "Normal", "Protanopia", "Deuteranopia", "Tritanopia" })
   local game_setting = require("survival").setting() -- death: the mode of the next new game
   rows[#rows + 1] = option(game_setting, "Death (new games)", "death", { "Clone", "Legacy" }, function(value)
     game_setting.death = value
@@ -93,6 +103,12 @@ function menu.draw(state, dt)
       audio.save()
     end, audio.CHOICES[row[2]])
   end
+  local controls = require("settings.controls") -- key bindings: a row per action, then the next key pressed
+  for _, name in ipairs(controls.NAMES) do
+    local label = name:sub(1, 1):upper() .. name:sub(2)
+    rows[#rows + 1] = { label = "Key: " .. label .. " [" .. (menu.rebinding == name and "press a key" or controls.key(name)) .. "]",
+      press = function() menu.rebinding = name end }
+  end
   for _, row in ipairs({ { "Save game", "save" }, { "Load game", "load" } }) do -- set by the game
     if menu.actions and menu.actions[row[2]] then
       rows[#rows + 1] = { label = row[1], press = function()
@@ -102,7 +118,7 @@ function menu.draw(state, dt)
     end
   end
   rows[#rows + 1] = { label = "Close", press = function() menu.open = false end }
-  if ui.menu("SETTINGS", rows, menu.slide:update(dt or 0)) == "back" then menu.open = false end
+  if ui.menu("SETTINGS", rows, menu.slide:update(dt or 0)) == "back" and not menu.rebinding then menu.open = false end
 end
 
 return menu

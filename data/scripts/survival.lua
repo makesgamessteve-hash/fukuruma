@@ -40,14 +40,14 @@ function survival.codex()
   local ok, codex = pcall(function() return text and save.decode(text) end)
   codex = ok and type(codex) == "table" and codex or {}
   codex.hazards, codex.worlds, codex.species = codex.hazards or {}, codex.worlds or {}, codex.species or {}
-  codex.artifacts, codex.names = codex.artifacts or {}, codex.names or {}
+  codex.artifacts, codex.names, codex.threads = codex.artifacts or {}, codex.names or {}, codex.threads or {}
   codex.commanders = codex.commanders or 0
   return codex
 end
 
 function survival.codex_size(codex)
   local n = 0
-  for _, group in ipairs({ codex.hazards, codex.worlds, codex.species, codex.artifacts or {} }) do
+  for _, group in ipairs({ codex.hazards, codex.worlds, codex.species, codex.artifacts or {}, codex.threads or {} }) do
     for _ in pairs(group) do n = n + 1 end
   end
   return n
@@ -56,7 +56,7 @@ end
 function survival.install()
   survival.id = sim.create()
   sim.set(survival.id, "survival", { oxygen = 1, filter = 1, power = 1, integrity = 1, dose = 0,
-    mode = survival.setting().death, deaths = 0, over = false, found = { hazards = {}, worlds = {}, species = {}, artifacts = {} } })
+    mode = survival.setting().death, deaths = 0, over = false, found = { hazards = {}, worlds = {}, species = {}, artifacts = {}, threads = {} } })
   sim.on("mode", function(args) -- (a new run's mode; tests)
     if args.mode == "clone" or args.mode == "legacy" then survival.state().mode = args.mode end
   end)
@@ -197,12 +197,13 @@ function survival.install_codex()
     codex = {
       text = function()
         local codex, run = survival.codex(), survival.state().found
-        local this = survival.codex_size({ hazards = run.hazards, worlds = run.worlds, species = run.species, artifacts = run.artifacts })
+        local this = survival.codex_size(run)
         local named = {}
         for k, v in pairs(codex.names) do named[#named + 1] = k .. " IS " .. v end
         table.sort(named)
-        return string.format("CODEX: %d ENTRIES, %d THIS RUN, %d COMMANDERS. %s", survival.codex_size(codex), this,
-          codex.commanders, table.concat(named, ". "))
+        local journal = require("story").journal()
+        return string.format("CODEX: %d ENTRIES, %d THIS RUN, %d COMMANDERS. %s%s", survival.codex_size(codex), this,
+          codex.commanders, #journal > 0 and ("THREADS: " .. table.concat(journal, ", ") .. ". ") or "", table.concat(named, ". "))
       end,
       options = function()
         local out = {}
